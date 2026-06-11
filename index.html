@@ -30,7 +30,26 @@
   --track:#1d2638; --shadow:none;
   --disp:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
+  --statusbar:var(--bg);
 }
+/* Light theme — the WCAG-checked palette; selected via the theme toggle (S.theme) */
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f1f3f6; --card:#ffffff; --raised:#e8edf4; --ink:#101828; --txt2:#3a4756; --sub:#5b6b80;
+  --line:#e4e9f0; --line-soft:#ebeff5; --bord:#8593a6;
+  --accent:#0f4fa8; --accent-ink:#ffffff;
+  --rec:#075985;  --rec-bg:#e3f1fb;
+  --easy:#166534; --easy-bg:#e5f5ea;
+  --long:#92400e; --long-bg:#fcefd8;
+  --hard:#b91c1c; --hard-bg:#fbe9e9;
+  --rest:#52606f; --rest-bg:#eceff3;
+  --blue:#1d4ed8; --blue-bg:#e6ecfb;
+  --track:#e8ecf2;
+  /* installed app's status bar is frozen translucent w/ white clock — keep it on blue */
+  --statusbar:#0f4fa8;
+}
+/* opaque strip behind the iOS status bar (height 0 in regular browsers) */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--statusbar);z-index:60}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
@@ -68,6 +87,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
 .seg button{border:1.5px solid var(--line);border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;color:var(--sub);min-height:46px;background:var(--card)}
 .seg button.on-done{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
+.seg button.selb{background:var(--blue-bg);border-color:var(--accent);color:var(--accent)}
 .seg button.on-partial{background:var(--long-bg);border-color:var(--long);color:var(--long)}
 .seg button.on-missed{background:var(--hard-bg);border-color:var(--hard);color:var(--hard)}
 .loggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -408,7 +428,7 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,hideInstallTip:false};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,hideInstallTip:false,theme:'dark'};}
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
@@ -651,6 +671,18 @@ function macroPct(e){
 function scheduledSoFar(w,todayPos){
   let t=0;for(let d=0;d<=todayPos;d++)t+=eff(w*7+d).km;return t;
 }
+
+/* ---------------- Theme ---------------- */
+const mqLight=matchMedia('(prefers-color-scheme: light)');
+function applyTheme(){
+  const t=S.theme||'dark';
+  const light=t==='light'||(t==='auto'&&mqLight.matches);
+  document.documentElement.dataset.theme=light?'light':'dark';
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m)m.setAttribute('content',light?'#f1f3f6':'#0a0d15');
+}
+mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme();});
+applyTheme(); // before first render — no theme flash
 
 /* ---------------- 5. UI state ---------------- */
 let rawT=rawTodayIdx();
@@ -965,8 +997,14 @@ function openWidgetSheet(){
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="1" aria-label="Move '+esc(d.label)+' down" '+(i===cfg.length-1?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 5 4 5 4-5"/></svg></button>'
       +'</span></div>';
   });
+  const th=S.theme||'dark';
+  const themeRow='<h2 style="margin:18px 0 0">Theme</h2>'
+    +'<div class="seg">'+['dark','light','auto'].map(v=>
+      '<button data-action="settheme" data-v="'+v+'" aria-pressed="'+(th===v)+'" class="'+(th===v?'selb':'')+'" style="text-transform:capitalize">'+v+'</button>').join('')+'</div>'
+    +'<p class="mini" style="margin:6px 2px 0">Auto follows your iPhone’s appearance setting.</p>';
   openSheet('<h2 style="margin:0">Edit home screen</h2>'
     +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today.</p>'+rows
+    +themeRow
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>');
 }
 
@@ -980,8 +1018,11 @@ function vToday(){
   if(isIOS&&!standalone&&!S.hideInstallTip&&location.protocol.indexOf('http')===0)
     note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">Install first: Share, then <b>Add to Home Screen</b>, and log there. The installed app keeps its own separate storage.</span><button class="btn3" data-action="hideinstalltip" style="color:var(--long);flex:none">Got it</button></div>';
   const logCount=Object.keys(S.sessions).length+S.weights.length;
-  if(logCount>=10&&daysSince(S.lastBackup)>14)
-    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">'+logCount+' logs live only on this phone. A backup takes 30 seconds.</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
+  if((logCount>=3&&!S.lastBackup)||(logCount>=10&&daysSince(S.lastBackup)>14))
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">'
+      +(S.lastBackup?logCount+' logs live only on this phone. A backup takes 30 seconds.'
+        :'Your logs exist only on this phone — deleting the app icon deletes them. First backup takes 30 seconds.')
+      +'</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
   if(easyDrift())
     note+='<div class="banner">Your last three easy days all felt hard (RPE 6+). Consider an extra rest day or easing this week’s paces.</div>';
 
@@ -1316,6 +1357,9 @@ document.addEventListener('click',ev=>{
     const cfg=widgetConfig(),i=cfg.findIndex(x=>x.id===el.dataset.id),j=i+Number(el.dataset.dir);
     if(i>=0&&j>=0&&j<cfg.length){const t=cfg[i];cfg[i]=cfg[j];cfg[j]=t;S.widgets=cfg;save();rerenderKeepScroll();openWidgetSheet();}
   }
+  else if(a==='settheme'){
+    S.theme=el.dataset.v;save();applyTheme();rerenderKeepScroll();openWidgetSheet();
+  }
   else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();}
   else if(a==='resetweek'){
     const w=Number(el.dataset.w);
@@ -1369,20 +1413,31 @@ document.addEventListener('click',ev=>{
 
 const NUM_FIELDS={km:1,rpe:1,carbs:1,mins:1};
 let fieldDirty=false;
+function commitField(el){ // parse + persist one log field (no render)
+  const f=el.dataset.field;
+  let v=el.value===''?null:(NUM_FIELDS[f]?parseFloat(el.value):el.value);
+  if(NUM_FIELDS[f]&&v!=null&&(!isFinite(v)||v<0))v=null;
+  logSession(el.dataset.sid,{[f]:v});
+}
 function flushFieldRender(){ // re-render only once focus has left the log fields — keeps the iOS keyboard up between inputs
   setTimeout(()=>{
     const ae=document.activeElement;
     if(fieldDirty&&!(ae&&ae.dataset&&ae.dataset.field)){fieldDirty=false;rerenderKeepScroll();}
   },80);
 }
+/* save-as-you-type: half-typed notes survive even a force-quit */
+let typeTimer=null;
+function flushActiveField(){
+  const ae=document.activeElement;
+  if(ae&&ae.dataset&&ae.dataset.field&&ae.dataset.sid){clearTimeout(typeTimer);commitField(ae);fieldDirty=true;}
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)flushActiveField();});
+addEventListener('pagehide',flushActiveField);
 document.addEventListener('focusout',ev=>{if(ev.target.dataset&&ev.target.dataset.field)flushFieldRender();});
 document.addEventListener('change',ev=>{
   const el=ev.target,a=el.dataset.action;
   if(el.dataset.field&&el.dataset.sid){
-    const f=el.dataset.field;
-    let v=el.value===''?null:(NUM_FIELDS[f]?parseFloat(el.value):el.value);
-    if(NUM_FIELDS[f]&&v!=null&&(!isFinite(v)||v<0))v=null;
-    logSession(el.dataset.sid,{[f]:v});
+    commitField(el);
     fieldDirty=true;flushFieldRender();
   }
   else if(a==='nutweekfilter'){ui.nutWeek=el.value;const b=document.getElementById('nutbody');if(b)b.innerHTML=nutTableBody();}
@@ -1392,7 +1447,7 @@ document.addEventListener('change',ev=>{
       try{
         const data=JSON.parse(fr.result);
         if(!data||typeof data.sessions!=='object'||!Array.isArray(data.weights))throw 0;
-        const clean=Object.assign(freshState(),sanitizePayload(data),{lastBackup:S.lastBackup,hideInstallTip:S.hideInstallTip});
+        const clean=Object.assign(freshState(),sanitizePayload(data),{lastBackup:S.lastBackup,hideInstallTip:S.hideInstallTip,theme:S.theme,widgets:S.widgets});
         if(confirm('Replace current logs with this backup? (A daily snapshot of the current data is kept on this device.)')){S=clean;save();render();}
       }catch(e){alert('That file doesn’t look like a Berlin 2026 backup.');}
       el.value='';
@@ -1439,6 +1494,11 @@ function buildCSV(){
 
 let nutqTimer=null;
 document.addEventListener('input',ev=>{
+  const el=ev.target;
+  if(el.dataset&&el.dataset.field&&el.dataset.sid){
+    clearTimeout(typeTimer);
+    typeTimer=setTimeout(()=>{commitField(el);fieldDirty=true;},350); // debounced save-as-you-type; render still waits for blur
+  }
   if(ev.target.id==='nutq'){
     ui.nutQ=ev.target.value;
     clearTimeout(nutqTimer);
