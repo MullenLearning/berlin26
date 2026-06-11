@@ -1,0 +1,1486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Berlin 26">
+<meta name="theme-color" content="#0a0d15">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Berlin 2026 — Train + Fuel</title>
+<style>
+:root{
+  /* Dark-first system, Oura/Whoop register: depth from surface levels, not shadows.
+     ONE accent — the painted blue line on the Berlin course. Zone/day-type hues are
+     semantic category colours only (chips, dots, chart bars), never decoration. */
+  color-scheme:dark;
+  --bg:#0a0d15; --card:#121826; --raised:#1a2234; --ink:#ecf1f8; --txt2:#bac5d7; --sub:#7e8ca3;
+  --line:#212b40; --line-soft:#1a2334; --bord:#3c4c69;
+  --accent:#5b9bff; --accent-ink:#06122a;
+  --rec:#5ec9f5;  --rec-bg:#0e2a3b;
+  --easy:#46d585; --easy-bg:#0e2e1d;
+  --long:#f3b73f; --long-bg:#33260c;
+  --hard:#f87171; --hard-bg:#391518;
+  --rest:#94a3b8; --rest-bg:#1b2436;
+  --blue:#5b9bff; --blue-bg:#13233f;
+  --track:#1d2638; --shadow:none;
+  --disp:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;}
+#app{max-width:520px;margin:0 auto;}
+main{padding:14px 14px calc(86px + env(safe-area-inset-bottom));}
+h1{font-size:24px;margin:6px 2px 2px;letter-spacing:-.4px;font-family:var(--disp);text-wrap:balance}
+h2{font-size:16px;margin:0 0 10px;letter-spacing:-.2px;text-wrap:balance}
+.sub{color:var(--sub);font-size:13px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line-soft);border-radius:18px;padding:16px;margin-top:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spread{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.num{font-variant-numeric:tabular-nums}
+.hero{font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1.02;font-family:var(--disp)}
+.big{font-size:27px;font-weight:800;letter-spacing:-.5px;font-family:var(--disp)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.neutral{background:var(--raised);color:var(--txt2)}
+.c-rec{background:var(--rec-bg);color:var(--rec)} .c-easy{background:var(--easy-bg);color:var(--easy)}
+.c-long{background:var(--long-bg);color:var(--long)} .c-hard{background:var(--hard-bg);color:var(--hard)}
+.c-rest{background:var(--rest-bg);color:var(--rest)} .c-blue{background:var(--blue-bg);color:var(--blue)}
+/* zone colour lives in the chip/dots/charts only — cards stay neutral (colour budget) */
+.detail{font-size:14px;line-height:1.5;color:var(--txt2);margin:8px 0 0;text-wrap:pretty}
+.pace{font-size:13px;color:var(--sub);margin-top:2px}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--accent);color:var(--accent-ink);
+  font-weight:700;font-size:14px;border-radius:12px;padding:11px 16px;min-height:44px}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:1px solid var(--line);
+  color:var(--ink);font-weight:600;font-size:14px;border-radius:12px;padding:10px 14px;min-height:44px}
+.btn3{color:var(--sub);font-size:13px;font-weight:600;padding:8px 10px;min-height:44px}
+.btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:transform .16s var(--ease-press)}
+.btn:active,.btn2:active,.btn3:active,.seg button:active,.sheetrow:active,.daystrip button:active,.weekchips button:active,#tabbar button:active,button.chip:active{transform:scale(.96)}
+.seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
+.seg button{border:1.5px solid var(--line);border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;color:var(--sub);min-height:46px;background:var(--card)}
+.seg button.on-done{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
+.seg button.on-partial{background:var(--long-bg);border-color:var(--long);color:var(--long)}
+.seg button.on-missed{background:var(--hard-bg);border-color:var(--hard);color:var(--hard)}
+.loggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.loggrid .full{grid-column:1/-1}
+label.f{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sub);margin:0 0 4px 2px}
+input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:10px 12px;width:100%;min-height:44px;appearance:none;-webkit-appearance:none}
+input::placeholder{color:var(--sub);opacity:1}
+select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237e8ca3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.err{color:var(--hard);font-size:12px;font-weight:600;margin:6px 2px 0}
+/* flat macro row — dividers + type hierarchy, no boxes-in-boxes */
+.macros{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px}
+.macro{padding:2px 14px;border-left:1px solid var(--line)}
+.macro:first-child{padding-left:0;border-left:none}
+.macro b{font-size:20px;font-weight:800;display:block;font-family:var(--disp)}
+.macro span{font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+/* progress ring — the one place "score" lives */
+.ringwrap{position:relative;flex:none}
+.ringtxt{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ringtxt b{font-size:22px;font-weight:800;font-family:var(--disp);letter-spacing:-.5px}
+.ringtxt span{font-size:10px;color:var(--sub);font-weight:700;text-transform:uppercase;letter-spacing:.4px;display:block}
+/* widget edit sheet controls */
+.switch{width:46px;height:28px;border-radius:99px;background:var(--raised);border:1px solid var(--line);position:relative;flex:none;transition:background .16s ease}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:99px;background:var(--sub);transition:transform .16s var(--ease-out),background .16s ease}
+.switch[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-pressed="true"]::after{transform:translateX(18px);background:var(--accent-ink)}
+.worder{display:flex;gap:4px}
+.worder button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt2);font-size:15px;font-weight:700}
+.worder button:disabled{opacity:.3}
+.bar{height:8px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--easy)}
+.bar i.warn{background:var(--long)} .bar i.bad{background:var(--hard)}
+.kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.kpi{background:var(--card);border:1px solid var(--line-soft);border-radius:18px;padding:12px}
+.kpi b{font-size:21px;font-weight:800;display:block;letter-spacing:-.3px;font-family:var(--disp)}
+.kpi span{font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+/* flat stat row — for stats inside a card (no nested cards) */
+.statrow{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:12px}
+.statrow div{padding:2px 12px;border-left:1px solid var(--line)}
+.statrow div:first-child{padding-left:0;border-left:none}
+.statrow b{font-size:21px;font-weight:800;display:block;letter-spacing:-.3px;font-family:var(--disp)}
+.statrow span{font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 6px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr[data-action]:active{background:var(--bg)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
+.p-hit{background:var(--easy-bg);color:var(--easy)} .p-partial{background:var(--long-bg);color:var(--long)}
+.p-under{background:var(--hard-bg);color:var(--hard)} .p-prog{background:var(--blue-bg);color:var(--blue)}
+.p-up{background:var(--rest-bg);color:var(--rest)}
+.weekchips{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.weekchips::-webkit-scrollbar{display:none}
+.weekchips button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--sub);min-height:44px}
+.weekchips button.sel{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+.daystrip button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 2px;text-align:center;min-height:58px}
+.daystrip button.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.daystrip .d{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase}
+.daystrip .k{font-size:12px;font-weight:800;margin-top:3px}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block;margin-top:4px}
+.tag-moved{background:var(--blue-bg);color:var(--blue)}
+.note{font-size:13px;line-height:1.5;color:var(--sub)}
+.banner{background:var(--long-bg);color:var(--long);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;margin-top:12px}
+.svgwrap{margin-top:8px}
+svg{display:block;width:100%;height:auto}
+.gridline{stroke:var(--line);stroke-width:1}
+.axis{font-size:9px;fill:var(--sub);font-weight:600}
+.f-rec{fill:var(--rec)} .f-easy{fill:var(--easy)} .f-long{fill:var(--long)} .f-hard{fill:var(--hard)} .f-rest{fill:var(--rest)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--sub);font-weight:600}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+#tabbar{position:fixed;bottom:0;left:0;right:0;z-index:50;background:color-mix(in srgb,var(--card) 92%,transparent);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line);
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));}
+#tabbar .inner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+#tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--sub);font-size:11px;font-weight:700;min-height:50px}
+#tabbar button.sel{color:var(--accent)}
+#tabbar button.sel::after{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:18px;height:3px;border-radius:99px;background:var(--accent)}
+#tabbar svg{width:23px;height:23px}
+#sheet{position:fixed;inset:0;z-index:100}
+#sheet .scrim{position:absolute;inset:0;background:rgba(8,12,20,.45);opacity:0;transition:opacity .2s ease}
+#sheet .panel{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);
+  border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:78vh;max-height:78dvh;
+  overflow-y:auto;overscroll-behavior:contain;will-change:transform;
+  transform:translateY(100%);transition:transform .2s cubic-bezier(.4,0,.7,1)} /* exit: quick ease-in */
+#sheet.open .scrim{opacity:1;transition-duration:.3s}
+#sheet.open .panel{transform:none;transition:transform .3s var(--ease-drawer)} /* enter: iOS drawer curve */
+.sheetrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 10px;border-radius:12px;border:1px solid var(--line);margin-top:8px;background:var(--card)}
+.sheetrow .d{min-width:44px;font-weight:800;font-size:14px}
+.sheetrow .t{flex:1;font-size:13px;color:var(--sub);line-height:1.3}
+.todayhead{padding:4px 2px 0}
+.fade{animation:fade .18s var(--ease-out)}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.hl{animation:hl 2s ease}
+@keyframes hl{0%{background:var(--long-bg)}100%{background:transparent}}
+.course{height:4px;border-radius:99px;background:var(--track);margin:12px 2px 2px;overflow:hidden}
+.course i{display:block;height:100%;border-radius:99px;background:var(--accent);min-width:4px}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
+.mini{font-size:12px;color:var(--sub)}
+.right{text-align:right}
+.weights li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line-soft);font-size:14px}
+.weights li:last-child{border-bottom:none}
+.weights .del{color:var(--hard);font-weight:700;font-size:13px;padding:8px 10px;min-height:44px}
+.center{text-align:center}
+.footlinks{display:flex;justify-content:center;gap:18px;margin-top:18px}
+.note,.banner{text-wrap:pretty}
+@media (prefers-reduced-motion: reduce){
+  .fade,.hl{animation:none}
+  #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim{transition:none}
+  .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <main id="view"></main>
+  <nav id="tabbar" aria-label="Sections"><div class="inner">
+    <button data-action="tab" data-tab="today" id="tb-today">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>Today</button>
+    <button data-action="tab" data-tab="train" id="tb-train">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>Training</button>
+    <button data-action="tab" data-tab="nut" id="tb-nut">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>Nutrition</button>
+    <button data-action="tab" data-tab="wt" id="tb-wt">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>Weight</button>
+  </div></nav>
+</div>
+<div id="sheet" hidden></div>
+
+<script>
+'use strict';
+/* =========================================================================
+   Berlin 2026 — Train + Fuel
+   Single-file mobile web app. All plan data baked in below (§6 of the spec).
+   Logged data persists in localStorage and is never wiped on update.
+   ========================================================================= */
+
+/* ---------------- 1. Baked plan data ---------------- */
+
+const RACE_GOAL='sub-3:30:00 · 4:57/km';
+const MS=86400000, START_UTC=Date.UTC(2026,5,8), N_DAYS=112, RACE_IDX=111;
+
+const PACES=[
+ ['Recovery','6:40–7:10/km'],['Easy','5:50–6:15/km'],['Long','5:40–6:05/km'],
+ ['Marathon','4:55–5:02/km'],['Threshold','4:25–4:38/km'],['Interval','4:05–4:18/km'],['Strides','3:40–4:00/km']];
+const PACE={}; PACES.forEach(p=>PACE[p[0]]=p[1]);
+
+const ZONECLR={Recovery:'rec',Easy:'easy',Long:'long',Marathon:'long',Threshold:'hard',Interval:'hard',Rest:'rest'};
+const PHASE_DEFICIT={'Base':760,'Build 1':700,'Build 2':640,'Peak/Sharpen':640,'Taper':700,'Race':300};
+
+/* Each week: n, phase, start (Mon), target km, long-run km, focus note,
+   days[7] = [zone, km, detail] Mon..Sun */
+const WEEKS=[
+{n:1,phase:'Base',start:'2026-06-08',target:45,long:18,note:'Settle in. Re-establish routine. Easy emphasis.',days:[
+ ['Recovery',6,'6 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km (swapped with Fri)'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B (rest day moved here)'],
+ ['Easy',9,'9 km easy @ 5:50–6:15/km (swapped with Wed)'],
+ ['Long',18,'Long run: 18 km steady @ 5:40–6:05/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:2,phase:'Base',start:'2026-06-15',target:50,long:20,note:'Add gentle volume. First strides.',days:[
+ ['Recovery',7,'7 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',7,'7 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km'],
+ ['Long',20,'Long run: 20 km steady @ 5:40–6:05/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:3,phase:'Base',start:'2026-06-22',target:54,long:22,note:'Introduce MP feel at the end of the long run.',days:[
+ ['Recovery',7,'7 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',7,'7 km easy @ 5:50–6:15/km'],
+ ['Long',22,'Long run: 19 km @ 5:40–6:05/km + 3 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:4,phase:'Base',start:'2026-06-29',target:46,long:16,note:'DOWN week — absorb. Foot/hip check-in.',days:[
+ ['Recovery',7,'7 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',7,'7 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km'],
+ ['Long',16,'Long run: 13 km @ 5:40–6:05/km + 3 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:5,phase:'Build 1',start:'2026-07-06',target:56,long:24,note:'First threshold session. MP finish in long run.',days:[
+ ['Recovery',7,'7 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',10,'Threshold: 4×6min @ 4:25–4:38/km (90s jog). WU 2.5 km easy; 4×6 min @ threshold (~1.3 km each), 90s jog between; CD 1.5 km easy'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',7,'7 km easy @ 5:50–6:15/km'],
+ ['Long',24,'Long run: 16 km @ 5:40–6:05/km + 8 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:6,phase:'Build 1',start:'2026-07-13',target:63,long:26,note:'Volume climbs. First weekday MP session.',days:[
+ ['Recovery',9,'9 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',10,'Threshold: 4×6min @ 4:25–4:38/km (90s jog). WU 2.5 km; 4×6 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km'],
+ ['Long',26,'Long run: 18 km @ 5:40–6:05/km + 8 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:7,phase:'Build 1',start:'2026-07-20',target:70,long:28,note:'Biggest week yet. Long run w/ MP finish.',days:[
+ ['Recovery',10,'10 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',11.5,'Threshold: 5×6min @ 4:25–4:38/km (90s jog). WU 2.5 km; 5×6 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',11,'11 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km'],
+ ['Long',28,'Long run: 20 km @ 5:40–6:05/km + 8 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:8,phase:'Build 1',start:'2026-07-27',target:56,long:18,note:'DOWN week. Mid-block durability review.',days:[
+ ['Recovery',9,'9 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',11.5,'Threshold: 5×6min @ 4:25–4:38/km (90s jog). WU 2.5 km; 5×6 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km'],
+ ['Long',18,'Long run: 10 km @ 5:40–6:05/km + 8 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:9,phase:'Build 2',start:'2026-08-03',target:72,long:30,note:'Peak build begins. Target weight ~185 lb.',days:[
+ ['Recovery',10,'10 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',14,'Threshold: 5×8min @ 4:25–4:38/km (90s jog). WU 2.5 km; 5×8 min @ threshold (~1.8 km each); CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km'],
+ ['Long',30,'Long run: 20 km @ 5:40–6:05/km + 10 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:10,phase:'Build 2',start:'2026-08-10',target:78,long:32,note:'Key MP volume session this week.',days:[
+ ['Recovery',11,'11 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',14,'Threshold: 5×8min @ 4:25–4:38/km (90s jog). WU 2.5 km; 5×8 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',12,'12 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',9,'9 km easy @ 5:50–6:15/km'],
+ ['Long',32,'Long run: 22 km @ 5:40–6:05/km + 10 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:11,phase:'Build 2',start:'2026-08-17',target:85,long:32,note:'PEAK week. 32k race-specific long run.',days:[
+ ['Recovery',13,'13 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',16,'Threshold: 6×8min @ 4:25–4:38/km (90s jog). WU 2.5 km; 6×8 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',13,'13 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',11,'11 km easy @ 5:50–6:15/km'],
+ ['Long',32,'Race-specific long run: 14.4 km steady + 10 km @ MP + 7.6 km easy (practise fuelling)'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:12,phase:'Build 2',start:'2026-08-24',target:68,long:24,note:'DOWN week. Sharpen, stay fresh.',days:[
+ ['Recovery',10,'10 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',16,'Threshold: 6×8min @ 4:25–4:38/km (90s jog). WU 2.5 km; 6×8 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km'],
+ ['Long',24,'Long run: 14 km @ 5:40–6:05/km + 10 km @ MP 4:55–5:02/km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:13,phase:'Peak/Sharpen',start:'2026-08-31',target:80,long:34,note:'Longest run 34k. Race-specific MP.',days:[
+ ['Recovery',11,'11 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Marathon',13.9,'MP + threshold combo: WU 2 km; 5 km @ MP 4:55–5:02/km; 3 min jog; 4×4 min @ threshold 4:25–4:38/km (90s jog); CD 2 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',12,'12 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',9,'9 km easy @ 5:50–6:15/km'],
+ ['Long',34,'Race-specific long run: 15.3 km steady + 12 km @ MP + 6.7 km easy (practise fuelling)'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:14,phase:'Taper',start:'2026-09-07',target:60,long:22,note:'Taper begins. Volume down, intensity held.',days:[
+ ['Recovery',10,'10 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',10,'Threshold: 4×6min @ 4:25–4:38/km (90s jog). WU 2.5 km; 4×6 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',10,'10 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',8,'8 km easy @ 5:50–6:15/km'],
+ ['Long',22,'Taper long run: 17 km @ 5:40–6:05/km + 5 km @ MP'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:15,phase:'Taper',start:'2026-09-14',target:44,long:16,note:'Sharpen. Legs coming alive.',days:[
+ ['Recovery',6,'6 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Threshold',10,'Threshold: 4×6min @ 4:25–4:38/km (90s jog). WU 2.5 km; 4×6 min @ threshold; CD 1.5 km'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit B'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km + 6×20s strides + Strength/Prehab Circuit C-light (after run)'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km'],
+ ['Long',16,'Taper long run: 11 km @ 5:40–6:05/km + 5 km @ MP'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A']]},
+{n:16,phase:'Race',start:'2026-09-21',target:28,long:42.2,note:'Race week. Sun 27 Sep — BERLIN.',days:[
+ ['Easy',6,'6 km easy @ 5:50–6:15/km + 4×20s strides'],
+ ['Easy',6,'6 km easy @ 5:50–6:15/km + 4×20s strides'],
+ ['Rest',0,'Rest + Strength/Prehab Circuit A'],
+ ['Recovery',5,'5 km recovery @ 6:40–7:10/km (or easy Z2 bike)'],
+ ['Rest',0,'Rest day'],
+ ['Rest',3,'Rest or 20 min shakeout jog + 4×20s strides'],
+ ['Marathon',42.2,'🇩🇪 BERLIN MARATHON — 42.2 km, goal 3:29:xx (avg 4:57/km). Even pacing: 0–10 km @ 5:00–5:02; 10–30 km @ 4:56–4:58; 30–37 km @ 4:55–4:58; 37–42.2 km ≤4:57. Gel every ~5 km from 5 km (60–90 g carbs/hr).']]}
+];
+
+/* Nutrition per week: 7 rows Mon..Sun of [dayType, kcal, carbs, fat, burn, deficit].
+   Protein is 185 g every day. Day types: E=Easy fuel, S=Session fuel, L=Long-run fuel, R=Rest/low */
+const NUTW=[
+[['E',2310,362,14,3087,777],['E',2310,362,14,3267,957],['E',2310,362,14,3087,777],['R',2010,248,31,2675,665],['E',2610,362,47,3383,773],['E',3500,362,146,4271,771],['R',2010,248,31,2675,665]],
+[['E',2320,359,16,3172,852],['E',2620,359,49,3466,846],['R',2010,246,32,2666,656],['E',2320,359,16,3352,1032],['E',2220,359,5,3074,854],['L',4160,662,86,4445,285],['R',2010,246,32,2666,656]],
+[['E',2310,357,16,3158,848],['E',2600,357,48,3450,850],['R',2000,244,32,2657,657],['E',2410,357,27,3435,1025],['E',2310,357,16,3158,848],['L',4330,658,106,4617,287],['R',2000,244,32,2657,657]],
+[['E',2330,354,19,3143,813],['E',2620,354,52,3433,813],['R',1990,243,31,2647,657],['E',2330,354,19,3323,993],['E',2230,354,8,3046,816],['S',3540,513,83,4012,472],['R',1990,243,31,2647,657]],
+[['E',2230,352,9,3131,901],['S',2890,509,13,3419,529],['R',1990,241,32,2640,650],['E',2320,352,19,3407,1087],['E',2230,352,9,3131,901],['L',4460,648,125,4761,301],['R',1990,241,32,2640,650]],
+[['E',2400,350,29,3308,908],['S',2880,506,13,3403,523],['R',1980,239,32,2631,651],['E',2500,350,40,3583,1083],['E',2310,350,19,3213,903],['L',4630,644,146,4926,296],['R',1980,239,32,2631,651]],
+[['E',2480,347,39,3386,906],['S',3000,503,28,3528,528],['R',1970,238,31,2621,651],['E',2580,347,50,3661,1081],['E',2480,347,39,3386,906],['L',4790,640,166,5088,298],['R',1970,238,31,2621,651]],
+[['E',2410,345,32,3279,869],['S',3010,499,30,3513,503],['R',1970,236,32,2614,644],['E',2500,345,42,3552,1052],['E',2320,345,22,3185,865],['S',3620,499,98,4123,503],['R',1970,236,32,2614,644]],
+[['E',2450,342,38,3358,908],['S',3210,496,54,3730,520],['R',1960,234,32,2606,646],['E',2450,342,38,3538,1088],['E',2270,342,18,3171,901],['L',4930,631,185,5221,291],['R',1960,234,32,2606,646]],
+[['E',2530,340,48,3434,904],['S',3190,492,54,3712,522],['R',1950,233,31,2597,647],['E',2630,340,59,3707,1077],['E',2350,340,28,3249,899],['L',5080,626,204,5377,297],['R',1950,233,31,2597,647]],
+[['E',2840,338,83,3603,763],['S',3430,489,82,3878,448],['R',1950,231,32,2589,639],['E',2840,338,83,3783,943],['E',2650,338,62,3419,769],['L',5100,622,208,5347,247],['R',1950,231,32,2589,639]],
+[['E',2410,336,36,3313,903],['S',3340,486,73,3861,521],['R',1940,230,31,2581,641],['E',2410,336,36,3493,1083],['E',2230,336,16,3131,901],['L',4300,618,121,4591,291],['R',1940,230,31,2581,641]],
+[['E',2620,333,61,3388,768],['S',3210,482,60,3651,441],['R',1940,228,32,2572,632],['E',2720,333,72,3659,939],['E',2440,333,41,3207,767],['L',5230,614,226,5471,241],['R',1940,228,32,2572,632]],
+[['E',2790,331,81,3286,496],['S',3000,479,38,3286,286],['R',1970,226,36,2566,596],['E',2790,331,81,3466,676],['E',2610,331,61,3106,496],['L',4210,610,114,4365,155],['R',1970,226,36,2566,596]],
+[['E',2440,329,43,2916,476],['S',3000,477,39,3274,274],['R',1980,225,38,2559,579],['E',2440,329,43,3096,656],['E',2440,329,43,2916,476],['S',3540,477,99,3811,271],['R',1980,225,38,2559,579]],
+[['E',2580,328,59,2908,328],['E',2580,328,59,2908,328],['R',2160,224,58,2554,394],['E',2490,328,49,2819,329],['R',1980,224,38,2374,394],['R',1980,224,38,2374,394],['L',6040,604,320,6133,93]]
+];
+/* Expected (plan) weight per week, lb — shown in the nutrition table */
+const WT=[210,208.5,207,205.5,204,202.6,201.1,199.7,198.3,196.8,195.4,194.1,192.7,191.5,190.5,189.6];
+
+const DAYTYPE={E:{label:'Easy fuel',c:'easy'},S:{label:'Session fuel',c:'hard'},L:{label:'Long-run fuel',c:'long'},R:{label:'Rest / low',c:'rest'}};
+/* Typical day-type recipe (spec §6.1) — reference table */
+const RECIPE=[
+ ['L','~4,160–6,040','185 g','604–662 g','~165 g'],
+ ['S','~2,880–3,430','185 g','477–509 g','~45 g'],
+ ['E','~2,210–2,840','185 g','328–362 g','~35 g'],
+ ['R','~1,940–2,160','185 g','224–248 g','~33 g']];
+
+/* ---------------- 2. Dates & formatting ---------------- */
+
+const DOW=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DOWL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const p2=n=>String(n).padStart(2,'0');
+function dAt(i){return new Date(START_UTC+i*MS);}
+function isoAt(i){const d=dAt(i);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());}
+function shortDate(i){const d=dAt(i);return DOW[i%7]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];}
+function isoShort(iso){const m=iso.split('-').map(Number);const d=new Date(Date.UTC(m[0],m[1]-1,m[2]));return DOW[(d.getUTCDay()+6)%7]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];}
+function longDate(i){const d=dAt(i);return DOWL[i%7]+' '+d.getUTCDate()+' '+MONL[d.getUTCMonth()];}
+function rawTodayIdx(){const t=new Date();return Math.round((Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())-START_UTC)/MS);}
+function isoToIdx(iso){const m=iso.split('-').map(Number);return Math.round((Date.UTC(m[0],m[1]-1,m[2])-START_UTC)/MS);}
+function todayISO(){const t=new Date();return t.getFullYear()+'-'+p2(t.getMonth()+1)+'-'+p2(t.getDate());}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function fmtKm(v){return (Math.round(v*10)/10).toString();}
+function fmtKcal(v){return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
+function fmtLb(v){return (Math.round(v*10)/10).toFixed(1).replace(/\.0$/,'');}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ---------------- 3. State (persistent, source-tagged) ---------------- */
+/* Phase 2–4 hook: register future importers (Apple Health, Strava, Oura) in
+   DATA_SOURCES; all writes flow through logSession()/logWeight() with a
+   source tag, so imported data lands beside manual entries without rework. */
+const DATA_SOURCES={manual:{label:'Manual'}};
+const KEY='berlin2026.v1';
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,hideInstallTip:false};}
+function loadState(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(!raw)return freshState();
+    const s=JSON.parse(raw);
+    return Object.assign(freshState(),s);
+  }catch(e){
+    try{localStorage.setItem(KEY+'.corrupt-backup',localStorage.getItem(KEY)||'');}catch(_){}
+    return freshState();
+  }
+}
+let S=loadState();
+let saveWarned=false;
+function save(){
+  try{
+    localStorage.setItem(KEY,JSON.stringify(S));
+    // rolling snapshots: one per day, 7 slots keyed by weekday — cheap insurance against a bad restore
+    if(S._snap!==todayISO()){
+      S._snap=todayISO();
+      localStorage.setItem(KEY+'.snap'+new Date().getDay(),JSON.stringify(S));
+      localStorage.setItem(KEY,JSON.stringify(S));
+    }
+  }
+  catch(e){
+    if(!saveWarned){saveWarned=true;alert('Couldn’t save to device storage. Your logs may not persist: free up space or leave private browsing, then log again.');}
+  }
+}
+function logSession(id,patch,source){
+  const cur=S.sessions[id]||{};
+  S.sessions[id]=Object.assign({},cur,patch,{source:source||'manual'});
+  if(S.sessions[id].status==null&&S.sessions[id].km==null&&!S.sessions[id].pace&&!S.sessions[id].note)delete S.sessions[id];
+  save();
+}
+function logWeight(date,lb,source){
+  S.weights=S.weights.filter(w=>w.date!==date);
+  S.weights.push({date:date,lb:lb,source:source||'manual'});
+  S.weights.sort((a,b)=>a.date<b.date?-1:1);
+  save();
+}
+
+/* Shared payload sanitiser — used by Restore (replace) and by ingest (merge).
+   This is the Phase 2 seam: an iOS Shortcut (Apple Health), a Strava export,
+   or a pasted JSON all flow through here. Never trust file/clipboard contents. */
+function sanitizePayload(data){
+  const out={sessions:{},weights:[],order:{}};
+  if(data&&data.sessions&&typeof data.sessions==='object'){
+    for(const k in data.sessions){
+      if(!/^w(1[0-6]|[1-9])d[0-6]$/.test(k))continue;
+      const r=data.sessions[k]||{},o={};
+      if(['done','partial','missed'].indexOf(r.status)>=0)o.status=r.status;
+      if(typeof r.km==='number'&&isFinite(r.km)&&r.km>=0)o.km=r.km;
+      if(typeof r.rpe==='number'&&r.rpe>=1&&r.rpe<=10)o.rpe=Math.round(r.rpe);
+      if(typeof r.carbs==='number'&&isFinite(r.carbs)&&r.carbs>=0&&r.carbs<=500)o.carbs=r.carbs;
+      if(typeof r.mins==='number'&&isFinite(r.mins)&&r.mins>0&&r.mins<=600)o.mins=r.mins;
+      if(typeof r.pace==='string'&&r.pace)o.pace=r.pace.slice(0,40);
+      if(typeof r.note==='string'&&r.note)o.note=r.note.slice(0,300);
+      o.source=typeof r.source==='string'?r.source.slice(0,20):'manual';
+      if(o.status||o.km!=null||o.pace||o.note||o.rpe!=null)out.sessions[k]=o;
+    }
+  }
+  if(data&&Array.isArray(data.weights)){
+    data.weights.forEach(w=>{
+      if(w&&/^\d{4}-\d{2}-\d{2}$/.test(String(w.date))&&typeof w.lb==='number'&&isFinite(w.lb)&&w.lb>=120&&w.lb<=280)
+        out.weights.push({date:w.date,lb:Math.round(w.lb*10)/10,source:typeof w.source==='string'?w.source.slice(0,20):'manual'});
+    });
+    out.weights.sort((a,b)=>a.date<b.date?-1:1);
+  }
+  if(data&&data.order&&typeof data.order==='object'){
+    for(const k in data.order){
+      const o=data.order[k];
+      if(Array.isArray(o)&&o.length===7&&o.slice().sort().join()==='0,1,2,3,4,5,6')out.order[k]=o.map(Number);
+    }
+  }
+  out.nutEdit={};
+  if(data&&data.nutEdit&&typeof data.nutEdit==='object'){
+    for(const k in data.nutEdit){
+      const i=Number(k),v=Number(data.nutEdit[k]);
+      if(Number.isInteger(i)&&i>=0&&i<N_DAYS&&isFinite(v)&&v>=1200&&v<=8000)out.nutEdit[i]=Math.round(v);
+    }
+  }
+  return out;
+}
+function mergePayload(data,source){ // additive: existing (manual) entries always win
+  const c=sanitizePayload(data);let nS=0,nW=0;
+  for(const k in c.sessions){if(!S.sessions[k]){c.sessions[k].source=source||c.sessions[k].source;S.sessions[k]=c.sessions[k];nS++;}}
+  c.weights.forEach(w=>{if(!S.weights.some(x=>x.date===w.date)){w.source=source||w.source;S.weights.push(w);nW++;}});
+  S.weights.sort((a,b)=>a.date<b.date?-1:1);
+  if(nS||nW)save();
+  return {sessions:nS,weights:nW};
+}
+
+/* Day moves: per-week permutation. order[w][pos] = original day slot now sitting at pos. */
+function orderOf(w){return S.order[w]||[0,1,2,3,4,5,6];}
+function weekMoved(w){return orderOf(w).some((v,i)=>v!==i);}
+function swapDays(w,a,b){
+  const o=orderOf(w).slice();
+  const t=o[a];o[a]=o[b];o[b]=t;
+  if(o.every((v,i)=>v===i))delete S.order[w];else S.order[w]=o;
+  save();
+}
+function resetWeek(w){delete S.order[w];save();}
+
+/* ---------------- 4. Derived data ---------------- */
+
+/* ---- week rebalance engine ----
+   Life happens: a day's calories or kilometres deviate from plan, and the
+   REMAINING days of that week (strictly future, never race day) absorb the
+   difference so the week's total stays on plan. Original values are always
+   kept and shown alongside. */
+function slotAt(j){const w=Math.floor(j/7);return WEEKS[w].days[orderOf(w)[j%7]];}
+function nutRowAt(j){const w=Math.floor(j/7);return NUTW[w][orderOf(w)[j%7]];}
+function idAt(j){const w=Math.floor(j/7);return 'w'+(w+1)+'d'+orderOf(w)[j%7];}
+
+/* Nutrition: explicit per-date kcal edits (S.nutEdit, keyed by day index).
+   Edited day = exact value, carbs flex at 4 kcal/g. Future non-edited days of
+   the week share the opposite delta proportionally, capped at ±20%/day,
+   floor 1,600 kcal. Race-day fuelling never auto-changes. */
+function nutAdjusted(i,n){
+  const base={kcal:n[1],carbs:n[2],deficit:n[5]};
+  const ed=S.nutEdit?S.nutEdit[i]:null;
+  if(ed!=null){
+    const d=ed-base.kcal;
+    return {kcal:ed,carbs:Math.max(0,base.carbs+Math.round(d/4)),deficit:base.deficit-d,adj:0,edited:true};
+  }
+  const t=rawTodayIdx();
+  if(i<=t||i===RACE_IDX)return {kcal:base.kcal,carbs:base.carbs,deficit:base.deficit,adj:0,edited:false};
+  const w=Math.floor(i/7);
+  let deltaSum=0;const recips=[];
+  for(let d=0;d<7;d++){
+    const j=w*7+d,e2=S.nutEdit?S.nutEdit[j]:null;
+    if(e2!=null)deltaSum+=e2-nutRowAt(j)[1];
+    else if(j>t&&j!==RACE_IDX)recips.push(j);
+  }
+  if(!deltaSum||recips.indexOf(i)<0)return {kcal:base.kcal,carbs:base.carbs,deficit:base.deficit,adj:0,edited:false};
+  const tot=recips.reduce((s,j)=>s+nutRowAt(j)[1],0);
+  let share=-deltaSum*base.kcal/tot;
+  share=Math.max(-base.kcal*0.2,Math.min(base.kcal*0.2,share));
+  share=Math.round(share/10)*10;
+  let k=base.kcal+share;
+  if(k<1600&&base.kcal>=1600){k=1600;share=k-base.kcal;}
+  return {kcal:k,carbs:Math.max(0,base.carbs+Math.round(share/4)),deficit:base.deficit-share,adj:share,edited:false};
+}
+
+/* Runs: the delta comes from what was logged (planned minus actual on logged
+   days). Future unlogged run days share it proportionally — capped at +20%
+   per day (+10% for long runs, the key sessions), −30% downward, race day
+   untouchable. */
+function runAdjusted(i,km){
+  const t=rawTodayIdx();
+  if(km<=0||i<=t||i===RACE_IDX)return {km:km,adj:0};
+  const w=Math.floor(i/7);
+  let delta=0;const recips=[];
+  for(let d=0;d<7;d++){
+    const j=w*7+d,l=S.sessions[idAt(j)];
+    if(j<=t){if(l&&l.status)delta+=slotAt(j)[1]-(Number(l.km)||0);}
+    else if(j!==RACE_IDX&&slotAt(j)[1]>0&&!(l&&l.status))recips.push(j);
+  }
+  if(Math.abs(delta)<0.05||recips.indexOf(i)<0)return {km:km,adj:0};
+  const tot=recips.reduce((s,j)=>s+slotAt(j)[1],0);
+  const zone=slotAt(i)[0];
+  let share=delta*km/tot;
+  const up=(zone==='Long'||zone==='Marathon')?0.10:0.20;
+  share=Math.max(-km*0.3,Math.min(km*up,share));
+  const k=Math.round((km+share)*10)/10;
+  return {km:k,adj:Math.round((k-km)*10)/10};
+}
+
+/* The effective day at calendar slot i: the session (and its nutrition row,
+   which travels with it — §2 of the spec: fuelling follows the day type /
+   session, not the calendar date), plus any week-rebalance adjustments.
+   Protein is always 185 g. Expected plan weight stays attached to the date. */
+function eff(i){
+  const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
+  const wk=WEEKS[w],s=wk.days[op],n=NUTW[w][op];
+  const na=nutAdjusted(i,n),ra=runAdjusted(i,s[1]);
+  return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,
+    zone:s[0],km:ra.km,planKm:s[1],kmAdj:ra.adj,text:s[2],
+    type:n[0],kcal:na.kcal,p:185,carbs:na.carbs,fat:n[3],burn:n[4],deficit:na.deficit,
+    planKcal:n[1],nutAdj:na.adj,nutEdited:na.edited,
+    planWt:WT[w],id:'w'+(w+1)+'d'+op};
+}
+function sessLog(id){return S.sessions[id]||null;}
+function weekActualKm(w){
+  let t=0; // only logged sessions count — km without a status is a draft, not a result
+  for(let d=0;d<7;d++){const l=S.sessions['w'+(w+1)+'d'+d];if(l&&l.status&&l.km!=null)t+=Number(l.km)||0;}
+  return t;
+}
+function weekStatus(w){ // w: 0-based
+  const rawW=Math.floor(rawTodayIdx()/7);
+  if(w===rawW)return ['In progress','p-prog'];
+  if(w>rawW)return ['Upcoming','p-up'];
+  const r=weekActualKm(w)/WEEKS[w].target;
+  if(r>=0.9)return ['Hit','p-hit'];
+  if(r>=0.6)return ['Partial','p-partial'];
+  return ['Under','p-under'];
+}
+function planWtAt(i){return 210+(189-210)*(i/RACE_IDX);} // linear glide, start → race day
+function latestWeight(){return S.weights.length?S.weights[S.weights.length-1]:null;}
+function trendWeight(){ // trailing 7-day mean — smooths the glycogen/water swings of a carb-periodised cut
+  const t=clamp(rawTodayIdx(),0,RACE_IDX);
+  const pts=S.weights.filter(w=>{const i=isoToIdx(w.date);return i<=t&&i>t-7;});
+  if(pts.length<2)return null;
+  return {lb:pts.reduce((s,w)=>s+w.lb,0)/pts.length,n:pts.length};
+}
+function daysSince(iso){return iso?(isoToIdx(todayISO())-isoToIdx(iso)):Infinity;}
+function fuelRate(l){ // long-run fuelling practice: g carbs per hour
+  if(!l||!(l.carbs>0)||!(l.mins>0))return null;
+  return Math.round(l.carbs/(l.mins/60));
+}
+function easyDrift(){ // last 3 logged easy/recovery RPEs all ≥6 → the block is biting too hard
+  const out=[];
+  for(let i=clamp(rawTodayIdx(),0,RACE_IDX);i>=0&&out.length<3;i--){
+    const e=eff(i);
+    if(e.zone!=='Easy'&&e.zone!=='Recovery')continue;
+    const l=sessLog(e.id);
+    if(l&&(l.status==='done'||l.status==='partial')&&l.rpe!=null)out.push(l.rpe);
+  }
+  return out.length===3&&out.every(r=>r>=6);
+}
+function deltaClass(d){const a=Math.abs(d);return a<=0.5?'easy':(a<=3?'long':'hard');}
+function doneCount(){let c=0;for(const k in S.sessions){if(S.sessions[k].status==='done')c++;}return c;}
+function streak(){
+  let i=clamp(rawTodayIdx(),0,RACE_IDX),n=0;
+  // 1 = kept, 2 = neutral (unlogged rest day — doesn't break, doesn't count), 0 = broken
+  const st=j=>{
+    const e=eff(j),l=sessLog(e.id);
+    if(l&&(l.status==='done'||l.status==='partial'))return 1;
+    if(e.zone==='Rest'&&(!l||!l.status))return 2;
+    return 0;
+  };
+  if(i>=0&&!(sessLog(eff(i).id)&&sessLog(eff(i).id).status))i--; // today still pending doesn't break
+  for(;i>=0;i--){const r=st(i);if(r===1)n++;else if(r===2)continue;else break;}
+  return n;
+}
+function macroPct(e){
+  const pk=e.p*4,ck=e.carbs*4,fk=e.fat*9,tot=pk+ck+fk;
+  return {p:Math.round(pk/tot*100),c:Math.round(ck/tot*100),f:Math.round(fk/tot*100)};
+}
+/* km planned in current week on days up to and including today (for on-track) */
+function scheduledSoFar(w,todayPos){
+  let t=0;for(let d=0;d<=todayPos;d++)t+=eff(w*7+d).km;return t;
+}
+
+/* ---------------- 5. UI state ---------------- */
+let rawT=rawTodayIdx();
+let todayIdx=clamp(rawT,0,RACE_IDX);
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{}};
+/* "Today" follows the device's real date even when the PWA is resumed days later */
+function refreshToday(){
+  const r=rawTodayIdx();
+  if(r!==rawT){
+    rawT=r;todayIdx=clamp(rawT,0,RACE_IDX);
+    ui.week=clamp(Math.floor(rawT/7),0,15);ui.nutDay=todayIdx;ui.scroll={};
+    render(true);
+  }
+}
+
+/* ---------------- 6. Shared renderers ---------------- */
+
+/* Race-day identity travels with the marathon session itself, not the calendar slot */
+const isRace=e=>e.w===15&&e.op===6;
+function zoneChip(e){
+  const c=ZONECLR[e.zone]||'rest';
+  return '<span class="chip c-'+c+'">'+(isRace(e)?'RACE DAY':e.zone)+'</span>';
+}
+function typeChip(t){const d=DAYTYPE[t];return '<span class="chip c-'+d.c+'">'+d.label+'</span>';}
+function movedChip(e){
+  if(!e.moved)return '';
+  return '<span class="chip tag-moved">Moved · plan '+DOW[e.op]+'</span>';
+}
+function headline(e){
+  if(isRace(e))return 'Berlin Marathon · 42.2 km';
+  if(e.zone==='Rest')return e.km>0?'Rest · optional '+fmtKm(e.km)+' km shakeout':'Rest + strength';
+  const names={Recovery:'Recovery run',Easy:'Easy run',Long:'Long run',Threshold:'Threshold session',Marathon:'Marathon-pace session'};
+  return (names[e.zone]||e.zone)+' · '+fmtKm(e.km)+' km';
+}
+function paceLine(e){
+  if(isRace(e))return 'Goal '+RACE_GOAL;
+  if(e.zone==='Rest')return '';
+  return 'Target pace '+(PACE[e.zone]||'');
+}
+function rebalLine(e){
+  if(!e.kmAdj)return '';
+  return '<div class="mini" style="margin-top:3px;color:var(--accent)">Plan '+fmtKm(e.planKm)+' km · '
+    +(e.kmAdj>0?'+':'−')+fmtKm(Math.abs(e.kmAdj))+' km rebalanced from this week</div>';
+}
+function nutAdjChip(e){
+  if(e.nutEdited)return '<span class="chip tag-moved">Edited · plan '+fmtKcal(e.planKcal)+'</span>';
+  if(e.nutAdj)return '<span class="chip tag-moved">'+(e.nutAdj>0?'+':'−')+fmtKcal(Math.abs(e.nutAdj))+' rebalanced</span>';
+  return '';
+}
+
+function statusSeg(e,compact){
+  const l=sessLog(e.id)||{};
+  const b=(s,lbl)=>'<button data-action="status" data-sid="'+e.id+'" data-status="'+s+'" aria-pressed="'+(l.status===s)+'" class="'+(l.status===s?('on-'+s):'')+'">'+lbl+'</button>';
+  let h='<div class="seg">'+b('done','Done')+b('partial','Partial')+b('missed','Missed')+'</div>';
+  if(l.status){
+    const isLong=e.zone==='Long'||e.zone==='Marathon';
+    let rpeOpts='<option value="">–</option>';
+    for(let r=1;r<=10;r++)rpeOpts+='<option value="'+r+'"'+(l.rpe===r?' selected':'')+'>'+r+(r<=3?' · easy':r<=5?' · steady':r<=7?' · hard':' · max')+'</option>';
+    h+='<div class="loggrid">'
+      +'<div><label class="f" for="km-'+e.id+'">Actual km</label><input id="km-'+e.id+'" type="number" inputmode="decimal" step="0.1" min="0" data-field="km" data-sid="'+e.id+'" value="'+esc(l.km!=null?l.km:'')+'" placeholder="'+fmtKm(e.km)+'"></div>'
+      +'<div><label class="f" for="pace-'+e.id+'">Pace /km</label><input id="pace-'+e.id+'" type="text" data-field="pace" data-sid="'+e.id+'" value="'+esc(l.pace||'')+'" placeholder="5:58"></div>'
+      +'<div><label class="f" for="rpe-'+e.id+'">Effort · RPE</label><select id="rpe-'+e.id+'" data-field="rpe" data-sid="'+e.id+'">'+rpeOpts+'</select></div>'
+      +(isLong
+        ?'<div><label class="f" for="carbs-'+e.id+'">Carbs taken (g)</label><input id="carbs-'+e.id+'" type="number" inputmode="numeric" min="0" max="500" data-field="carbs" data-sid="'+e.id+'" value="'+esc(l.carbs!=null?l.carbs:'')+'" placeholder="e.g. 75"></div>'
+         +'<div><label class="f" for="mins-'+e.id+'">Duration (min)</label><input id="mins-'+e.id+'" type="number" inputmode="numeric" min="0" max="600" data-field="mins" data-sid="'+e.id+'" value="'+esc(l.mins!=null?l.mins:'')+'" placeholder="e.g. 110"></div>'
+        :'')
+      +'<div class="full"><label class="f" for="note-'+e.id+'">Note</label><input id="note-'+e.id+'" type="text" data-field="note" data-sid="'+e.id+'" value="'+esc(l.note||'')+'" placeholder="How did it go?"></div>'
+      +'</div>';
+    const fr=isLong?fuelRate(l):null;
+    if(fr!=null)h+='<div class="row" style="margin-top:8px"><span class="chip c-'+(fr>=60?'easy':'long')+'">'+fr+' g/hr'+(fr>=60?' · race-ready':' · build toward 60–90')+'</span></div>';
+  }
+  return h;
+}
+
+/* ---------------- 7. Charts (inline SVG) ---------------- */
+
+function volumeChart(){
+  const W=360,H=185,L=26,Rm=4,T=14,B=24,max=90,ih=H-T-B;
+  const iw=(W-L-Rm)/16,bw=Math.min(15,iw*0.62);
+  let g='';
+  [0,30,60,90].forEach(v=>{
+    const y=T+ih*(1-v/max);
+    g+='<line class="gridline" x1="'+L+'" y1="'+y+'" x2="'+(W-Rm)+'" y2="'+y+'"/>'
+      +'<text class="axis" x="'+(L-5)+'" y="'+(y+3)+'" text-anchor="end">'+v+'</text>';
+  });
+  const rawW=Math.floor(rawTodayIdx()/7);
+  for(let w=0;w<16;w++){
+    const x=L+iw*w+(iw-bw)/2;
+    const ph=ih*WEEKS[w].target/max;
+    const act=weekActualKm(w);
+    const ah=ih*Math.min(act,max)/max;
+    g+='<rect x="'+x+'" y="'+(T+ih-ph)+'" width="'+bw+'" height="'+ph+'" rx="3" fill="var(--track)"/>';
+    if(act>0)g+='<rect x="'+(x+bw*0.18)+'" y="'+(T+ih-ah)+'" width="'+(bw*0.64)+'" height="'+ah+'" rx="2.5" fill="var(--accent)"/>';
+    if((w+1)===1||(w+1)%4===0)g+='<text class="axis" x="'+(x+bw/2)+'" y="'+(H-9)+'" text-anchor="middle">W'+(w+1)+'</text>';
+    if(w===rawW)g+='<circle cx="'+(x+bw/2)+'" cy="'+(H-3)+'" r="2.4" fill="var(--accent)"/>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly volume, planned vs actual">'+g+'</svg>'
+    +'<div class="legend"><span><i style="background:var(--track)"></i>Planned</span><span><i style="background:var(--accent)"></i>Actual logged</span></div>';
+}
+
+function calorieChart(){
+  const W=360,H=170,L=30,Rm=3,T=10,B=22,max=6200,ih=H-T-B;
+  const bw=(W-L-Rm)/N_DAYS;
+  let g='';
+  [2000,4000,6000].forEach(v=>{
+    const y=T+ih*(1-v/max);
+    g+='<line class="gridline" x1="'+L+'" y1="'+y+'" x2="'+(W-Rm)+'" y2="'+y+'"/>'
+      +'<text class="axis" x="'+(L-4)+'" y="'+(y+3)+'" text-anchor="end">'+(v/1000)+'k</text>';
+  });
+  for(let i=0;i<N_DAYS;i++){
+    const e=eff(i);
+    const h=ih*e.kcal/max,x=L+bw*i;
+    g+='<rect class="f-'+DAYTYPE[e.type].c+'" x="'+x+'" y="'+(T+ih-h)+'" width="'+Math.max(bw-0.7,1.4)+'" height="'+h+'" rx="0.8"/>';
+  }
+  [0,4,8,12].forEach(w=>{
+    g+='<text class="axis" x="'+(L+bw*(w*7+3.5))+'" y="'+(H-9)+'" text-anchor="middle">W'+(w+1)+'</text>';
+  });
+  if(rawT>=0&&rawT<=RACE_IDX){
+    const x=L+bw*rawT+bw/2;
+    g+='<line x1="'+x+'" y1="'+(T-3)+'" x2="'+x+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily calorie targets across the block">'+g+'</svg>'
+    +'<div class="legend"><span><i style="background:var(--long)"></i>Long-run</span><span><i style="background:var(--hard)"></i>Session</span><span><i style="background:var(--easy)"></i>Easy</span><span><i style="background:var(--rest)"></i>Rest</span></div>';
+}
+
+function weightChart(){
+  const W=360,H=205,L=32,Rm=8,T=12,B=22,ih=H-T-B,iwd=W-L-Rm;
+  const pts=S.weights.map(w=>({x:isoToIdx(w.date),y:w.lb})).filter(p=>p.x>=-7&&p.x<=RACE_IDX+7);
+  let lo=188,hi=211;
+  pts.forEach(p=>{lo=Math.min(lo,p.y-1);hi=Math.max(hi,p.y+1);});
+  lo=Math.floor(lo);hi=Math.ceil(hi);
+  const X=i=>L+iwd*clamp(i,0,RACE_IDX)/RACE_IDX;
+  const Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+  let g='';
+  for(let v=Math.ceil(lo/5)*5;v<=hi;v+=5){
+    g+='<line class="gridline" x1="'+L+'" y1="'+Y(v)+'" x2="'+(W-Rm)+'" y2="'+Y(v)+'"/>'
+      +'<text class="axis" x="'+(L-5)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+v+'</text>';
+  }
+  [0,4,8,12,15].forEach(w=>{g+='<text class="axis" x="'+X(w*7)+'" y="'+(H-8)+'" text-anchor="middle">W'+(w+1)+'</text>';});
+  g+='<line x1="'+X(0)+'" y1="'+Y(210)+'" x2="'+X(RACE_IDX)+'" y2="'+Y(189)+'" stroke="var(--sub)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>';
+  if(rawT>=0&&rawT<=RACE_IDX)g+='<line x1="'+X(rawT)+'" y1="'+T+'" x2="'+X(rawT)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
+  if(pts.length){
+    const path=pts.map((p,j)=>(j?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)).join('');
+    if(pts.length>1)g+='<path d="'+path+'" fill="none" stroke="var(--accent)" stroke-width="1.4" opacity="0.45" stroke-linejoin="round" stroke-linecap="round"/>';
+    // 7-day rolling mean — the line decisions should be made on
+    if(pts.length>2){
+      const tr=pts.map(p=>{
+        const win=pts.filter(q=>q.x<=p.x&&q.x>p.x-7);
+        return {x:p.x,y:win.reduce((s,q)=>s+q.y,0)/win.length};
+      });
+      g+='<path d="'+tr.map((p,j)=>(j?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)).join('')+'" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+    pts.forEach(p=>{g+='<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3" fill="var(--accent)" stroke="var(--card)" stroke-width="1.4"/>';});
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weight, actual vs plan">'+g+'</svg>'
+    +'<div class="legend"><span><i style="background:var(--sub)"></i>Plan glide 210 → 189 lb</span><span><i style="background:var(--accent)"></i>Logged · thick line = 7-day trend</span></div>';
+}
+
+/* ---------------- 8. Screens ---------------- */
+
+/* ============ Today: editable widget stack ============ */
+
+function ring(pct,size,inner){
+  const sw=10,r=(size-sw)/2,c=2*Math.PI*r,off=c*(1-Math.min(Math.max(pct,0),1));
+  return '<div class="ringwrap" style="width:'+size+'px;height:'+size+'px">'
+    +'<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" role="img" aria-label="'+Math.round(pct*100)+' percent">'
+    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+sw+'"/>'
+    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 '+size/2+' '+size/2+')"/>'
+    +'</svg><div class="ringtxt">'+inner+'</div></div>';
+}
+
+function wSession(){
+  const e=eff(todayIdx),l=sessLog(e.id)||{};
+  return '<section class="card">'
+    +'<div class="row">'+zoneChip(e)+movedChip(e)
+    +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')
+    +'</div>'
+    +'<div class="big" style="margin-top:8px">'+headline(e)+'</div>'
+    +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
+    +rebalLine(e)
+    +'<p class="detail">'+esc(e.text)+'</p>'
+    +statusSeg(e,false)
+    +'</section>';
+}
+
+function wCatchup(){
+  if(rawT<=0)return '';
+  let j=-1,more=0;
+  for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){const lg=sessLog(eff(k).id);if(!lg||!lg.status){if(j<0)j=k;else more++;}}
+  if(j<0)return '';
+  const ce=eff(j);
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Catch up · '+(j===rawT-1?'yesterday':shortDate(j))+'</h2>'+zoneChip(ce)+'</div>'
+    +'<div style="font-weight:700;font-size:15px;margin-top:6px">'+headline(ce)+'</div>'
+    +statusSeg(ce,true)
+    +(more>0?'<p class="mini" style="margin:10px 2px 0">'+more+' more unlogged day'+(more>1?'s':'')+' in Training.</p>':'')
+    +'</section>';
+}
+
+function wWeek(){
+  const e=eff(todayIdx),l=sessLog(e.id)||{};
+  const wTarget=e.wk.target,wActual=weekActualKm(e.w),sched=scheduledSoFar(e.w,e.pos-(l.status?0:1));
+  const onTrack=wActual>=sched*0.9;
+  const pct=Math.min(1,wActual/wTarget);
+  return '<section class="card"><div class="spread"><h2>Week '+(e.w+1)+' · '+e.wk.phase+'</h2>'
+    +'<span class="pill '+(onTrack?'p-hit':'p-partial')+'">'+(onTrack?'On track':'Behind plan')+'</span></div>'
+    +'<div class="row" style="gap:18px;align-items:center">'
+    +ring(pct,108,'<div><b class="num">'+Math.round(pct*100)+'%</b><span>of target</span></div>')
+    +'<div style="flex:1"><div class="big num">'+fmtKm(wActual)+' <span style="font-size:16px;color:var(--sub)">of '+fmtKm(wTarget)+' km</span></div>'
+    +'<div class="statrow" style="margin-top:10px"><div><b class="num">'+streak()+'</b><span>streak</span></div>'
+    +'<div><b class="num">'+doneCount()+'</b><span>done</span></div>'
+    +'<div><b class="num">'+(RACE_IDX-todayIdx)+'</b><span>to race</span></div></div>'
+    +'</div></div>'
+    +'</section>';
+}
+
+function wFuel(){
+  const e=eff(todayIdx),m=macroPct(e);
+  return '<section class="card">'
+    +'<div class="spread"><h2>Fuel today</h2><div class="row">'+typeChip(e.type)
+    +'<button class="btn3" data-action="nutadjust" data-i="'+todayIdx+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
+    +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal target</span>'+nutAdjChip(e)+'</div>'
+    +'<div class="macros">'
+    +'<div class="macro"><span>Protein</span><b class="num">'+e.p+'g</b><span class="mini">'+m.p+'%</span></div>'
+    +'<div class="macro"><span>Carbs</span><b class="num">'+e.carbs+'g</b><span class="mini">'+m.c+'%</span></div>'
+    +'<div class="macro"><span>Fat</span><b class="num">'+e.fat+'g</b><span class="mini">'+m.f+'%</span></div>'
+    +'</div>'
+    +'<div class="row" style="margin-top:12px">'
+    +'<span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
+    +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal if on target</span>'
+    +'</div>'
+    +'<p class="note" style="margin:10px 0 0">Protein first: <b>185 g every day</b>. In-run race fuel (60–90 g carbs/hr) sits on top. Phase avg deficit ~'+PHASE_DEFICIT[e.wk.phase]+' kcal/day.</p>'
+    +'</section>';
+}
+
+function wWeight(){
+  const lw=latestWeight(),tw=trendWeight(),pw=planWtAt(todayIdx);
+  const dlt=tw?tw.lb-pw:(lw?lw.lb-planWtAt(clamp(isoToIdx(lw.date),0,RACE_IDX)):null);
+  return '<section class="card"><div class="spread"><h2>Weight</h2>'
+    +(dlt!=null?'<span class="chip c-'+deltaClass(dlt)+'">'+(tw?'trend ':'')+(dlt>0?'+':'')+fmtLb(dlt)+' lb vs plan</span>':'<span class="chip neutral">no log yet</span>')+'</div>'
+    +'<div class="row" style="gap:18px;margin-top:4px">'
+    +'<div><span class="mini">Plan today</span><div class="big num">'+fmtLb(pw)+'</div></div>'
+    +(tw?'<div><span class="mini">7-day trend</span><div class="big num">'+fmtLb(tw.lb)+'</div></div>':'')
+    +(lw?'<div><span class="mini">Latest · '+isoShort(lw.date)+'</span><div class="big num">'+fmtLb(lw.lb)+'</div></div>':'')
+    +'</div>'
+    +'<div class="loggrid" style="margin-top:12px"><div><label class="f" for="twt">Today’s weight (lb)</label><input type="number" inputmode="decimal" step="0.1" min="120" max="280" id="twt" aria-describedby="twt-err" placeholder="'+fmtLb(pw)+'"></div>'
+    +'<div style="display:flex;align-items:flex-end"><button class="btn" style="width:100%" data-action="savetodayweight">Log weight</button></div></div>'
+    +'<p class="err" id="twt-err" role="alert" hidden>Enter a weight between 120 and 280 lb.</p>'
+    +'</section>';
+}
+
+function wRace(){
+  const days2race=RACE_IDX-todayIdx;
+  let nextLong='';
+  for(let i=todayIdx;i<=RACE_IDX;i++){const e=eff(i);if((e.zone==='Long'||e.zone==='Marathon')&&i>todayIdx){nextLong=headline(e)+' · '+shortDate(i);break;}}
+  return '<section class="card"><div class="spread"><h2>Berlin</h2><span class="chip neutral">'+RACE_GOAL+'</span></div>'
+    +'<div class="row" style="gap:18px;align-items:baseline"><span class="hero num">'+days2race+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep</span></div>'
+    +(nextLong?'<p class="note" style="margin:10px 0 0">Next key run: '+esc(nextLong)+'</p>':'')
+    +'</section>';
+}
+
+function wTrend(){
+  if(S.weights.length<2)return '<section class="card"><h2>Weight trend</h2><p class="note" style="margin:0">Log a few weigh-ins and the trend chart appears here.</p></section>';
+  return '<section class="card"><h2>Weight trend</h2><div class="svgwrap">'+weightChart()+'</div></section>';
+}
+
+const WIDGET_DEFS=[
+  {id:'session',label:'Today’s session',render:wSession},
+  {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
+  {id:'week',label:'Week progress',render:wWeek},
+  {id:'fuel',label:'Fuel target',render:wFuel},
+  {id:'weight',label:'Weight log',render:wWeight},
+  {id:'race',label:'Race countdown',render:wRace},
+  {id:'trend',label:'Weight trend chart',render:wTrend},
+  {id:'racepack',label:'Race pack (race week)',render:()=>eff(todayIdx).w===15?racePack():''},
+];
+const WIDGET_DEFAULT_OFF={trend:1,race:1};
+function widgetConfig(){
+  const out=[],seen={};
+  (Array.isArray(S.widgets)?S.widgets:[]).forEach(w=>{
+    if(w&&WIDGET_DEFS.some(d=>d.id===w.id)&&!seen[w.id]){seen[w.id]=1;out.push({id:w.id,on:!!w.on});}
+  });
+  WIDGET_DEFS.forEach(d=>{if(!seen[d.id])out.push({id:d.id,on:!WIDGET_DEFAULT_OFF[d.id]});});
+  return out;
+}
+function openNutAdjustSheet(i){
+  const e=eff(i),edited=S.nutEdit&&S.nutEdit[i]!=null;
+  const w=Math.floor(i/7);
+  let wkEdits=0;
+  for(let d=0;d<7;d++)if(S.nutEdit&&S.nutEdit[w*7+d]!=null)wkEdits++;
+  openSheet('<h2 style="margin:0">Adjust '+shortDate(i)+'</h2>'
+    +'<p class="note" style="margin:6px 0 10px">Set this day’s calories, planned or eaten. Later days this week rebalance to keep the week on plan: protein stays 185 g, carbs flex, each day moves at most 20%, and race day never changes.</p>'
+    +'<label class="f" for="adjkcal">kcal this day</label>'
+    +'<input id="adjkcal" type="number" inputmode="numeric" min="1200" max="8000" value="'+(edited?S.nutEdit[i]:e.kcal)+'" aria-describedby="adjkcal-err">'
+    +'<p class="mini" style="margin:6px 2px 0">Plan: '+fmtKcal(e.planKcal)+' kcal</p>'
+    +'<p class="err" id="adjkcal-err" role="alert" hidden>Enter 1,200–8,000 kcal.</p>'
+    +'<button class="btn" style="width:100%;margin-top:12px" data-action="nutadjsave" data-i="'+i+'">Save</button>'
+    +(edited?'<button class="btn2" style="width:100%;margin-top:8px" data-action="nutadjclear" data-i="'+i+'">Back to plan</button>':'')
+    +(wkEdits?'<button class="sheetrow" data-action="nutadjclearweek" data-w="'+w+'" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:6px">Clear all edits this week ('+wkEdits+')</button>':'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+}
+
+function openWidgetSheet(){
+  const cfg=widgetConfig();
+  let rows='';
+  cfg.forEach((w,i)=>{
+    const d=WIDGET_DEFS.find(x=>x.id===w.id);
+    rows+='<div class="sheetrow" style="cursor:default">'
+      +'<button class="switch" role="switch" aria-pressed="'+w.on+'" data-action="wtoggle" data-id="'+w.id+'" aria-label="'+esc(d.label)+'"></button>'
+      +'<span class="t" style="color:var(--ink);font-weight:600">'+esc(d.label)+'</span>'
+      +'<span class="worder">'
+      +'<button data-action="wmove" data-id="'+w.id+'" data-dir="-1" aria-label="Move '+esc(d.label)+' up" '+(i===0?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 4-5 4 5"/></svg></button>'
+      +'<button data-action="wmove" data-id="'+w.id+'" data-dir="1" aria-label="Move '+esc(d.label)+' down" '+(i===cfg.length-1?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 5 4 5 4-5"/></svg></button>'
+      +'</span></div>';
+  });
+  openSheet('<h2 style="margin:0">Edit home screen</h2>'
+    +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today.</p>'+rows
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>');
+}
+
+function vToday(){
+  const e=eff(todayIdx);
+  let note='';
+  if(rawT<0)note='<div class="banner">Plan starts Monday 8 June 2026. Showing day 1, '+( -rawT)+' day'+(rawT===-1?'':'s')+' to go.</div>';
+  if(rawT>RACE_IDX)note='<div class="banner">The block is complete. Showing race day — congratulations on Berlin!</div>';
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+  if(isIOS&&!standalone&&!S.hideInstallTip&&location.protocol.indexOf('http')===0)
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">Install first: Share, then <b>Add to Home Screen</b>, and log there. The installed app keeps its own separate storage.</span><button class="btn3" data-action="hideinstalltip" style="color:var(--long);flex:none">Got it</button></div>';
+  const logCount=Object.keys(S.sessions).length+S.weights.length;
+  if(logCount>=10&&daysSince(S.lastBackup)>14)
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">'+logCount+' logs live only on this phone. A backup takes 30 seconds.</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
+  if(easyDrift())
+    note+='<div class="banner">Your last three easy days all felt hard (RPE 6+). Consider an extra rest day or easing this week’s paces.</div>';
+
+  let widgets='';
+  widgetConfig().forEach(w=>{
+    if(!w.on)return;
+    const d=WIDGET_DEFS.find(x=>x.id===w.id);
+    widgets+=d.render();
+  });
+
+  return '<div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
+    +'<div><h1>'+longDate(todayIdx)+'</h1>'
+    +'<div class="sub">Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY')+'</div></div>'
+    +'<button class="btn3" data-action="editwidgets" aria-haspopup="dialog" style="margin-top:6px">Edit</button></div>'
+    /* the blue line: position along the 112-day course to Berlin */
+    +'<div class="course" role="img" aria-label="Day '+(todayIdx+1)+' of 112"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></div></div>'
+    +note
+    +widgets
+    +'</div>';
+}
+
+/* Race pack — splits, gel schedule, carb-load — pure rendering from the baked
+   race plan + latest weight. Shown on Today in race week and on Training W16. */
+function racePack(){
+  const lw=latestWeight();
+  const kg=(lw?lw.lb:189)/2.2046;
+  const bands=[[0,10,301],[10,30,297],[30,37,296.5],[37,42.195,297]]; // s/km midpoints of the plan's pacing bands
+  const tAt=km=>{let s=0;for(const b of bands){if(km<=b[0])break;s+=(Math.min(km,b[1])-b[0])*b[2];}return s;};
+  const fmtT=s=>{s=Math.round(s);const h=Math.floor(s/3600),mm=Math.floor(s%3600/60),x=s%60;return (h?h+':':'')+p2(mm)+':'+p2(x);};
+  let splits='';
+  [[5,'5 km'],[10,'10 km'],[15,'15 km'],[20,'20 km'],[21.0975,'Half'],[25,'25 km'],[30,'30 km'],[35,'35 km'],[40,'40 km'],[42.195,'Finish']].forEach(r=>{
+    splits+='<tr'+(r[1]==='Finish'?' style="font-weight:700"':'')+'><td>'+r[1]+'</td><td class="num right">'+fmtT(tAt(r[0]))+'</td></tr>';
+  });
+  let gels='';
+  for(let k=5;k<=40;k+=5)gels+=(k>5?' · ':'')+'<b class="num">'+k+'k</b> '+fmtT(tAt(k));
+  return '<section class="card">'
+    +'<div class="spread"><h2 style="margin:0">Race pack · Berlin</h2><span class="chip neutral">goal '+fmtT(tAt(42.195))+'</span></div>'
+    +'<p class="note" style="margin:8px 0 0">Even pacing per the plan: 0–10k @ 5:00–5:02 · 10–30k @ 4:56–4:58 · 30–37k @ 4:55–4:58 · 37k+ ≤4:57.</p>'
+    +'<div class="scroll-x" style="margin-top:8px"><table style="min-width:200px"><thead><tr><th>Split</th><th class="right">Clock</th></tr></thead><tbody>'+splits+'</tbody></table></div>'
+    +'<h2 style="margin:16px 0 6px">Gels — every 5 km from 5 km</h2>'
+    +'<p class="note num" style="margin:0">'+gels+'</p>'
+    +'<p class="mini" style="margin:6px 2px 0">1 gel ≈ 25 g carbs → ~60 g/hr at this spacing; add chews at aid stations to reach 75–90 g/hr.</p>'
+    +'<h2 style="margin:16px 0 6px">Carb-load · Thu–Sat race week</h2>'
+    +'<p class="note" style="margin:0">8–10 g/kg/day ≈ <b class="num">'+Math.round(kg*8)+'–'+Math.round(kg*10)+' g carbs/day</b> at '+(lw?'your latest weight':'race-target weight')+'. Protein stays 185 g; fat fills the rest.</p>'
+    +'<h2 style="margin:16px 0 6px">Race morning</h2>'
+    +'<p class="note" style="margin:0">Wake −3h · breakfast 100–150 g carbs −3h · sip 500 ml with electrolytes · caffeine −60 min · corral −30 min · gel on the start line.</p>'
+    +'</section>';
+}
+
+function dayCard(i){
+  const e=eff(i),l=sessLog(e.id)||{};
+  const isToday=i===rawT;
+  return '<section class="card" id="day-'+i+'">'
+    +'<div class="spread"><div class="row">'
+    +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
+    +zoneChip(e)+movedChip(e)
+    +'</div><button class="btn3" data-action="movestart" aria-haspopup="dialog" data-i="'+i+'">Move</button></div>'
+    +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
+    +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
+    +rebalLine(e)
+    +'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(e.text)+'</p>'
+    +'<div class="row" style="margin-top:8px"><span class="chip c-'+DAYTYPE[e.type].c+'">'+DAYTYPE[e.type].label+' · '+fmtKcal(e.kcal)+' kcal</span></div>'
+    +statusSeg(e,true)
+    +'</section>';
+}
+
+function vTrain(){
+  const w=ui.week,wk=WEEKS[w];
+  const [stLbl,stCls]=weekStatus(w);
+  let chips='<div class="weekchips">';
+  for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
+  chips+='</div>';
+
+  let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
+
+  let rows='';
+  for(let j=0;j<16;j++){
+    const k=WEEKS[j],[lbl,cls]=weekStatus(j),act=weekActualKm(j);
+    rows+='<tr data-action="selweek" data-w="'+j+'" tabindex="0" style="cursor:pointer'+(j===w?';background:var(--bg)':'')+'">'
+      +'<td><b>'+k.n+'</b></td><td>'+k.phase+'</td><td class="num">'+shortDate(j*7).slice(4)+'</td>'
+      +'<td class="num right">'+fmtKm(k.target)+'</td><td class="num right">'+(act>0?fmtKm(act):'–')+'</td>'
+      +'<td class="num right">'+fmtKm(k.long)+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td>'
+      +'<td class="mini" style="min-width:170px">'+esc(k.note)+'</td></tr>';
+  }
+
+  let paceRows='';PACES.forEach(p=>{paceRows+='<tr><td>'+p[0]+'</td><td class="num right">'+p[1]+'</td></tr>';});
+
+  return '<div><h1>Training</h1>'
+    +'<div class="sub">Goal '+RACE_GOAL+' · peak 85 km (W11)</div>'
+    +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
+    +'<div style="margin-top:14px">'+chips+'</div>'
+    +'<section class="card"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
+    +'<div class="sub" style="margin-top:4px">w/c '+shortDate(w*7).slice(4)+' · target '+fmtKm(wk.target)+' km · long '+fmtKm(wk.long)+' km</div>'
+    +'<p class="note" style="margin:8px 0 0">'+esc(wk.note)+'</p>'
+    +(weekMoved(w)?'<button class="btn2" style="margin-top:10px;width:100%" data-action="resetweek" data-w="'+w+'">Reset week to plan</button>':'')
+    +'</section>'
+    +(w===15?racePack():'')
+    +days
+    +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:640px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th><th>Focus</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
+    +'<section class="card"><h2>Pace reference</h2><table><tbody>'+paceRows+'</tbody></table></section>'
+    +'</div>';
+}
+
+function nutDayCard(i){
+  const e=eff(i),m=macroPct(e);
+  return '<section class="card">'
+    +'<div class="spread"><div class="row"><b>'+longDate(i)+'</b>'+(i===rawT?'<span class="chip c-blue">Today</span>':'')+'</div>'
+    +'<div class="row">'+typeChip(e.type)+'<button class="btn3" data-action="nutadjust" data-i="'+i+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
+    +'<div class="row" style="margin-top:4px">'+movedChip(e)+nutAdjChip(e)+'</div>'
+    +'<div class="row" style="align-items:baseline;gap:6px;margin-top:2px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal</span></div>'
+    +'<div class="macros">'
+    +'<div class="macro"><span>Protein</span><b class="num">'+e.p+'g</b><span class="mini">'+m.p+'%</span></div>'
+    +'<div class="macro"><span>Carbs</span><b class="num">'+e.carbs+'g</b><span class="mini">'+m.c+'%</span></div>'
+    +'<div class="macro"><span>Fat</span><b class="num">'+e.fat+'g</b><span class="mini">'+m.f+'%</span></div>'
+    +'</div>'
+    +'<div class="row" style="margin-top:12px"><span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
+    +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal deficit</span></div>'
+    +'<p class="note" style="margin:10px 0 0">'+esc(headline(e))+(e.zone!=='Rest'?' · fuel for the work done.':'')+'</p>'
+    +'</section>';
+}
+
+function nutTableBody(){
+  let rows='';
+  for(let i=0;i<N_DAYS;i++){
+    const e=eff(i);
+    if(ui.nutWeek!=='all'&&e.w!==Number(ui.nutWeek))continue;
+    const activeTypes=Object.keys(ui.nutTypes).filter(t=>ui.nutTypes[t]);
+    if(activeTypes.length&&!activeTypes.includes(e.type))continue;
+    if(ui.nutQ){
+      const q=ui.nutQ.toLowerCase();
+      const hay=(shortDate(i)+' '+e.text+' '+DAYTYPE[e.type].label+' w'+(e.w+1)).toLowerCase();
+      if(!hay.includes(q))continue;
+    }
+    rows+='<tr id="nrow-'+i+'"'+(i===rawT?' style="background:var(--bg)"':'')+'>'
+      +'<td class="num">'+(e.w+1)+'</td><td style="white-space:nowrap">'+shortDate(i)+(e.moved?' <span class="pill tag-moved">moved</span>':'')+'</td>'
+      +'<td><span class="dot" style="background:var(--'+DAYTYPE[e.type].c+')"></span><span class="sr">'+DAYTYPE[e.type].label+'</span></td>'
+      +'<td class="num right"><b>'+fmtKcal(e.kcal)+'</b>'+((e.nutEdited||e.nutAdj)?'<span style="color:var(--accent)">*</span>':'')+'</td><td class="num right">'+e.p+'</td><td class="num right">'+e.carbs+'</td>'
+      +'<td class="num right">'+e.fat+'</td><td class="num right">'+fmtKcal(e.burn)+'</td>'
+      +'<td class="num right">'+fmtKcal(e.deficit)+'</td><td class="num right">'+fmtLb(e.planWt)+'</td></tr>';
+  }
+  return rows||'<tr><td colspan="10" class="center sub" style="padding:18px">No days match.</td></tr>';
+}
+
+function vNut(){
+  const i=clamp(ui.nutDay,0,RACE_IDX);
+  const w=Math.floor(i/7);
+  let strip='<div class="daystrip">';
+  for(let d=0;d<7;d++){
+    const j=w*7+d,e=eff(j);
+    strip+='<button data-action="selnutday" data-i="'+j+'" class="'+(j===i?'sel':'')+'"'+(j===i?' aria-current="date"':'')
+      +' aria-label="'+DOW[d]+' — '+fmtKcal(e.kcal)+' kcal, '+e.carbs+' g carbs, '+DAYTYPE[e.type].label+'">'
+      +'<div class="d" aria-hidden="true">'+DOW[d]+'</div><div class="k num" aria-hidden="true">'+(Math.round(e.kcal/100)/10)+'k</div>'
+      +'<div class="mini num" style="font-size:10px" aria-hidden="true">'+e.carbs+'C</div>'
+      +'<span class="dot" style="background:var(--'+DAYTYPE[e.type].c+')"></span></button>';
+  }
+  strip+='</div>';
+  let chips='<div class="weekchips">';
+  for(let j=0;j<16;j++)chips+='<button data-action="selnutweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
+  chips+='</div>';
+
+  let recipe='';RECIPE.forEach(r=>{
+    recipe+='<tr><td><span class="chip c-'+DAYTYPE[r[0]].c+'">'+DAYTYPE[r[0]].label+'</span></td>'
+      +'<td class="num right">'+r[1]+'</td><td class="num right">'+r[3]+'</td><td class="num right">'+r[4]+'</td></tr>';});
+
+  const typeFilter=['L','S','E','R'].map(t=>'<button class="chip c-'+(ui.nutTypes[t]?DAYTYPE[t].c:'rest')+'" data-action="nuttype" data-t="'+t+'" aria-pressed="'+(!!ui.nutTypes[t])+'" style="min-height:44px;border:1px solid var(--line)">'+DAYTYPE[t].label+'</button>').join(' ');
+
+  let wkOpts='<option value="all">All weeks</option>';
+  for(let j=0;j<16;j++)wkOpts+='<option value="'+j+'"'+(ui.nutWeek===String(j)?' selected':'')+'>Week '+(j+1)+'</option>';
+
+  return '<div><h1>Nutrition</h1>'
+    +'<div class="sub">Carb-periodised cut · 210 → ~189 lb by race day</div>'
+    +'<div class="banner">Protein first: <b>185 g every day</b>. In-run race fuel (60–90 g carbs/hr) sits on top of these targets.</div>'
+    +nutDayCard(i)
+    +'<div style="margin-top:14px">'+chips+'</div>'+strip
+    +'<section class="card"><h2>Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
+    +'<p class="mini" style="margin:8px 2px 0">Spikes = long-run fuelling · troughs = rest days. The curve drifts down as weight falls.</p></section>'
+    +'<section class="card"><h2>Typical targets by day type</h2>'
+    +'<div class="scroll-x"><table><thead><tr><th>Day type</th><th class="right">kcal</th><th class="right">Carbs</th><th class="right">Fat</th></tr></thead><tbody>'+recipe+'</tbody></table></div>'
+    +'<p class="mini" style="margin:8px 2px 0">Protein is 185 g for every type. When you move a day, its fuelling travels with it.</p></section>'
+    +'<section class="card"><div class="spread"><h2>Full plan · all 112 days</h2><button class="btn3" data-action="jumptoday">Jump to today</button></div>'
+    +'<div class="loggrid" style="margin-top:4px"><div><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
+    +'<div><input type="search" id="nutq" aria-label="Search days" placeholder="Search days…" value="'+esc(ui.nutQ)+'"></div></div>'
+    +'<div class="row" style="margin-top:8px">'+typeFilter+'</div>'
+    +'<div class="scroll-x" style="margin-top:6px"><table style="min-width:580px"><thead><tr><th>W</th><th>Day</th><th><span class="sr">Day type</span></th><th class="right">kcal</th><th class="right">Prot</th><th class="right">Carb</th><th class="right">Fat</th><th class="right">Burn</th><th class="right">Deficit</th><th class="right">Plan lb</th></tr></thead><tbody id="nutbody">'+nutTableBody()+'</tbody></table></div>'
+    +'<p class="mini" style="margin:8px 2px 0">Protein is fixed at 185 g on every row. * = day edited or rebalanced this week.</p></section>'
+    +'</div>';
+}
+
+function vWeight(){
+  const lw=latestWeight(),tw=trendWeight();
+  const dlt=tw?tw.lb-planWtAt(clamp(rawTodayIdx(),0,RACE_IDX)):(lw?lw.lb-planWtAt(clamp(isoToIdx(lw.date),0,RACE_IDX)):null);
+  let list='';
+  S.weights.slice().reverse().forEach((wn,ri)=>{
+    const idx=S.weights.length-1-ri;
+    const i=clamp(isoToIdx(wn.date),0,RACE_IDX);
+    const d=wn.lb-planWtAt(i);
+    list+='<li><b class="num" style="min-width:64px">'+fmtLb(wn.lb)+' lb</b>'
+      +'<span class="sub" style="flex:1">'+isoShort(wn.date)+' · <span class="chip c-'+deltaClass(d)+'" style="padding:2px 8px">'+(d>0?'+':'')+fmtLb(d)+'</span></span>'
+      +'<button class="del" data-action="delweight" data-idx="'+idx+'">Delete</button></li>';
+  });
+  return '<div><h1>Weight</h1>'
+    +'<div class="sub">Race-protective cut · plan 210 → 189 lb</div>'
+    +'<div class="kpis">'
+    +'<div class="kpi"><b class="num">'+(tw?fmtLb(tw.lb):(lw?fmtLb(lw.lb):'–'))+'</b><span>'+(tw?'7-day trend lb':'latest lb')+'</span></div>'
+    +'<div class="kpi"><b class="num" style="color:var(--'+(dlt!=null?deltaClass(dlt):'rest')+')">'+(dlt!=null?(dlt>0?'+':'')+fmtLb(dlt):'–')+'</b><span>'+(tw?'trend vs plan':'vs plan')+'</span></div>'
+    +'<div class="kpi"><b class="num">'+(tw?fmtLb(Math.max(0,tw.lb-189)):(lw?fmtLb(Math.max(0,lw.lb-189)):'–'))+'</b><span>lb to 189</span></div>'
+    +'</div>'
+    +'<section class="card"><h2>Trend vs plan</h2><div class="svgwrap">'+weightChart()+'</div></section>'
+    +'<section class="card"><h2>Log a weight</h2>'
+    +'<div class="loggrid"><div><label class="f" for="wdate">Date</label><input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27"></div>'
+    +'<div><label class="f" for="wlb">Weight (lb)</label><input type="number" inputmode="decimal" step="0.1" min="120" max="280" id="wlb" aria-describedby="wlb-err" placeholder="e.g. 208.4"></div></div>'
+    +'<p class="err" id="wlb-err" role="alert" hidden>Pick a date and a weight between 120 and 280 lb.</p>'
+    +'<button class="btn" style="width:100%;margin-top:10px" data-action="addweight">Log weight</button>'
+    +(list?'<ul class="weights" style="list-style:none;margin:14px 0 0;padding:0">'+list+'</ul>':'<p class="note center" style="margin:14px 0 0">Log your first weigh-in above. The trend vs plan builds from here.</p>')
+    +'</section>'
+    +'<div class="footlinks"><button class="btn3" data-action="export">Back up data</button>'
+    +'<button class="btn3" data-action="importpick">Restore backup</button>'
+    +'<input type="file" id="importfile" accept="application/json" style="display:none"></div>'
+    +'<div class="footlinks" style="margin-top:0"><button class="btn3" data-action="exportcsv">Export CSV</button>'
+    +'<button class="btn3" data-action="pasteingest">Paste from Shortcut</button></div>'
+    +'<p class="mini center" style="margin-top:6px">All logs live on this device'+(S.lastBackup?' · last backup '+isoShort(S.lastBackup):' · never backed up')+'.</p>'
+    +'</div>';
+}
+
+/* ---------------- 9. Move / swap sheet ---------------- */
+
+function openMoveSheet(i){
+  const e=eff(i),w=e.w;
+  let rows='';
+  for(let d=0;d<7;d++){
+    if(d===e.pos)continue;
+    const o=eff(w*7+d);
+    const ol=sessLog(o.id);
+    rows+='<button class="sheetrow" data-action="swap" data-w="'+w+'" data-a="'+e.pos+'" data-b="'+d+'">'
+      +'<span class="d">'+DOW[d]+(w*7+d===rawT?'<br><span class="chip c-blue" style="padding:1px 6px;font-size:10px">today</span>':'')+'</span>'
+      +'<span class="t"><b style="color:var(--ink)">'+headline(o)+'</b><br>'+DAYTYPE[o.type].label+' · '+fmtKcal(o.kcal)+' kcal'+(ol&&ol.status?' · <b>logged</b>':'')+'</span>'
+      +'<span class="chip c-'+(ZONECLR[o.zone]||'rest')+'">'+o.zone+'</span></button>';
+  }
+  openSheet('<h2 style="margin:0">Move '+DOW[e.pos]+'’s session</h2>'
+    +'<p class="note" style="margin:6px 0 2px">'+esc(headline(e))+' — pick a day to swap with. Training <b>and fuelling</b> both follow the move.</p>'
+    +rows
+    +(weekMoved(w)?'<button class="sheetrow" data-action="resetweek" data-w="'+w+'" style="justify-content:center;color:var(--accent);font-weight:700">Reset week '+(w+1)+' to plan</button>':'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+}
+let sheetTimer=null,sheetOpener=null;
+function openSheet(html){
+  clearTimeout(sheetTimer);
+  sheetOpener=document.activeElement;
+  const s=document.getElementById('sheet');
+  s.innerHTML='<div class="scrim" data-action="closesheet"></div>'
+    +'<div class="panel" role="dialog" aria-modal="true" aria-label="Move session" tabindex="-1">'+html+'</div>';
+  s.hidden=false;
+  document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{s.classList.add('open');s.querySelector('.panel').focus();}));
+}
+function closeSheet(){
+  const s=document.getElementById('sheet');
+  s.classList.remove('open');
+  document.getElementById('app').inert=false;
+  clearTimeout(sheetTimer);
+  sheetTimer=setTimeout(()=>{s.hidden=true;s.innerHTML='';},230);
+  if(sheetOpener&&sheetOpener.isConnected)sheetOpener.focus();
+  sheetOpener=null;
+}
+
+/* ---------------- 10. Router & events ---------------- */
+
+const view=document.getElementById('view');
+function render(anim){ // anim=true only on navigation — entrances must not replay on in-place updates
+  ['today','train','nut','wt'].forEach(t=>{
+    const b=document.getElementById('tb-'+t);
+    b.classList.toggle('sel',ui.tab===t);
+    if(ui.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+  view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
+  if(anim&&view.firstElementChild)view.firstElementChild.classList.add('fade');
+  fieldDirty=false; // any full render supersedes a pending field re-render
+  window.scrollTo(0,ui.scroll[ui.tab]||0);
+}
+function rerenderKeepScroll(){
+  ui.scroll[ui.tab]=window.scrollY;
+  render();
+}
+
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-action]');
+  if(!el)return;
+  const a=el.dataset.action;
+  if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
+  else if(a==='status'){
+    const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
+    if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
+    else{
+      const patch={status:st};
+      if(st==='done'&&cur.km==null){ // prefill the current (rebalanced) target distance
+        const m=id.match(/^w(\d+)d(\d+)$/);
+        const wq=Number(m[1])-1,posq=orderOf(wq).indexOf(Number(m[2]));
+        patch.km=eff(wq*7+posq).km;
+      }
+      if(st==='missed'&&cur.km==null)patch.km=0;
+      logSession(id,patch);
+    }
+    rerenderKeepScroll();
+  }
+  else if(a==='movestart'){openMoveSheet(Number(el.dataset.i));}
+  else if(a==='editwidgets'){openWidgetSheet();}
+  else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
+  else if(a==='nutadjsave'){
+    const i2=Number(el.dataset.i),inp=document.getElementById('adjkcal'),v=parseFloat(inp.value);
+    if(v>=1200&&v<=8000){
+      if(!S.nutEdit)S.nutEdit={};
+      S.nutEdit[i2]=Math.round(v);
+      save();closeSheet();rerenderKeepScroll();
+    }else{
+      inp.setAttribute('aria-invalid','true');
+      const er=document.getElementById('adjkcal-err');if(er)er.hidden=false;
+      inp.focus();
+    }
+  }
+  else if(a==='nutadjclear'){if(S.nutEdit)delete S.nutEdit[Number(el.dataset.i)];save();closeSheet();rerenderKeepScroll();}
+  else if(a==='nutadjclearweek'){
+    const w2=Number(el.dataset.w);
+    if(S.nutEdit)for(let d=0;d<7;d++)delete S.nutEdit[w2*7+d];
+    save();closeSheet();rerenderKeepScroll();
+  }
+  else if(a==='wtoggle'){
+    const cfg=widgetConfig(),w=cfg.find(x=>x.id===el.dataset.id);
+    if(w){w.on=!w.on;S.widgets=cfg;save();rerenderKeepScroll();openWidgetSheet();}
+  }
+  else if(a==='wmove'){
+    const cfg=widgetConfig(),i=cfg.findIndex(x=>x.id===el.dataset.id),j=i+Number(el.dataset.dir);
+    if(i>=0&&j>=0&&j<cfg.length){const t=cfg[i];cfg[i]=cfg[j];cfg[j]=t;S.widgets=cfg;save();rerenderKeepScroll();openWidgetSheet();}
+  }
+  else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();}
+  else if(a==='resetweek'){
+    const w=Number(el.dataset.w);
+    if(confirm('Reset week '+(w+1)+' to the original plan? Your logs are kept.')){resetWeek(w);closeSheet();rerenderKeepScroll();}
+  }
+  else if(a==='closesheet'){closeSheet();}
+  else if(a==='selweek'){ui.week=Number(el.dataset.w);ui.scroll.train=0;render();}
+  else if(a==='selnutday'){ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();}
+  else if(a==='selnutweek'){const w=Number(el.dataset.w);ui.nutDay=w*7+Math.min(ui.nutDay%7,6);rerenderKeepScroll();}
+  else if(a==='nuttype'){const t=el.dataset.t;ui.nutTypes[t]=!ui.nutTypes[t];rerenderKeepScroll();}
+  else if(a==='jumptoday'){
+    ui.nutWeek='all';ui.nutTypes={};ui.nutQ='';ui.nutDay=todayIdx;
+    render();
+    const r=document.getElementById('nrow-'+todayIdx);
+    if(r){
+      const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      r.scrollIntoView({block:'center',behavior:reduce?'auto':'smooth'});
+      r.classList.add('hl');
+    }
+  }
+  else if(a==='savetodayweight'){
+    const v=parseFloat(document.getElementById('twt').value);
+    if(v>=120&&v<=280){logWeight(todayISO(),Math.round(v*10)/10);rerenderKeepScroll();}
+    else showFieldErr('twt');
+  }
+  else if(a==='addweight'){
+    const d=document.getElementById('wdate').value,v=parseFloat(document.getElementById('wlb').value);
+    if(d&&v>=120&&v<=280){logWeight(d,Math.round(v*10)/10);rerenderKeepScroll();}
+    else showFieldErr('wlb');
+  }
+  else if(a==='delweight'){
+    if(confirm('Delete this weigh-in?')){S.weights.splice(Number(el.dataset.idx),1);save();rerenderKeepScroll();}
+  }
+  else if(a==='export'){doExport(JSON.stringify(S,null,1),'berlin2026-backup-'+todayISO()+'.json','application/json',true);}
+  else if(a==='exportcsv'){doExport(buildCSV(),'berlin2026-log-'+todayISO()+'.csv','text/csv',false);}
+  else if(a==='hideinstalltip'){S.hideInstallTip=true;save();rerenderKeepScroll();}
+  else if(a==='pasteingest'){
+    if(!navigator.clipboard||!navigator.clipboard.readText){alert('Clipboard access isn’t available here.');}
+    else navigator.clipboard.readText().then(t=>{
+      try{
+        const res=mergePayload(JSON.parse(t),'shortcut');
+        alert((res.sessions||res.weights)
+          ?'Imported '+res.weights+' weight'+(res.weights===1?'':'s')+' and '+res.sessions+' session log'+(res.sessions===1?'':'s')+'. Existing entries were kept.'
+          :'Nothing new to import — entries already on this phone always win.');
+        rerenderKeepScroll();
+      }catch(e){alert('Clipboard doesn’t contain a valid payload. Expected JSON like {"weights":[{"date":"2026-06-12","lb":208.6}]}.');}
+    }).catch(()=>alert('Couldn’t read the clipboard.'));
+  }
+  else if(a==='importpick'){document.getElementById('importfile').click();}
+});
+
+const NUM_FIELDS={km:1,rpe:1,carbs:1,mins:1};
+let fieldDirty=false;
+function flushFieldRender(){ // re-render only once focus has left the log fields — keeps the iOS keyboard up between inputs
+  setTimeout(()=>{
+    const ae=document.activeElement;
+    if(fieldDirty&&!(ae&&ae.dataset&&ae.dataset.field)){fieldDirty=false;rerenderKeepScroll();}
+  },80);
+}
+document.addEventListener('focusout',ev=>{if(ev.target.dataset&&ev.target.dataset.field)flushFieldRender();});
+document.addEventListener('change',ev=>{
+  const el=ev.target,a=el.dataset.action;
+  if(el.dataset.field&&el.dataset.sid){
+    const f=el.dataset.field;
+    let v=el.value===''?null:(NUM_FIELDS[f]?parseFloat(el.value):el.value);
+    if(NUM_FIELDS[f]&&v!=null&&(!isFinite(v)||v<0))v=null;
+    logSession(el.dataset.sid,{[f]:v});
+    fieldDirty=true;flushFieldRender();
+  }
+  else if(a==='nutweekfilter'){ui.nutWeek=el.value;const b=document.getElementById('nutbody');if(b)b.innerHTML=nutTableBody();}
+  else if(el.id==='importfile'&&el.files&&el.files[0]){
+    const fr=new FileReader();
+    fr.onload=()=>{
+      try{
+        const data=JSON.parse(fr.result);
+        if(!data||typeof data.sessions!=='object'||!Array.isArray(data.weights))throw 0;
+        const clean=Object.assign(freshState(),sanitizePayload(data),{lastBackup:S.lastBackup,hideInstallTip:S.hideInstallTip});
+        if(confirm('Replace current logs with this backup? (A daily snapshot of the current data is kept on this device.)')){S=clean;save();render();}
+      }catch(e){alert('That file doesn’t look like a Berlin 2026 backup.');}
+      el.value='';
+    };
+    fr.readAsText(el.files[0]);
+  }
+});
+
+function showFieldErr(id){
+  const inp=document.getElementById(id),er=document.getElementById(id+'-err');
+  if(inp){inp.setAttribute('aria-invalid','true');inp.focus();}
+  if(er)er.hidden=false;
+}
+
+function doExport(text,name,type,isBackup){
+  // share sheet first — blob-anchor downloads are unreliable in iOS standalone PWAs
+  const done=()=>{if(isBackup){S.lastBackup=todayISO();save();rerenderKeepScroll();}};
+  let file=null;
+  try{file=new File([text],name,{type:type});}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+    navigator.share({files:[file]}).then(done).catch(()=>{}); // user cancel = no backup credit
+  }else{
+    const u=URL.createObjectURL(new Blob([text],{type:type}));
+    const aEl=document.createElement('a');
+    aEl.href=u;aEl.download=name;document.body.appendChild(aEl);aEl.click();
+    setTimeout(()=>{URL.revokeObjectURL(u);aEl.remove();},400);
+    done();
+  }
+}
+
+function buildCSV(){
+  const q=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const wmap={};S.weights.forEach(w=>{wmap[w.date]=w.lb;});
+  const head=['date','week','phase','day','zone','day_type','planned_km','status','actual_km','pace','rpe','carbs_g','duration_min','note','kcal_target','protein_g','carbs_target_g','fat_g','burn_kcal','deficit_kcal','plan_weight_lb','logged_weight_lb','moved'];
+  const lines=[head.join(',')];
+  for(let i=0;i<N_DAYS;i++){
+    const e=eff(i),l=sessLog(e.id)||{};
+    lines.push([isoAt(i),e.w+1,e.wk.phase,DOW[e.pos],e.zone,DAYTYPE[e.type].label,e.planKm,
+      l.status||'',l.km!=null?l.km:'',l.pace||'',l.rpe!=null?l.rpe:'',l.carbs!=null?l.carbs:'',l.mins!=null?l.mins:'',l.note||'',
+      e.kcal,e.p,e.carbs,e.fat,e.burn,e.deficit,e.planWt,wmap[isoAt(i)]!=null?wmap[isoAt(i)]:'',e.moved?'yes':''].map(q).join(','));
+  }
+  return lines.join('\n');
+}
+
+let nutqTimer=null;
+document.addEventListener('input',ev=>{
+  if(ev.target.id==='nutq'){
+    ui.nutQ=ev.target.value;
+    clearTimeout(nutqTimer);
+    nutqTimer=setTimeout(()=>{
+      const b=document.getElementById('nutbody');
+      if(b)b.innerHTML=nutTableBody();
+    },120);
+  }
+});
+
+document.addEventListener('keydown',ev=>{
+  if(ev.key==='Escape'&&!document.getElementById('sheet').hidden){closeSheet();return;}
+  if(ev.key==='Enter'||ev.key===' '){
+    const t=ev.target.closest&&ev.target.closest('tr[data-action]');
+    if(t){ev.preventDefault();t.click();}
+  }
+});
+
+/* Shortcut hand-off: opening <app-url>#log=<base64 JSON> merges the payload
+   (weights/sessions) — the zero-backend bridge for Apple Health via iOS Shortcuts. */
+if(location.hash.indexOf('#log=')===0){
+  try{
+    const res=mergePayload(JSON.parse(atob(decodeURIComponent(location.hash.slice(5)))),'shortcut');
+    history.replaceState(null,'',location.pathname+location.search);
+    if(res.sessions||res.weights)setTimeout(()=>alert('Imported '+res.weights+' weight'+(res.weights===1?'':'s')+' and '+res.sessions+' session log'+(res.sessions===1?'':'s')+' from Shortcut.'),300);
+  }catch(e){}
+}
+
+render(true);
+
+/* Ask WebKit to exempt this origin from storage eviction — 16 weeks of logs live here */
+if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
+
+/* Keep "today" honest when the app is resumed rather than reloaded */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshToday();});
+addEventListener('pageshow',refreshToday);
+addEventListener('focus',refreshToday);
+
+/* ---------------- 11. PWA ---------------- */
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){
+  addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});
+}
+</script>
+</body>
+</html>

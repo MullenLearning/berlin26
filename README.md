@@ -1,0 +1,138 @@
+# Berlin 2026 — Train + Fuel
+
+A self-contained mobile web app for the 16-week Berlin Marathon block (8 June – 27 September 2026):
+training plan, carb-periodised nutrition targets, weight trend, session/weight logging, and
+move/swap days with fuelling that follows the session.
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `index.html` | The whole app — all 16 weeks of training + 112 days of nutrition baked in |
+| `manifest.webmanifest` | PWA manifest (name, icons, standalone display) |
+| `sw.js` | Service worker — offline caching when hosted over HTTPS |
+| `icon-*.png` | Home-screen icons (regenerate with `python3 make_icons.py`) |
+
+`index.html` works entirely on its own (you can open it directly in a browser); the other
+files add install/offline polish when hosted.
+
+## Run it locally
+
+```sh
+cd App
+python3 -m http.server 8080
+# open http://localhost:8080
+```
+
+## Put it on your iPhone home screen
+
+The app needs to be served over HTTPS for Add to Home Screen + offline to work properly.
+Easiest options (pick one):
+
+1. **Netlify Drop** — go to <https://app.netlify.com/drop>, drag the `App` folder in, done.
+   You get a stable HTTPS URL in seconds, free, no account needed for a temporary site
+   (create a free account to keep the URL permanent).
+2. **GitHub Pages** — push this folder to a repo, enable Pages in repo settings.
+3. **Vercel/Cloudflare Pages** — same idea, drag-and-drop or CLI deploy.
+
+Then on the iPhone: open the URL **in Safari** → Share button → **Add to Home Screen**.
+It launches full-screen like a native app and works offline after the first load.
+
+> ⚠️ Your logs are stored in the browser's localStorage **per domain**. Pick a URL and stick
+> with it — moving domains means starting logs fresh (use **Weight → Back up data** to export
+> a JSON backup, then **Restore backup** on the new domain).
+
+## Data & persistence
+
+- Everything you log (session status/distance/pace/notes, weights, day moves) is stored
+  on-device in `localStorage` under the key `berlin2026.v1` and survives refreshes,
+  app/Safari restarts, and app updates. The service worker never touches it.
+- **Back up / Restore** lives at the bottom of the Weight tab (plain JSON file).
+
+## How day moves work
+
+Moves are within-week swaps (per the spec). Each session carries its day type — and its
+baked fuelling row — with it: swap the Saturday long run to Friday and Friday shows the
+long-run calories/carbs while Saturday shows the rest-day numbers. Protein stays 185 g on
+every day. Moved days get a `⇄ moved` tag, and each modified week has a one-tap
+**Reset week to original plan**. Expected plan weight stays attached to the calendar date.
+
+## Design notes
+
+The UI was audited against the [ui-skills.com](https://www.ui-skills.com/) design-engineering
+skills (accessibility, WCAG 2.2, motion performance, animation principles, design craft) and
+then de-vibed and restyled to a dark, data-led register inspired by Oura/Whoop:
+
+- **Dark-only system** — depth from three surface levels and hairlines, no shadows or glows.
+- **One accent: the Berlin blue line** (`--accent #5b9bff`) — the painted racing line on the
+  course. It marks actions, the weekly progress ring, your logged data, and the course-progress
+  bar under the Today header. Zone/day-type hues survive only as semantic category colours
+  (chips, dots, chart bars) that map to a decodable legend.
+- **Editable home screen** — Today is a widget stack (session, catch-up, week ring, fuel,
+  weight, race countdown, trend chart, race pack). The Edit sheet toggles and reorders them;
+  layout persists in `S.widgets`.
+- The move/edit sheets are real modal dialogs (focus trap via `inert`, Escape closes, focus
+  restored). All controls expose state to VoiceOver (`aria-pressed` / `aria-current`), all
+  inputs are labeled, and `prefers-reduced-motion` is respected throughout.
+
+## Daily-use features (v1.1)
+
+Added after a four-lens product review (runner/coach, PWA engineering, roadmap, fresh-eyes):
+
+- **Catch-up card** on Today for the most recent unlogged day — one-tap backfill.
+- **RPE (1–10)** on every session log, with a warning banner when the last three
+  easy/recovery runs all felt ≥6 — the classic overreaching tell.
+- **Fuelling practice** fields (carbs g + duration) on long runs with a live **g/hr**
+  readout — gut training toward the 60–90 g/hr race target.
+- **7-day trend weight** drives the "vs plan" verdicts and a smoothed chart line, so
+  post-long-run water weight doesn't read as a failed cut.
+- **Race pack** (appears race week + on Training → W16): 5 km goal splits, gel schedule
+  with clock times, carb-load grams from your latest weight, race-morning timeline.
+- **Streak** ignores unlogged rest days; week volume only counts logged sessions;
+  "Behind plan" doesn't show before today's run is logged.
+- **Data safety**: share-sheet backup (reliable in the installed app), backup-age nudge,
+  rolling 7-day local snapshots, `navigator.storage.persist()`, CSV export.
+- **Week rebalance** — life happens, the week adapts:
+  - *Calories*: **Adjust** on any day (Today fuel widget or Nutrition day card) sets that
+    day's kcal, planned or eaten. Strictly-future days of the week absorb the opposite
+    delta proportionally so the week stays on plan. Protein fixed at 185 g, carbs flex at
+    4 kcal/g, each day capped at ±20% (floor 1,600 kcal), race-day fuelling untouchable.
+  - *Kilometres*: computed live from logs — shortfall/excess on completed days spreads
+    across the week's remaining unlogged run days (+20% cap per day, +10% for long runs,
+    −30% downward, never the race). "Done" prefills the rebalanced target.
+  - Originals are always shown ("plan 9 km · +1.3 rebalanced"); clearing edits or
+    correcting logs reverts everything — nothing is destructively rewritten.
+
+## Phase 2–4 (future data sources)
+
+Phase 1 is manual-only by design. The code is structured for later importers:
+all writes flow through `logSession()` / `logWeight()` in `index.html` (§3 of the script),
+each entry carries a `source` tag (`manual` today), and future sources register in
+`DATA_SOURCES`. Planned order per the spec: **Apple Health → Strava → Oura** — each lands
+its data through the same two functions, with manual entry remaining the fallback.
+
+**The Phase 2 bridge already exists.** Two zero-backend ingestion paths accept a JSON
+payload and merge it additively (existing entries on the phone always win):
+
+1. **Paste from Shortcut** (Weight tab) — reads the clipboard.
+2. **URL hand-off** — open `<app-url>#log=<base64-encoded JSON>`.
+
+Payload shape (any subset):
+
+```json
+{
+  "weights":  [{ "date": "2026-06-12", "lb": 208.6 }],
+  "sessions": { "w1d4": { "status": "done", "km": 9, "rpe": 4 } }
+}
+```
+
+An iOS Shortcut can read Apple Health (body mass / workouts), build this JSON, Base64-encode
+it, and open the URL — that's Phase 2 without a server.
+
+## Deploy checklist
+
+- `index.html` changes ship automatically (navigations are network-first).
+- **If icons or the manifest change, bump `CACHE` in `sw.js`** or installed clients keep
+  stale copies forever.
+- Install the app (Add to Home Screen) **before** logging — iOS gives the Safari tab and
+  the installed app separate storage. The app shows a one-time reminder about this.

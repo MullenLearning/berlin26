@@ -1,0 +1,15 @@
+{
+  "name": "Berlin 2026 — Train + Fuel",
+  "short_name": "Berlin 26",
+  "description": "16-week Berlin Marathon training + carb-periodised nutrition tracker",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0d15",
+  "theme_color": "#0a0d15",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
