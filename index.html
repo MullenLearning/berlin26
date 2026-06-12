@@ -258,8 +258,14 @@ svg{display:block;width:100%;height:auto}
 body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 .dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(0,0,0,.4);background:var(--raised);color:var(--txt2)}
 .dragpreview{font-size:12.5px;font-weight:700;color:var(--accent);margin-top:8px;font-variant-numeric:tabular-nums}
+/* catch-up deck */
+.deck .card{animation:deckup var(--dur-snap) var(--snap)}
+@keyframes deckup{0%{transform:translateY(12px) scale(.97);opacity:.6}100%{transform:none;opacity:1}}
+.deckghost{height:12px;margin:-4px 10px 0;background:var(--card);border:1px solid var(--line-soft);border-top:none;border-radius:0 0 16px 16px;opacity:.65}
+.deckghost.g2{margin:-2px 22px 0;opacity:.35}
+#wchart{touch-action:pan-y}
 @media (prefers-reduced-motion: reduce){
-  .fade,.hl,.pop{animation:none}
+  .fade,.hl,.pop,.deck .card{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
   .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
   .rtrack{scroll-behavior:auto}
@@ -796,7 +802,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},meals:{},lastBackup:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},meals:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
@@ -1066,13 +1072,17 @@ applyTheme(); // before first render — no theme flash
 /* ---------------- 5. UI state ---------------- */
 let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{},wtOpen:false};
+const morningPending=S.lastOpen!==todayISO(); // first open of the day
+if(morningPending){S.lastOpen=todayISO();save();}
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{},wtOpen:false,morning:morningPending};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
   if(r!==rawT){
     rawT=r;todayIdx=clamp(rawT,0,RACE_IDX);
     ui.week=clamp(Math.floor(rawT/7),0,15);ui.nutDay=todayIdx;ui.scroll={};
+    ui.morning=S.lastOpen!==todayISO(); // a new day = a new morning check-in
+    if(ui.morning){S.lastOpen=todayISO();save();}
     render(true);
   }
 }
@@ -1187,9 +1197,31 @@ function calorieChart(){
     +'<div class="legend"><span><i style="background:var(--long)"></i>Long-run</span><span><i style="background:var(--hard)"></i>Session</span><span><i style="background:var(--easy)"></i>Easy</span><span><i style="background:var(--rest)"></i>Rest</span></div>';
 }
 
+let scrubData=null;
+function trendAt(idx){ // 7-day trailing mean at a given day index
+  const win=S.weights.filter(w=>{const i=isoToIdx(w.date);return i<=idx&&i>idx-7;});
+  return win.length?win.reduce((s,w)=>s+w.lb,0)/win.length:null;
+}
+function trendRate(){ // lb/week from two adjacent 7-day windows
+  const t=clamp(rawTodayIdx(),0,RACE_IDX);
+  const now=trendAt(t),prev=trendAt(t-7);
+  return (now!=null&&prev!=null)?now-prev:null;
+}
+function trendNarration(){
+  const tw=trendWeight(),r=trendRate();
+  if(!tw)return 'Log a few mornings and the trend reads itself.';
+  if(r==null)return 'Trend forming — one more week of weigh-ins gives a rate.';
+  const planRate=21/16,ar=Math.abs(r);
+  let verdict;
+  if(r>0.2)verdict='moving the wrong way; check the rest-day meal chips.';
+  else if(ar>planRate+0.6)verdict='faster than the plan wants; protect the training, eat the carbs.';
+  else if(ar<planRate-0.6)verdict='slower than plan, still fine; the deficit lives on rest days.';
+  else verdict='right on the plan’s glide.';
+  return 'Trending '+ar.toFixed(1)+' lb/week '+(r<0?'down':'up')+'; plan says ~'+planRate.toFixed(1)+' — '+verdict;
+}
 function weightChart(){
   const W=360,H=205,L=32,Rm=8,T=12,B=22,ih=H-T-B,iwd=W-L-Rm;
-  const pts=S.weights.map(w=>({x:isoToIdx(w.date),y:w.lb})).filter(p=>p.x>=-7&&p.x<=RACE_IDX+7);
+  const pts=S.weights.map(w=>({x:isoToIdx(w.date),y:w.lb,iso:w.date})).filter(p=>p.x>=-7&&p.x<=RACE_IDX+7);
   let lo=188,hi=211;
   pts.forEach(p=>{lo=Math.min(lo,p.y-1);hi=Math.max(hi,p.y+1);});
   lo=Math.floor(lo);hi=Math.ceil(hi);
@@ -1216,7 +1248,17 @@ function weightChart(){
     }
     pts.forEach(p=>{g+='<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3" fill="var(--accent)" stroke="var(--card)" stroke-width="1.4"/>';});
   }
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weight, actual vs plan">'+g+'</svg>'
+  /* plan milestones: phase starts as quiet ticks on the glide */
+  [[28,'Build 1'],[56,'Build 2'],[84,'Peak'],[91,'Taper'],[105,'Race wk']].forEach(ms=>{
+    const px=X(ms[0]),py=Y(210+(189-210)*(ms[0]/RACE_IDX));
+    g+='<line x1="'+px+'" y1="'+(py-6)+'" x2="'+px+'" y2="'+(py+6)+'" stroke="var(--sub)" stroke-width="1.5" opacity="0.7"><title>'+ms[1]+'</title></line>';
+  });
+  /* scrub affordances (driven by pointer, hidden until touched) */
+  g+='<g id="scrubg" style="display:none"><line id="scrubln" y1="'+T+'" y2="'+(T+ih)+'" stroke="var(--accent)" stroke-width="1" opacity=".5"/>'
+    +'<circle id="scrubdot" r="5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>'
+    +'<text id="scrubtx" class="axis" text-anchor="middle" style="font-size:11px;font-weight:700;fill:var(--ink)"></text></g>';
+  scrubData={pts:pts.map(p=>({cx:X(p.x),cy:Y(p.y),iso:p.iso,lb:p.y,idx:p.x})),T:T};
+  return '<svg id="wchart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weight, actual vs plan">'+g+'</svg>'
     +'<div class="legend"><span><i style="background:var(--sub)"></i>Plan glide 210 → 189 lb</span><span><i style="background:var(--accent)"></i>Logged · thick line = 7-day trend</span></div>';
 }
 
@@ -1262,20 +1304,45 @@ function wSession(){
     +'</section>';
 }
 
-function wCatchup(){
-  if(rawT<=0)return '';
-  let j=-1,more=0;
-  for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){const lg=sessLog(eff(k).id);if(!lg||!lg.status){if(j<0)j=k;else more++;}}
-  if(j<0)return '';
-  const ce=eff(j);
-  return '<section class="card" data-swipe="sess" data-i="'+j+'">'
-    +'<span class="swipe-hint r" aria-hidden="true">Done as planned</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
+function unloggedPast(){
+  const list=[];
+  if(rawT<=0)return list;
+  for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){const lg=sessLog(eff(k).id);if(!lg||!lg.status)list.push(k);}
+  return list; // newest first
+}
+function wCatchup(){ // a deck: clear a three-day backlog in three swipes
+  const list=unloggedPast();
+  if(!list.length)return '';
+  const j=list[0],ce=eff(j);
+  return '<div class="deck">'
+    +'<section class="card" data-swipe="deck" data-i="'+j+'">'
+    +'<span class="swipe-hint r" aria-hidden="true">Done as planned</span><span class="swipe-hint l" aria-hidden="true">Skipped</span>'
     +'<div class="spread"><h2 style="margin:0">Catch up · '+(j===rawT-1?'yesterday':shortDate(j))+'</h2>'+zoneChip(ce)+'</div>'
     +'<div style="font-weight:700;font-size:15px;margin-top:6px">'+headline(ce)+'</div>'
+    +(ce.km>0?'<p class="mini" style="margin:4px 2px 0">'+fmtKm(ce.km)+' km planned</p>':'')
     +'<div class="loggrid" style="margin-top:12px">'
-    +'<button class="btn2" data-action="logsheet" data-i="'+j+'">Log details</button>'
+    +'<button class="btn2" data-action="deckskip" data-i="'+j+'">Skipped</button>'
     +'<button class="btn" data-action="quickdone" data-i="'+j+'">Done as planned</button></div>'
-    +(more>0?'<p class="mini" style="margin:10px 2px 0">'+more+' more unlogged day'+(more>1?'s':'')+' in Training.</p>':'')
+    +'<p class="mini center" style="margin:8px 0 0">swipe right done · swipe left skipped · tap for details</p>'
+    +'</section>'
+    +(list.length>1?'<div class="deckghost"></div>':'')
+    +(list.length>2?'<div class="deckghost g2"></div>':'')
+    +(list.length>1?'<p class="mini center" style="margin:8px 0 0">'+(list.length-1)+' more after this one</p>':'')
+    +'</div>';
+}
+
+function wMorning(){ // first open of the day: one interaction, then it folds away
+  if(!ui.morning)return '';
+  if(S.weights.some(w=>w.date===todayISO()))return '';
+  const lw=latestWeight(),pw=planWtAt(todayIdx);
+  const start=Math.round((lw?lw.lb:pw)*10)/10;
+  const cu=unloggedPast().length;
+  return '<section class="card"><div class="spread"><h2>Morning check-in</h2><span class="chip neutral">'+shortDate(todayIdx)+'</span></div>'
+    +rulerHTML('mruler',Math.max(120,Math.round(start)-15),Math.min(280,Math.round(start)+15),0.1,start,'lb',1,1)
+    +'<div class="loggrid" style="margin-top:12px">'
+    +'<button class="btn2" data-action="mlater">Later</button>'
+    +'<button class="btn" data-action="msave">Log weight</button></div>'
+    +(cu?'<p class="mini center" style="margin:10px 0 0">'+cu+' day'+(cu>1?'s':'')+' to catch up just below.</p>':'')
     +'</section>';
 }
 
@@ -1364,10 +1431,13 @@ function wRace(){
 
 function wTrend(){
   if(S.weights.length<2)return '<section class="card"><h2>Weight trend</h2><p class="note" style="margin:0">Log a few weigh-ins and the trend chart appears here.</p></section>';
-  return '<section class="card"><h2>Weight trend</h2><div class="svgwrap">'+weightChart()+'</div></section>';
+  return '<section class="card"><h2>Weight trend</h2>'
+    +'<p class="note" style="margin:0 0 6px">'+trendNarration()+'</p>'
+    +'<div class="svgwrap">'+weightChart()+'</div></section>';
 }
 
 const WIDGET_DEFS=[
+  {id:'morning',label:'Morning check-in (auto)',render:wMorning},
   {id:'session',label:'Today’s session',render:wSession},
   {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
   {id:'week',label:'Week progress',render:wWeek},
@@ -1383,7 +1453,11 @@ function widgetConfig(){
   (Array.isArray(S.widgets)?S.widgets:[]).forEach(w=>{
     if(w&&WIDGET_DEFS.some(d=>d.id===w.id)&&!seen[w.id]){seen[w.id]=1;out.push({id:w.id,on:!!w.on});}
   });
-  WIDGET_DEFS.forEach(d=>{if(!seen[d.id])out.push({id:d.id,on:!WIDGET_DEFAULT_OFF[d.id]});});
+  WIDGET_DEFS.forEach(d=>{
+    if(seen[d.id])return;
+    const entry={id:d.id,on:!WIDGET_DEFAULT_OFF[d.id]};
+    if(d.id==='morning')out.unshift(entry);else out.push(entry); // new morning card leads the day
+  });
   return out;
 }
 /* ---------------- Drag and drop the week (long-press a Training day card) ---------------- */
@@ -1867,7 +1941,10 @@ function vWeight(){
     +'<div class="kpi"><b class="num" style="color:var(--'+(dlt!=null?deltaClass(dlt):'rest')+')">'+(dlt!=null?(dlt>0?'+':'')+fmtLb(dlt):'–')+'</b><span>'+(tw?'trend vs plan':'vs plan')+'</span></div>'
     +'<div class="kpi"><b class="num">'+(tw?fmtLb(Math.max(0,tw.lb-189)):(lw?fmtLb(Math.max(0,lw.lb-189)):'–'))+'</b><span>lb to 189</span></div>'
     +'</div>'
-    +'<section class="card"><h2>Trend vs plan</h2><div class="svgwrap">'+weightChart()+'</div></section>'
+    +'<section class="card"><h2>Trend vs plan</h2>'
+    +'<p class="note" style="margin:0 0 6px">'+trendNarration()+'</p>'
+    +'<div class="svgwrap">'+weightChart()+'</div>'
+    +'<p class="mini" style="margin:6px 2px 0">Touch the chart to scrub through your weigh-ins.</p></section>'
     +'<section class="card"><h2>Log a weight</h2>'
     +'<div><label class="f" for="wdate">Date</label><input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27"></div>'
     +(function(){const st=Math.round((lw?lw.lb:planWtAt(clamp(rawT,0,RACE_IDX)))*10)/10;
@@ -1938,21 +2015,66 @@ function render(anim){ // anim=true only on navigation — entrances must not re
   view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
   if(anim&&view.firstElementChild)view.firstElementChild.classList.add('fade');
   fieldDirty=false; // any full render supersedes a pending field re-render
-  bindSwipes();bindLongPress();initRulers();bindNutBars();
+  bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
   window.scrollTo(0,ui.scroll[ui.tab]||0);
+}
+function bindChartScrub(){ // drag along the weight line, a dot follows with date + trend
+  const svg=document.getElementById('wchart');
+  if(!svg||svg._scrub||!scrubData||!scrubData.pts.length)return;
+  svg._scrub=1;
+  const g=()=>svg.querySelector('#scrubg');
+  const show=e=>{
+    const r=svg.getBoundingClientRect();
+    if(!r.width)return;
+    const sx=(e.clientX-r.left)*360/r.width;
+    let best=null,bd=1e9;
+    scrubData.pts.forEach(p=>{const d=Math.abs(p.cx-sx);if(d<bd){bd=d;best=p;}});
+    if(!best)return;
+    const gr=g();gr.style.display='';
+    gr.querySelector('#scrubln').setAttribute('x1',best.cx);
+    gr.querySelector('#scrubln').setAttribute('x2',best.cx);
+    const dot=gr.querySelector('#scrubdot');
+    dot.setAttribute('cx',best.cx);dot.setAttribute('cy',best.cy);
+    const tx=gr.querySelector('#scrubtx');
+    const tv=trendAt(best.idx);
+    tx.setAttribute('x',Math.max(48,Math.min(312,best.cx)));
+    tx.setAttribute('y',scrubData.T+2);
+    tx.textContent=isoShort(best.iso)+' · '+fmtLb(best.lb)+' lb'+(tv!=null?' · trend '+fmtLb(tv):'');
+  };
+  svg.addEventListener('pointerdown',e=>{show(e);});
+  svg.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='mouse')show(e);});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>svg.addEventListener(ev,()=>{const gr=g();if(gr)gr.style.display='none';}));
 }
 function rerenderKeepScroll(){
   ui.scroll[ui.tab]=window.scrollY;
   render();
 }
 
-document.addEventListener('swiperight',ev=>{const c=ev.target.closest('[data-swipe="sess"]');if(c)quickLogDone(+c.dataset.i);});
-document.addEventListener('swipeleft',ev=>{const c=ev.target.closest('[data-swipe="sess"]');if(c)openLogSheet(+c.dataset.i);});
+function deckSkip(i){
+  const e=eff(i);
+  const prev=S.sessions[e.id]?Object.assign({},S.sessions[e.id]):null;
+  logSession(e.id,{status:'missed',km:0});
+  rerenderKeepScroll();
+  snack('Skipped · '+headline(e),()=>{
+    if(prev)S.sessions[e.id]=prev;else delete S.sessions[e.id];
+    save();rerenderKeepScroll();
+  });
+}
+document.addEventListener('swiperight',ev=>{
+  const c=ev.target.closest('[data-swipe]');
+  if(c&&(c.dataset.swipe==='sess'||c.dataset.swipe==='deck'))quickLogDone(+c.dataset.i);
+});
+document.addEventListener('swipeleft',ev=>{
+  const c=ev.target.closest('[data-swipe]');
+  if(!c)return;
+  if(c.dataset.swipe==='deck')deckSkip(+c.dataset.i);       // deck: left = skipped
+  else if(c.dataset.swipe==='sess')openLogSheet(+c.dataset.i); // session card: left = options
+});
 
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-action]');
-  if(!el){ // tapping a session card (not a control inside it) opens the log sheet
-    const sc=ev.target.closest('[data-swipe="sess"]');
+  if(!el){ // tapping a session/deck card (not a control inside it) opens the log sheet
+    const sc=ev.target.closest('[data-swipe="sess"],[data-swipe="deck"]');
     if(sc&&!ev.target.closest('button,input,select,a'))openLogSheet(+sc.dataset.i);
     return;
   }
@@ -1976,6 +2098,17 @@ document.addEventListener('click',ev=>{
   else if(a==='movestart'){openMoveSheet(Number(el.dataset.i));}
   else if(a==='logsheet'){openLogSheet(Number(el.dataset.i));}
   else if(a==='quickdone'){quickLogDone(Number(el.dataset.i));}
+  else if(a==='deckskip'){deckSkip(Number(el.dataset.i));}
+  else if(a==='msave'){
+    const v=readRuler('mruler');
+    if(v>=120&&v<=280){
+      const prev=S.weights.slice();
+      logWeight(todayISO(),Math.round(v*10)/10);
+      ui.morning=false;rerenderKeepScroll();
+      snack('Logged '+fmtLb(v)+' lb — good morning',()=>{S.weights=prev;save();ui.morning=true;rerenderKeepScroll();});
+    }
+  }
+  else if(a==='mlater'){ui.morning=false;rerenderKeepScroll();}
   else if(a==='shstatus'){
     const seg=document.getElementById('shseg');
     seg.dataset.status=el.dataset.s;
