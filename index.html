@@ -225,6 +225,19 @@ svg{display:block;width:100%;height:auto}
 .rpad{flex:0 0 50%}
 .rline{position:absolute;left:50%;bottom:0;width:2.5px;height:44px;background:var(--accent);border-radius:2px;transform:translateX(-50%);pointer-events:none}
 .rkbd{position:absolute;right:0;top:6px;color:var(--sub);font-size:12px;font-weight:700;padding:6px 8px;min-height:36px}
+/* one-thumb log sheet */
+.stepper{display:flex;align-items:center;gap:12px;margin-top:8px}
+.stepper button{flex:0 0 64px;height:56px;border-radius:14px;background:var(--raised);border:1px solid var(--line);font-size:26px;font-weight:800;color:var(--ink);touch-action:manipulation}
+.stepval{flex:1;text-align:center}
+.stepval b{font-size:38px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.stepval span{font-size:14px;color:var(--sub);font-weight:600;margin-left:4px}
+.shsec{margin-top:18px}
+.arcwrap{position:relative;margin-top:4px;-webkit-user-select:none;user-select:none}
+.arcwrap svg{display:block;width:min(260px,80%);margin:0 auto;touch-action:none;height:auto}
+.arcval{position:absolute;left:0;right:0;bottom:2px;text-align:center;pointer-events:none}
+.arcval b{font-size:30px;font-weight:800;font-family:var(--disp)}
+.arcword{font-size:13px;color:var(--txt2);font-weight:600;min-height:18px}
+.swipe-onboard{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 @media (prefers-reduced-motion: reduce){
   .fade,.hl,.pop{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
@@ -539,18 +552,26 @@ function bindLongPress(){
 
 /* ruler tape: scroll-snap detents under a fixed centre line; keyboard + type fallback */
 const TICKW=12;
-function rulerHTML(id,min,max,step,val,unit,majorEvery,dec){
+function fmtPace(s){return Math.floor(s/60)+':'+p2(Math.round(s)%60);}
+function parsePace(str){
+  if(!str)return null;
+  const m=String(str).match(/^(\d{1,2}):(\d{2})$/);
+  return m?Number(m[1])*60+Number(m[2]):null;
+}
+function rulerFmt(r,v){return r.dataset.fmt==='pace'?fmtPace(v):v.toFixed(+r.dataset.dec);}
+function rulerHTML(id,min,max,step,val,unit,majorEvery,dec,fmt){
+  const F=v=>fmt==='pace'?fmtPace(v):(Math.round(v*10)/10);
   let ticks='<div class="rpad"></div>';
   const n=Math.round((max-min)/step);
   for(let k=0;k<=n;k++){
     const v=min+k*step;
     const major=Math.abs(v/majorEvery-Math.round(v/majorEvery))<1e-6;
-    ticks+='<div class="rtick'+(major?' major':'')+'">'+(major?'<b>'+(Math.round(v*10)/10)+'</b>':'')+'<i></i></div>';
+    ticks+='<div class="rtick'+(major?' major':'')+'">'+(major?'<b>'+F(v)+'</b>':'')+'<i></i></div>';
   }
   ticks+='<div class="rpad"></div>';
-  return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+dec+'" data-val="'+val+'">'
-    +'<div class="rval"><span class="rv">'+val.toFixed(dec)+'</span><span> '+unit+'</span></div>'
-    +'<button class="rkbd" data-action="rulerkbd" data-r="'+id+'" aria-label="Type the value instead">type</button>'
+  return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+(dec||0)+'" data-val="'+val+'"'+(fmt?' data-fmt="'+fmt+'"':'')+'>'
+    +'<div class="rval"><span class="rv">'+(fmt==='pace'?fmtPace(val):val.toFixed(dec))+'</span><span> '+unit+'</span></div>'
+    +(fmt==='pace'?'':'<button class="rkbd" data-action="rulerkbd" data-r="'+id+'" aria-label="Type the value instead">type</button>')
     +'<div class="rtrack" data-lp tabindex="0" role="slider" aria-label="'+esc(unit)+' value" aria-valuemin="'+min+'" aria-valuemax="'+max+'" aria-valuenow="'+val+'">'+ticks+'</div>'
     +'<div class="rline" aria-hidden="true"></div></div>';
 }
@@ -567,8 +588,8 @@ function initRulers(){
         raf=null;
         const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
         const v=min+k*step;
-        r.querySelector('.rv').textContent=v.toFixed(dec);
-        tr.setAttribute('aria-valuenow',v.toFixed(dec));
+        r.querySelector('.rv').textContent=rulerFmt(r,v);
+        tr.setAttribute('aria-valuenow',v);
         if(k!==lastIdx){lastIdx=k;haptic();}
       });
     });
@@ -598,6 +619,155 @@ function readRuler(id){
   const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step;
   const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
   return Math.round((min+k*step)*100)/100;
+}
+
+/* ---------------- Run log sheet (one thumb, no keyboard) ---------------- */
+const ZONE_MID_PACE={Recovery:415,Easy:362,Long:352,Marathon:298,Threshold:271,Interval:251};
+function lastPaceFor(zone){ // prefill from the most recent comparable session
+  for(let i=clamp(rawTodayIdx(),0,RACE_IDX);i>=0;i--){
+    const e=eff(i);if(e.zone!==zone)continue;
+    const l=sessLog(e.id),p=l&&parsePace(l.pace);
+    if(p)return p;
+  }
+  return null;
+}
+const RPE_WORDS=['barely moving','very easy','chatty','steady','working','comfortably hard','hard','very hard','brutal','eyeballs out'];
+const RPE_VARS=['--rec','--rec','--easy','--easy','--long','--long','--long','--hard','--hard','--hard'];
+const ARC_LEN=Math.PI*100;
+function arcHTML(){
+  return '<div class="arcwrap">'
+    +'<svg id="sharc" viewBox="0 0 260 150" tabindex="0" role="slider" aria-label="Effort, RPE 1 to 10" aria-valuemin="1" aria-valuemax="10" data-v="">'
+    +'<path d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="var(--track)" stroke-width="10" stroke-linecap="round"/>'
+    +'<path id="arcfg" d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="var(--easy)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+ARC_LEN.toFixed(1)+'" stroke-dashoffset="'+ARC_LEN.toFixed(1)+'"/>'
+    +'<g id="arcghosts"></g>'
+    +'<circle id="arcthumb" r="13" fill="var(--card)" stroke="var(--accent)" stroke-width="3" cx="30" cy="130" style="display:none"/>'
+    +'</svg>'
+    +'<div class="arcval"><b id="arcnum">–</b><div class="arcword" id="arcword">slide to rate effort</div></div></div>';
+}
+function arcPoint(v,rad){
+  const f=(v-1)/9,a=Math.PI*(1-f);
+  return {x:130+(rad||100)*Math.cos(a),y:130-(rad||100)*Math.sin(a)};
+}
+function arcSet(v){
+  const svg=document.getElementById('sharc');if(!svg)return;
+  const fg=svg.querySelector('#arcfg'),th=svg.querySelector('#arcthumb');
+  svg.dataset.v=v;svg.setAttribute('aria-valuenow',v);
+  const f=(v-1)/9,p=arcPoint(v);
+  fg.style.strokeDashoffset=(ARC_LEN*(1-f)).toFixed(1);
+  fg.style.stroke='var('+RPE_VARS[v-1]+')';
+  fg.style.strokeWidth=(8+v*0.9).toFixed(1);
+  th.style.display='';th.setAttribute('cx',p.x.toFixed(1));th.setAttribute('cy',p.y.toFixed(1));
+  document.getElementById('arcnum').textContent=v;
+  document.getElementById('arcword').textContent=RPE_WORDS[v-1];
+}
+function initArc(val,ghosts){
+  const svg=document.getElementById('sharc');if(!svg)return;
+  const g=svg.querySelector('#arcghosts');
+  (ghosts||[]).forEach(gv=>{ // recent easy-day history, visible before you even log
+    const p=arcPoint(gv);
+    g.innerHTML+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="var(--sub)" opacity="0.45"/>';
+  });
+  if(val)arcSet(val);
+  let drag=false;
+  const fromEvent=e=>{
+    const r=svg.getBoundingClientRect(),sc=260/r.width;
+    const x=(e.clientX-r.left)*sc,y=(e.clientY-r.top)*sc;
+    let a=Math.atan2(130-y,x-130); // 0..π across the top
+    a=Math.max(0,Math.min(Math.PI,a));
+    return Math.max(1,Math.min(10,Math.round(1+9*(1-a/Math.PI))));
+  };
+  svg.addEventListener('pointerdown',e=>{drag=true;try{svg.setPointerCapture(e.pointerId);}catch(_){}
+    const v=fromEvent(e);if(String(v)!==svg.dataset.v){haptic();arcSet(v);}});
+  svg.addEventListener('pointermove',e=>{if(!drag)return;
+    const v=fromEvent(e);if(String(v)!==svg.dataset.v){haptic();arcSet(v);}});
+  ['pointerup','pointercancel'].forEach(ev=>svg.addEventListener(ev,()=>{drag=false;}));
+  svg.addEventListener('keydown',e=>{
+    const cur=+svg.dataset.v||5;
+    if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();arcSet(Math.min(10,cur+1));}
+    if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();arcSet(Math.max(1,cur-1));}
+  });
+}
+
+function openLogSheet(i){
+  const e=eff(i),l=sessLog(e.id)||{};
+  const km0=l.km!=null?l.km:e.km;
+  const pace0=parsePace(l.pace)||lastPaceFor(e.zone)||ZONE_MID_PACE[e.zone]||360;
+  const status0=l.status||'done';
+  const isRest=e.zone==='Rest'&&e.km<=0;
+  const ghosts=[];
+  for(let k=clamp(rawTodayIdx(),0,RACE_IDX);k>=0&&ghosts.length<3;k--){
+    const ee=eff(k);if(ee.zone!=='Easy'&&ee.zone!=='Recovery')continue;
+    const ll=sessLog(ee.id);if(ll&&ll.rpe!=null&&k!==i)ghosts.push(ll.rpe);
+  }
+  const segB=(s,lbl)=>'<button data-action="shstatus" data-s="'+s+'" aria-pressed="'+(s===status0)+'" class="'+(s===status0?'on-'+s:'')+'">'+lbl+'</button>';
+  openSheet('<h2 style="margin:0">'+shortDate(i)+' · '+esc(headline(e))+'</h2>'
+    +(paceLine(e)?'<p class="mini" style="margin:4px 2px 0">'+paceLine(e)+'</p>':'')
+    +'<div class="seg" id="shseg" data-status="'+status0+'">'+segB('done','Done')+segB('partial','Partial')+segB('missed','Missed')+'</div>'
+    +(isRest?'':'<div class="shsec"><label class="f">Distance</label>'
+      +'<div class="stepper"><button id="shdown" aria-label="0.1 km less">−</button>'
+      +'<div class="stepval"><b id="shkm" data-v="'+km0+'">'+fmtKm(km0)+'</b><span>km</span></div>'
+      +'<button id="shup" aria-label="0.1 km more">+</button></div></div>'
+      +'<div class="shsec"><label class="f">Pace</label>'+rulerHTML('shpace',240,480,5,Math.max(240,Math.min(480,pace0)),'/km',30,0,'pace')+'</div>'
+      +'<div class="shsec"><label class="f">Effort</label>'+arcHTML()+'</div>')
+    +'<div class="shsec" id="shnotewrap"><button class="btn3" data-action="shnotetoggle">+ Add note</button></div>'
+    +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
+    +'<button class="sheetrow" data-action="movestart" data-i="'+i+'" style="justify-content:center;color:var(--txt2);font-weight:700;margin-top:8px">Move this day instead</button>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+  initRulers();
+  initArc(l.rpe||null,ghosts);
+  // stepper: tap = 0.1, hold = repeat
+  const kmEl=document.getElementById('shkm');
+  const step=d=>{const v=Math.max(0,Math.round(((+kmEl.dataset.v)+d*0.1)*10)/10);kmEl.dataset.v=v;kmEl.textContent=fmtKm(v);haptic();};
+  ['shdown','shup'].forEach((bid,ix)=>{
+    const b=document.getElementById(bid);if(!b)return;
+    const d=ix?1:-1;let hold=null,rep=null;
+    b.addEventListener('pointerdown',e=>{e.preventDefault();step(d);
+      hold=setTimeout(()=>{rep=setInterval(()=>step(d),90);},400);});
+    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{clearTimeout(hold);clearInterval(rep);}));
+  });
+}
+
+function quickLogDone(i){ // swipe right: done at plan distance
+  const e=eff(i),cur=sessLog(e.id)||{};
+  const prev=S.sessions[e.id]?Object.assign({},S.sessions[e.id]):null;
+  const pre=capturePayoff(e);
+  logSession(e.id,{status:'done',km:cur.km!=null?cur.km:e.km});
+  payoff(pre,e);
+  snack('Logged · '+headline(e),()=>{
+    if(prev)S.sessions[e.id]=prev;else delete S.sessions[e.id];
+    save();rerenderKeepScroll();
+  });
+}
+
+/* the payoff frame: one beat of consequence after a log */
+function capturePayoff(e){
+  return {wkA:weekActualKm(e.w),streak:streak(),done:doneCount(),target:e.wk.target};
+}
+function payoff(pre,e){
+  rerenderKeepScroll();
+  if(REDUCE.matches)return;
+  requestAnimationFrame(()=>{
+    if(ui.tab==='today'&&e.w===Math.floor(todayIdx/7)){
+      const ring=document.querySelector('.ringfg');
+      if(ring){
+        const c=+ring.dataset.c;
+        const p0=Math.min(pre.wkA/pre.target,1),p1=Math.min(weekActualKm(e.w)/pre.target,1);
+        ring.animate([{strokeDashoffset:c*(1-p0)},{strokeDashoffset:c*(1-p1)}],{duration:750,easing:'cubic-bezier(.22,1,.36,1)'});
+        const pct=document.querySelector('.ringtxt b');
+        if(pct)rollNum(pct,Math.round(p0*100),Math.round(p1*100),0,'%');
+      }
+      const stk=document.getElementById('stk');if(stk)rollNum(stk,pre.streak,streak(),0);
+      const dn=document.getElementById('dn');if(dn)rollNum(dn,pre.done,doneCount(),0);
+    }
+    if(e.zone==='Long'||e.zone==='Marathon'){
+      const ci=document.querySelector('.course i');
+      if(ci){
+        const w=ci.style.width;
+        if(e.w>=9)ci.animate([{width:w},{width:'100%',offset:.45},{width:'100%',offset:.6},{width:w}],{duration:1700,easing:'cubic-bezier(.22,1,.36,1)'}); // the only big celebration: weeks 10-16 long runs
+        else ci.animate([{opacity:.35},{opacity:1}],{duration:550});
+      }
+    }
+  });
 }
 
 /* ---------------- 3. State (persistent, source-tagged) ---------------- */
@@ -1028,13 +1198,24 @@ function ring(pct,size,inner){
   return '<div class="ringwrap" style="width:'+size+'px;height:'+size+'px">'
     +'<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" role="img" aria-label="'+Math.round(pct*100)+' percent">'
     +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+sw+'"/>'
-    +'<circle cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 '+size/2+' '+size/2+')"/>'
+    +'<circle class="ringfg" data-c="'+c.toFixed(1)+'" data-pct="'+Math.min(pct,1).toFixed(3)+'" cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="'+sw+'" stroke-linecap="round" stroke-dasharray="'+c.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 '+size/2+' '+size/2+')"/>'
     +'</svg><div class="ringtxt">'+inner+'</div></div>';
+}
+function logChips(l){
+  let h='';
+  if(l.km!=null)h+='<span class="chip neutral">'+fmtKm(l.km)+' km</span>';
+  if(l.pace)h+='<span class="chip neutral">'+esc(l.pace)+' /km</span>';
+  if(l.rpe!=null)h+='<span class="chip neutral">RPE '+l.rpe+'</span>';
+  const fr=fuelRate(l);
+  if(fr!=null)h+='<span class="chip '+(fr>=60?'c-easy':'c-long')+'">'+fr+' g/hr</span>';
+  if(l.note)h+='<span class="chip neutral">'+esc(l.note.slice(0,26))+(l.note.length>26?'…':'')+'</span>';
+  return h;
 }
 
 function wSession(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
-  return '<section class="card">'
+  return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'">'
+    +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
     +'<div class="row">'+zoneChip(e)+movedChip(e)
     +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')
     +'</div>'
@@ -1042,7 +1223,11 @@ function wSession(){
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
     +rebalLine(e)
     +'<p class="detail">'+esc(e.text)+'</p>'
-    +statusSeg(e,false)
+    +(l.status
+      ?'<div class="row" style="margin-top:10px">'+logChips(l)+'</div>'
+       +'<button class="btn2" style="width:100%;margin-top:12px" data-action="logsheet" data-i="'+todayIdx+'">Edit log</button>'
+      :'<button class="btn" style="width:100%;margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log session</button>'
+       +'<div class="swipe-onboard">or swipe the card right to log as planned</div>')
     +'</section>';
 }
 
@@ -1052,9 +1237,13 @@ function wCatchup(){
   for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){const lg=sessLog(eff(k).id);if(!lg||!lg.status){if(j<0)j=k;else more++;}}
   if(j<0)return '';
   const ce=eff(j);
-  return '<section class="card"><div class="spread"><h2 style="margin:0">Catch up · '+(j===rawT-1?'yesterday':shortDate(j))+'</h2>'+zoneChip(ce)+'</div>'
+  return '<section class="card" data-swipe="sess" data-i="'+j+'">'
+    +'<span class="swipe-hint r" aria-hidden="true">Done as planned</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
+    +'<div class="spread"><h2 style="margin:0">Catch up · '+(j===rawT-1?'yesterday':shortDate(j))+'</h2>'+zoneChip(ce)+'</div>'
     +'<div style="font-weight:700;font-size:15px;margin-top:6px">'+headline(ce)+'</div>'
-    +statusSeg(ce,true)
+    +'<div class="loggrid" style="margin-top:12px">'
+    +'<button class="btn2" data-action="logsheet" data-i="'+j+'">Log details</button>'
+    +'<button class="btn" data-action="quickdone" data-i="'+j+'">Done as planned</button></div>'
     +(more>0?'<p class="mini" style="margin:10px 2px 0">'+more+' more unlogged day'+(more>1?'s':'')+' in Training.</p>':'')
     +'</section>';
 }
@@ -1069,8 +1258,8 @@ function wWeek(){
     +'<div class="row" style="gap:18px;align-items:center">'
     +ring(pct,108,'<div><b class="num">'+Math.round(pct*100)+'%</b><span>of target</span></div>')
     +'<div style="flex:1"><div class="big num">'+fmtKm(wActual)+' <span style="font-size:16px;color:var(--sub)">of '+fmtKm(wTarget)+' km</span></div>'
-    +'<div class="statrow" style="margin-top:10px"><div><b class="num">'+streak()+'</b><span>streak</span></div>'
-    +'<div><b class="num">'+doneCount()+'</b><span>done</span></div>'
+    +'<div class="statrow" style="margin-top:10px"><div><b class="num" id="stk">'+streak()+'</b><span>streak</span></div>'
+    +'<div><b class="num" id="dn">'+doneCount()+'</b><span>done</span></div>'
     +'<div><b class="num">'+(RACE_IDX-todayIdx)+'</b><span>to race</span></div></div>'
     +'</div></div>'
     +'</section>';
@@ -1497,9 +1686,16 @@ function rerenderKeepScroll(){
   render();
 }
 
+document.addEventListener('swiperight',ev=>{const c=ev.target.closest('[data-swipe="sess"]');if(c)quickLogDone(+c.dataset.i);});
+document.addEventListener('swipeleft',ev=>{const c=ev.target.closest('[data-swipe="sess"]');if(c)openLogSheet(+c.dataset.i);});
+
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-action]');
-  if(!el)return;
+  if(!el){ // tapping a session card (not a control inside it) opens the log sheet
+    const sc=ev.target.closest('[data-swipe="sess"]');
+    if(sc&&!ev.target.closest('button,input,select,a'))openLogSheet(+sc.dataset.i);
+    return;
+  }
   const a=el.dataset.action;
   if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
   else if(a==='status'){
@@ -1518,6 +1714,46 @@ document.addEventListener('click',ev=>{
     rerenderKeepScroll();
   }
   else if(a==='movestart'){openMoveSheet(Number(el.dataset.i));}
+  else if(a==='logsheet'){openLogSheet(Number(el.dataset.i));}
+  else if(a==='quickdone'){quickLogDone(Number(el.dataset.i));}
+  else if(a==='shstatus'){
+    const seg=document.getElementById('shseg');
+    seg.dataset.status=el.dataset.s;
+    seg.querySelectorAll('button').forEach(b=>{
+      const on=b.dataset.s===el.dataset.s;
+      b.setAttribute('aria-pressed',on);
+      b.className=on?'on-'+el.dataset.s:'';
+    });
+  }
+  else if(a==='shnotetoggle'){
+    const w=document.getElementById('shnotewrap');
+    w.innerHTML='<label class="f" for="shnote">Note</label><input type="text" id="shnote" placeholder="How did it go?">';
+    document.getElementById('shnote').focus();
+  }
+  else if(a==='sheetlogsave'){
+    const i2=Number(el.dataset.i),e2=eff(i2);
+    const status=(document.getElementById('shseg')||{dataset:{}}).dataset.status||'done';
+    const patch={status:status};
+    const kmEl=document.getElementById('shkm');
+    if(kmEl)patch.km=status==='missed'?0:Math.round((+kmEl.dataset.v)*10)/10;
+    if(document.getElementById('shpace')&&status!=='missed'){
+      const pv=readRuler('shpace');
+      if(pv)patch.pace=fmtPace(pv);
+    }
+    const arc=document.getElementById('sharc');
+    if(arc&&arc.dataset.v)patch.rpe=+arc.dataset.v;
+    const note=document.getElementById('shnote');
+    if(note&&note.value)patch.note=note.value.slice(0,300);
+    const prev=S.sessions[e2.id]?Object.assign({},S.sessions[e2.id]):null;
+    const pre=capturePayoff(e2);
+    logSession(e2.id,patch);
+    closeSheet();
+    payoff(pre,e2);
+    snack((status==='missed'?'Marked missed':'Logged')+' · '+headline(e2),()=>{
+      if(prev)S.sessions[e2.id]=prev;else delete S.sessions[e2.id];
+      save();rerenderKeepScroll();
+    });
+  }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
   else if(a==='nutadjsave'){
