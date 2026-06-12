@@ -221,8 +221,9 @@ svg{display:block;width:100%;height:auto}
 [data-swipe]{touch-action:pan-y;position:relative;will-change:transform;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 [data-swipe] input,[data-swipe] select{-webkit-user-select:auto;user-select:auto}
 .swipe-snapback{transition:transform var(--dur-snap) var(--snap)}
-.swipe-hint{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-size:14px;font-weight:800;opacity:0;pointer-events:none}
-.swipe-hint.r{left:18px;color:var(--easy)} .swipe-hint.l{right:18px;color:var(--sub)}
+.swipe-hint{position:absolute;top:12px;right:12px;z-index:5;background:var(--raised);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;white-space:nowrap}
+.swipe-hint.r{color:var(--easy)} .swipe-hint.l{color:var(--sub)}
 /* ruler tape (weight + pace) */
 .ruler{position:relative;margin-top:10px;-webkit-user-select:none;user-select:none}
 .rval{text-align:center;font-size:40px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums}
@@ -232,6 +233,7 @@ svg{display:block;width:100%;height:auto}
 .rtrack::-webkit-scrollbar{display:none}
 .rtick{flex:0 0 12px;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
 .rtick i{width:2px;height:16px;border-radius:2px;background:var(--bord)}
+.rtick.mid i{height:22px}
 .rtick.major i{height:28px;background:var(--sub)}
 .rtick b{font-size:10px;color:var(--sub);font-weight:700;margin-bottom:2px;font-variant-numeric:tabular-nums}
 .rpad{flex:0 0 calc(50% - 6px)} /* half a tick: snap points land on exact TICKW multiples */
@@ -587,14 +589,15 @@ function parsePace(str){
   return m?Number(m[1])*60+Number(m[2]):null;
 }
 function rulerFmt(r,v){return r.dataset.fmt==='pace'?fmtPace(v):v.toFixed(+r.dataset.dec);}
-function rulerHTML(id,min,max,step,val,unit,majorEvery,dec,fmt){
+function rulerHTML(id,min,max,step,val,unit,majorEvery,dec,fmt,midEvery){
   const F=v=>fmt==='pace'?fmtPace(v):(Math.round(v*10)/10);
   let ticks='<div class="rpad"></div>';
   const n=Math.round((max-min)/step);
   for(let k=0;k<=n;k++){
     const v=min+k*step;
     const major=Math.abs(v/majorEvery-Math.round(v/majorEvery))<1e-6;
-    ticks+='<div class="rtick'+(major?' major':'')+'">'+(major?'<b>'+F(v)+'</b>':'')+'<i></i></div>';
+    const mid=!major&&midEvery&&Math.abs(v/midEvery-Math.round(v/midEvery))<1e-6;
+    ticks+='<div class="rtick'+(major?' major':mid?' mid':'')+'">'+(major?'<b>'+F(v)+'</b>':'')+'<i></i></div>';
   }
   ticks+='<div class="rpad"></div>';
   return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+(dec||0)+'" data-val="'+val+'"'+(fmt?' data-fmt="'+fmt+'"':'')+'>'
@@ -608,19 +611,14 @@ function initRulers(){
     if(r._init)return;r._init=1;
     const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step,val=+r.dataset.val;
     const idx=Math.round((val-min)/step);
-    // centre on the start value — retry until layout settles (sheets build async under
-    // view transitions), but surrender the moment the user touches the tape
-    let tries=0,userTouched=false;
+    /* One loop owns the tape. Until the start value is centred (layout can lag far
+       behind under view transitions / throttled frames), keep re-applying it — a late
+       set sticks once the track is real. The moment the user touches the tape, or
+       centring lands, the loop switches to syncing the readout from scroll position
+       (no scroll events: iOS momentum scrolling and throttled contexts drop them). */
+    let userTouched=false,centered=false,lastIdx=idx;
+    const target=idx*TICKW;
     tr.addEventListener('pointerdown',()=>{userTouched=true;},{once:true});
-    const center=()=>{
-      if(userTouched)return;
-      tr.scrollLeft=idx*TICKW;
-      if(Math.abs(tr.scrollLeft-idx*TICKW)>2&&tries++<14)setTimeout(center,120);
-    };
-    requestAnimationFrame(center);
-    // readout is driven by a rAF watcher, not scroll events — iOS momentum scrolling
-    // (and some embedded browsers) drop programmatic/inertial scroll events
-    let lastIdx=idx;
     const sync=()=>{
       const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
       if(k!==lastIdx){
@@ -631,19 +629,26 @@ function initRulers(){
         haptic();
       }
     };
+    const tick=()=>{
+      if(!centered&&!userTouched){
+        tr.scrollLeft=target;
+        if(Math.abs(tr.scrollLeft-target)<=2)centered=true;
+      }else sync();
+    };
     (function watch(){
       if(!tr.isConnected)return; // ruler left the DOM — stop
-      sync();
+      tick();
       requestAnimationFrame(watch);
     })();
     const iv=setInterval(()=>{ // belt-and-braces: rAF can be throttled in background contexts
       if(!tr.isConnected){clearInterval(iv);return;}
-      sync();
+      tick();
     },250);
     tr.addEventListener('keydown',e=>{
+      const big=Math.max(5,Math.round(1/step)); // up/down = a coarse jump (5 s for pace, 1 lb for weight)
       let d=0;
       if(e.key==='ArrowLeft')d=-1;else if(e.key==='ArrowRight')d=1;
-      else if(e.key==='ArrowDown')d=-Math.round(1/step);else if(e.key==='ArrowUp')d=Math.round(1/step);
+      else if(e.key==='ArrowDown')d=-big;else if(e.key==='ArrowUp')d=big;
       if(d){e.preventDefault();tr.scrollLeft+=d*TICKW;}
     });
   });
@@ -754,7 +759,7 @@ function openLogSheet(i){
       +'<div class="stepper"><button id="shdown" aria-label="0.1 km less">−</button>'
       +'<div class="stepval"><b id="shkm" data-v="'+km0+'">'+fmtKm(km0)+'</b><span>km</span></div>'
       +'<button id="shup" aria-label="0.1 km more">+</button></div></div>'
-      +'<div class="shsec"><label class="f">Pace</label>'+rulerHTML('shpace',240,480,5,Math.max(240,Math.min(480,pace0)),'/km',30,0,'pace')+'</div>'
+      +'<div class="shsec"><label class="f">Pace</label>'+rulerHTML('shpace',180,480,1,Math.max(180,Math.min(480,pace0)),'/km',30,0,'pace',5)+'</div>'
       +'<div class="shsec"><label class="f">Effort</label>'+arcHTML()+'</div>')
     +'<div class="shsec" id="shnotewrap"><button class="btn3" data-action="shnotetoggle">+ Add note</button></div>'
     +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
