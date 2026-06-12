@@ -127,7 +127,7 @@ select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http
 .kpi b{font-size:21px;font-weight:800;display:block;letter-spacing:-.3px;font-family:var(--disp)}
 .kpi span{font-size:11px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 /* flat stat row — for stats inside a card (no nested cards) */
-.statrow{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:12px}
+.statrow{display:grid;grid-template-columns:1fr 1fr;margin-top:12px}
 .statrow div{padding:2px 12px;border-left:1px solid var(--line)}
 .statrow div:first-child{padding-left:0;border-left:none}
 .statrow b{font-size:21px;font-weight:800;display:block;letter-spacing:-.3px;font-family:var(--disp)}
@@ -474,12 +474,6 @@ const NUTW=[
 const WT=[210,208.5,207,205.5,204,202.6,201.1,199.7,198.3,196.8,195.4,194.1,192.7,191.5,190.5,189.6];
 
 const DAYTYPE={E:{label:'Easy fuel',c:'easy'},S:{label:'Session fuel',c:'hard'},L:{label:'Long-run fuel',c:'long'},R:{label:'Rest / low',c:'rest'}};
-/* Typical day-type recipe (spec §6.1) — reference table */
-const RECIPE=[
- ['L','~4,160–6,040','185 g','604–662 g','~165 g'],
- ['S','~2,880–3,430','185 g','477–509 g','~45 g'],
- ['E','~2,210–2,840','185 g','328–362 g','~35 g'],
- ['R','~1,940–2,160','185 g','224–248 g','~33 g']];
 
 /* ---------------- 2. Dates & formatting ---------------- */
 
@@ -834,7 +828,11 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function hintDone(k){ // training wheels retire themselves after first successful use
+  if(!S.hints)S.hints={};
+  if(!S.hints[k]){S.hints[k]=1;save();}
+}
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
@@ -1095,7 +1093,7 @@ let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
 const morningPending=S.lastOpen!==todayISO(); // first open of the day
 if(morningPending){S.lastOpen=todayISO();save();}
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{},wtOpen:false,morning:morningPending};
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,morning:morningPending};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
@@ -1321,7 +1319,7 @@ function wSession(){
       ?'<div class="row" style="margin-top:10px">'+logChips(l)+'</div>'
        +'<button class="btn2" style="width:100%;margin-top:12px" data-action="logsheet" data-i="'+todayIdx+'">Edit log</button>'
       :'<button class="btn" style="width:100%;margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log session</button>'
-       +'<div class="swipe-onboard">or swipe the card right to log as planned</div>')
+       +(S.hints&&S.hints.sess?'':'<div class="swipe-onboard">or swipe the card right to log as planned</div>'))
     +'</section>';
 }
 
@@ -1344,7 +1342,7 @@ function wCatchup(){ // a deck: clear a three-day backlog in three swipes
     +'<div class="loggrid" style="margin-top:12px">'
     +'<button class="btn2" data-action="deckskip" data-i="'+j+'">Skipped</button>'
     +'<button class="btn" data-action="quickdone" data-i="'+j+'">Done as planned</button></div>'
-    +'<p class="mini center" style="margin:8px 0 0">swipe right done · swipe left skipped · tap for details</p>'
+    +(S.hints&&S.hints.deck?'':'<p class="mini center" style="margin:8px 0 0">swipe right done · swipe left skipped · tap for details</p>')
     +'</section>'
     +(list.length>1?'<div class="deckghost"></div>':'')
     +(list.length>2?'<div class="deckghost g2"></div>':'')
@@ -1378,8 +1376,7 @@ function wWeek(){
     +ring(pct,108,'<div><b class="num">'+Math.round(pct*100)+'%</b><span>of target</span></div>')
     +'<div style="flex:1"><div class="big num">'+fmtKm(wActual)+' <span style="font-size:16px;color:var(--sub)">of '+fmtKm(wTarget)+' km</span></div>'
     +'<div class="statrow" style="margin-top:10px"><div><b class="num" id="stk">'+streak()+'</b><span>streak</span></div>'
-    +'<div><b class="num" id="dn">'+doneCount()+'</b><span>done</span></div>'
-    +'<div><b class="num">'+(RACE_IDX-todayIdx)+'</b><span>to race</span></div></div>'
+    +'<div><b class="num" id="dn">'+doneCount()+'</b><span>done</span></div></div>'
     +'</div></div>'
     +'</section>';
 }
@@ -1614,6 +1611,7 @@ function bindNutBars(){
       if(!moved)return; // plain tap: selection click handles it
       window._nutDragTs=Date.now();
       if((prevEdit!=null?prevEdit:plan)===cur){updateNutStrip();return;}
+      hintDone('bar');
       save();rerenderKeepScroll();
       const pe=prevEdit;
       snack(DOW[i%7]+' set to '+fmtKcal(cur)+' kcal — week rebalanced',()=>{
@@ -1858,11 +1856,8 @@ function vTrain(){
     rows+='<tr data-action="selweek" data-w="'+j+'" tabindex="0" style="cursor:pointer'+(j===w?';background:var(--bg)':'')+'">'
       +'<td><b>'+k.n+'</b></td><td>'+k.phase+'</td><td class="num">'+shortDate(j*7).slice(4)+'</td>'
       +'<td class="num right">'+fmtKm(k.target)+'</td><td class="num right">'+(act>0?fmtKm(act):'–')+'</td>'
-      +'<td class="num right">'+fmtKm(k.long)+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td>'
-      +'<td class="mini" style="min-width:170px">'+esc(k.note)+'</td></tr>';
+      +'<td class="num right">'+fmtKm(k.long)+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
-
-  let paceRows='';PACES.forEach(p=>{paceRows+='<tr><td>'+p[0]+'</td><td class="num right">'+p[1]+'</td></tr>';});
 
   return '<div><h1>Training</h1>'
     +'<div class="sub">Goal '+RACE_GOAL+' · peak 85 km (W11)</div>'
@@ -1875,9 +1870,8 @@ function vTrain(){
     +'</section>'
     +(w===15?racePack():'')
     +days
-    +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:640px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th><th>Focus</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:520px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
-    +'<section class="card"><h2>Pace reference</h2><table><tbody>'+paceRows+'</tbody></table></section>'
     +'</div>';
 }
 
@@ -1904,13 +1898,6 @@ function nutTableBody(){
   for(let i=0;i<N_DAYS;i++){
     const e=eff(i);
     if(ui.nutWeek!=='all'&&e.w!==Number(ui.nutWeek))continue;
-    const activeTypes=Object.keys(ui.nutTypes).filter(t=>ui.nutTypes[t]);
-    if(activeTypes.length&&!activeTypes.includes(e.type))continue;
-    if(ui.nutQ){
-      const q=ui.nutQ.toLowerCase();
-      const hay=(shortDate(i)+' '+e.text+' '+DAYTYPE[e.type].label+' w'+(e.w+1)).toLowerCase();
-      if(!hay.includes(q))continue;
-    }
     rows+='<tr id="nrow-'+i+'"'+(i===rawT?' style="background:var(--bg)"':'')+'>'
       +'<td class="num">'+(e.w+1)+'</td><td style="white-space:nowrap">'+shortDate(i)+(e.moved?' <span class="pill tag-moved">moved</span>':'')+'</td>'
       +'<td><span class="dot" style="background:var(--'+DAYTYPE[e.type].c+')"></span><span class="sr">'+DAYTYPE[e.type].label+'</span></td>'
@@ -1937,36 +1924,25 @@ function vNut(){
       +'<div class="k num" aria-hidden="true">'+(Math.round(e.kcal/100)/10)+'k</div>'
       +'</button>';
   }
-  strip+='</div><p class="mini" style="margin:4px 2px 0">Tap a day to inspect · drag a bar up or down and the rest of the week rebalances live.</p>';
+  strip+='</div>'+(S.hints&&S.hints.bar?'':'<p class="mini" style="margin:4px 2px 0">Tap a day to inspect · drag a bar up or down and the rest of the week rebalances live.</p>');
   let chips='<div class="weekchips">';
   for(let j=0;j<16;j++)chips+='<button data-action="selnutweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
   chips+='</div>';
-
-  let recipe='';RECIPE.forEach(r=>{
-    recipe+='<tr><td><span class="chip c-'+DAYTYPE[r[0]].c+'">'+DAYTYPE[r[0]].label+'</span></td>'
-      +'<td class="num right">'+r[1]+'</td><td class="num right">'+r[3]+'</td><td class="num right">'+r[4]+'</td></tr>';});
-
-  const typeFilter=['L','S','E','R'].map(t=>'<button class="chip c-'+(ui.nutTypes[t]?DAYTYPE[t].c:'rest')+'" data-action="nuttype" data-t="'+t+'" aria-pressed="'+(!!ui.nutTypes[t])+'" style="min-height:44px;border:1px solid var(--line)">'+DAYTYPE[t].label+'</button>').join(' ');
 
   let wkOpts='<option value="all">All weeks</option>';
   for(let j=0;j<16;j++)wkOpts+='<option value="'+j+'"'+(ui.nutWeek===String(j)?' selected':'')+'>Week '+(j+1)+'</option>';
 
   return '<div><h1>Nutrition</h1>'
     +'<div class="sub">Carb-periodised cut · 210 → ~189 lb by race day</div>'
-    +'<div class="banner">Protein first: <b>185 g every day</b>. In-run race fuel (60–90 g carbs/hr) sits on top of these targets.</div>'
     +nutDayCard(i)
+    +'<p class="mini" style="margin:8px 2px 0">Protein first, 185 g every day · in-run race fuel (60–90 g carbs/hr) sits on top.</p>'
     +'<div style="margin-top:14px">'+chips+'</div>'+strip
     +'<section class="card"><h2>Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
     +'<p class="mini" style="margin:8px 2px 0">Spikes = long-run fuelling · troughs = rest days. The curve drifts down as weight falls.</p></section>'
-    +'<section class="card"><h2>Typical targets by day type</h2>'
-    +'<div class="scroll-x"><table><thead><tr><th>Day type</th><th class="right">kcal</th><th class="right">Carbs</th><th class="right">Fat</th></tr></thead><tbody>'+recipe+'</tbody></table></div>'
-    +'<p class="mini" style="margin:8px 2px 0">Protein is 185 g for every type. When you move a day, its fuelling travels with it.</p></section>'
     +'<section class="card"><div class="spread"><h2>Full plan · all 112 days</h2><button class="btn3" data-action="jumptoday">Jump to today</button></div>'
-    +'<div class="loggrid" style="margin-top:4px"><div><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
-    +'<div><input type="search" id="nutq" aria-label="Search days" placeholder="Search days…" value="'+esc(ui.nutQ)+'"></div></div>'
-    +'<div class="row" style="margin-top:8px">'+typeFilter+'</div>'
+    +'<div style="margin-top:4px"><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
     +'<div class="scroll-x" style="margin-top:6px"><table style="min-width:580px"><thead><tr><th>W</th><th>Day</th><th><span class="sr">Day type</span></th><th class="right">kcal</th><th class="right">Prot</th><th class="right">Carb</th><th class="right">Fat</th><th class="right">Burn</th><th class="right">Deficit</th><th class="right">Plan lb</th></tr></thead><tbody id="nutbody">'+nutTableBody()+'</tbody></table></div>'
-    +'<p class="mini" style="margin:8px 2px 0">Protein is fixed at 185 g on every row. * = day edited or rebalanced this week.</p></section>'
+    +'<p class="mini" style="margin:8px 2px 0">Protein is fixed at 185 g on every row · moved days carry their fuelling with them · * = edited or rebalanced.</p></section>'
     +'</div>';
 }
 
@@ -2004,8 +1980,6 @@ function vWeight(){
     +'<div class="footlinks"><button class="btn3" data-action="export">Back up data</button>'
     +'<button class="btn3" data-action="importpick">Restore backup</button>'
     +'<input type="file" id="importfile" accept="application/json" style="display:none"></div>'
-    +'<div class="footlinks" style="margin-top:0"><button class="btn3" data-action="exportcsv">Export CSV</button>'
-    +'<button class="btn3" data-action="pasteingest">Paste from Shortcut</button></div>'
     +'<p class="mini center" style="margin-top:6px">All logs live on this device'+(S.lastBackup?' · last backup '+isoShort(S.lastBackup):' · never backed up')+'.</p>'
     +'</div>';
 }
@@ -2131,13 +2105,13 @@ function deckSkip(i){
 }
 document.addEventListener('swiperight',ev=>{
   const c=ev.target.closest('[data-swipe]');
-  if(c&&(c.dataset.swipe==='sess'||c.dataset.swipe==='deck'))quickLogDone(+c.dataset.i);
+  if(c&&(c.dataset.swipe==='sess'||c.dataset.swipe==='deck')){hintDone(c.dataset.swipe);quickLogDone(+c.dataset.i);}
 });
 document.addEventListener('swipeleft',ev=>{
   const c=ev.target.closest('[data-swipe]');
   if(!c)return;
-  if(c.dataset.swipe==='deck')deckSkip(+c.dataset.i);       // deck: left = skipped
-  else if(c.dataset.swipe==='sess')openLogSheet(+c.dataset.i); // session card: left = options
+  if(c.dataset.swipe==='deck'){hintDone('deck');deckSkip(+c.dataset.i);}       // deck: left = skipped
+  else if(c.dataset.swipe==='sess'){hintDone('sess');openLogSheet(+c.dataset.i);} // session card: left = options
 });
 
 document.addEventListener('click',ev=>{
@@ -2282,9 +2256,8 @@ document.addEventListener('click',ev=>{
     ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();
   }
   else if(a==='selnutweek'){const w=Number(el.dataset.w);ui.nutDay=w*7+Math.min(ui.nutDay%7,6);rerenderKeepScroll();}
-  else if(a==='nuttype'){const t=el.dataset.t;ui.nutTypes[t]=!ui.nutTypes[t];rerenderKeepScroll();}
   else if(a==='jumptoday'){
-    ui.nutWeek='all';ui.nutTypes={};ui.nutQ='';ui.nutDay=todayIdx;
+    ui.nutWeek='all';ui.nutDay=todayIdx;
     render();
     const r=document.getElementById('nrow-'+todayIdx);
     if(r){
@@ -2418,20 +2391,11 @@ function buildCSV(){
   return lines.join('\n');
 }
 
-let nutqTimer=null;
 document.addEventListener('input',ev=>{
   const el=ev.target;
   if(el.dataset&&el.dataset.field&&el.dataset.sid){
     clearTimeout(typeTimer);
     typeTimer=setTimeout(()=>{commitField(el);fieldDirty=true;},350); // debounced save-as-you-type; render still waits for blur
-  }
-  if(ev.target.id==='nutq'){
-    ui.nutQ=ev.target.value;
-    clearTimeout(nutqTimer);
-    nutqTimer=setTimeout(()=>{
-      const b=document.getElementById('nutbody');
-      if(b)b.innerHTML=nutTableBody();
-    },120);
   }
 });
 
@@ -2472,6 +2436,7 @@ document.addEventListener('longpress',ev=>{
   }else if(t==='wt'){
     openSheet('<h2 style="margin:0">Weight</h2>'
       +qaRow('wtopen',null,'Log weight')+qaRow('export',null,'Back up data')
+      +qaRow('exportcsv',null,'Export CSV')+qaRow('pasteingest',null,'Paste from Shortcut')
       +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
   }else if(t==='week'){
     const w=+qa.dataset.w;
