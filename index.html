@@ -235,7 +235,7 @@ svg{display:block;width:100%;height:auto}
 .rtick i{width:2px;height:16px;border-radius:2px;background:var(--bord)}
 .rtick.major i{height:28px;background:var(--sub)}
 .rtick b{font-size:10px;color:var(--sub);font-weight:700;margin-bottom:2px;font-variant-numeric:tabular-nums}
-.rpad{flex:0 0 50%}
+.rpad{flex:0 0 calc(50% - 6px)} /* half a tick: snap points land on exact TICKW multiples */
 .rline{position:absolute;left:50%;bottom:0;width:2.5px;height:44px;background:var(--accent);border-radius:2px;transform:translateX(-50%);pointer-events:none}
 .rkbd{position:absolute;right:0;top:6px;color:var(--sub);font-size:12px;font-weight:700;padding:6px 8px;min-height:36px}
 /* one-thumb log sheet */
@@ -613,21 +613,40 @@ function rulerHTML(id,min,max,step,val,unit,majorEvery,dec,fmt){
 function initRulers(){
   document.querySelectorAll('.ruler').forEach(r=>{
     if(r._init)return;r._init=1;
-    const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step,dec=+r.dataset.dec,val=+r.dataset.val;
+    const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step,val=+r.dataset.val;
     const idx=Math.round((val-min)/step);
-    requestAnimationFrame(()=>{tr.scrollLeft=idx*TICKW;});
-    let raf=null,lastIdx=idx;
-    tr.addEventListener('scroll',()=>{
-      if(raf)return;
-      raf=requestAnimationFrame(()=>{
-        raf=null;
-        const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
+    // centre on the start value — retry until layout settles (sheets build async under
+    // view transitions), but surrender the moment the user touches the tape
+    let tries=0,userTouched=false;
+    tr.addEventListener('pointerdown',()=>{userTouched=true;},{once:true});
+    const center=()=>{
+      if(userTouched)return;
+      tr.scrollLeft=idx*TICKW;
+      if(Math.abs(tr.scrollLeft-idx*TICKW)>2&&tries++<14)setTimeout(center,120);
+    };
+    requestAnimationFrame(center);
+    // readout is driven by a rAF watcher, not scroll events — iOS momentum scrolling
+    // (and some embedded browsers) drop programmatic/inertial scroll events
+    let lastIdx=idx;
+    const sync=()=>{
+      const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
+      if(k!==lastIdx){
+        lastIdx=k;
         const v=min+k*step;
         r.querySelector('.rv').textContent=rulerFmt(r,v);
         tr.setAttribute('aria-valuenow',v);
-        if(k!==lastIdx){lastIdx=k;haptic();}
-      });
-    });
+        haptic();
+      }
+    };
+    (function watch(){
+      if(!tr.isConnected)return; // ruler left the DOM — stop
+      sync();
+      requestAnimationFrame(watch);
+    })();
+    const iv=setInterval(()=>{ // belt-and-braces: rAF can be throttled in background contexts
+      if(!tr.isConnected){clearInterval(iv);return;}
+      sync();
+    },250);
     tr.addEventListener('keydown',e=>{
       let d=0;
       if(e.key==='ArrowLeft')d=-1;else if(e.key==='ArrowRight')d=1;
@@ -748,19 +767,23 @@ function openLogSheet(i){
     +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
     +'<button class="sheetrow" data-action="movestart" data-i="'+i+'" style="justify-content:center;color:var(--txt2);font-weight:700;margin-top:8px">Move this day instead</button>'
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>',
-    document.querySelector('[data-swipe][data-i="'+i+'"]')||document.getElementById('day-'+i));
-  initRulers();
-  initArc(l.rpe||null,ghosts);
-  // stepper: tap = 0.1, hold = repeat
-  const kmEl=document.getElementById('shkm');
-  const step=d=>{const v=Math.max(0,Math.round(((+kmEl.dataset.v)+d*0.1)*10)/10);kmEl.dataset.v=v;kmEl.textContent=fmtKm(v);haptic();};
-  ['shdown','shup'].forEach((bid,ix)=>{
-    const b=document.getElementById(bid);if(!b)return;
-    const d=ix?1:-1;let hold=null,rep=null;
-    b.addEventListener('pointerdown',e=>{e.preventDefault();step(d);
-      hold=setTimeout(()=>{rep=setInterval(()=>step(d),90);},400);});
-    ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{clearTimeout(hold);clearInterval(rep);}));
-  });
+    document.querySelector('[data-swipe][data-i="'+i+'"]')||document.getElementById('day-'+i),
+    ()=>{ // wiring runs only once the sheet DOM actually exists (VT builds async)
+      initRulers();
+      initArc(l.rpe||null,ghosts);
+      // stepper: tap = 0.1, hold = repeat
+      const kmEl=document.getElementById('shkm');
+      if(kmEl){
+        const step=d=>{const v=Math.max(0,Math.round(((+kmEl.dataset.v)+d*0.1)*10)/10);kmEl.dataset.v=v;kmEl.textContent=fmtKm(v);haptic();};
+        ['shdown','shup'].forEach((bid,ix)=>{
+          const b=document.getElementById(bid);if(!b)return;
+          const d=ix?1:-1;let hold=null,rep=null;
+          b.addEventListener('pointerdown',e=>{e.preventDefault();step(d);
+            hold=setTimeout(()=>{rep=setInterval(()=>step(d),90);},400);});
+          ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{clearTimeout(hold);clearInterval(rep);}));
+        });
+      }
+    });
 }
 
 function quickLogDone(i){ // swipe right: done at plan distance
@@ -2064,7 +2087,7 @@ function openMoveSheet(i){
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
 }
 let sheetTimer=null,sheetOpener=null;
-function openSheet(html,morphEl){
+function openSheet(html,morphEl,onReady){
   clearTimeout(sheetTimer);
   sheetOpener=document.activeElement;
   const s=document.getElementById('sheet');
@@ -2073,6 +2096,7 @@ function openSheet(html,morphEl){
       +'<div class="panel" role="dialog" aria-modal="true" aria-label="Move session" tabindex="-1">'+html+'</div>';
     s.hidden=false;
     document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
+    if(onReady)onReady(); // sheet-content wiring MUST wait for build — in the VT path build runs async
   };
   if(morphEl&&document.startViewTransition&&!REDUCE.matches){ // the card morphs into its sheet (Safari 18+)
     morphEl.style.viewTransitionName='sheetmorph';
