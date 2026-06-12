@@ -137,7 +137,9 @@ Every gesture keeps a tap path, every control keeps its aria state, and
 ## Strava auto-import (v2, Night 1)
 
 Connect once from the **Training tab** and finished runs land as proposed logs —
-nothing is written without a confirm tap, and manually logged days are never touched.
+nothing is written without a confirm tap. Strava is the record for distance and pace:
+accepting a proposal overwrites those (and the day's status) even on manually logged
+days, while RPE, notes, and fuelling entries are always kept. Every import is undoable.
 
 - **OAuth**: the in-app Connect button opens Strava's authorize page
   (`activity:read_all`); the redirect lands back on the app with `?code=`, which a

@@ -993,7 +993,10 @@ function stravaFetchActivities(token,after,page,acc){
     });
 }
 
-/* runs → one proposal per plan day; a day holding any non-Strava entry is off-limits */
+/* runs → one proposal per plan day. Strava is the record for distance and
+   pace (Luke's call, 12 Jun): manually logged days are proposed too, and
+   accepting overwrites km/pace/status while keeping RPE/notes/fuelling.
+   Nothing lands without the confirm tap, and every import is undoable. */
 function stravaProposals(acts){
   const byDay={};
   (acts||[]).forEach(a=>{
@@ -1013,8 +1016,7 @@ function stravaProposals(acts){
     const sk=d.secs/d.km;
     d.pace=(sk>=120&&sk<=1200)?fmtPace(Math.round(sk)):null;
     const l=sessLog(eff(d.i).id);
-    if(l&&(l.source||'manual')!=='strava'&&l.status)continue;                       // a logged manual day always wins; a status-less draft doesn't block
-    if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already imported, unchanged
+    if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already logged identically — nothing to change
     out.push(d);
   }
   return out.sort((a,b)=>a.i-b.i);
@@ -1063,25 +1065,25 @@ function stravaDayOpts(p){
   const w=Math.floor(p.i/7);let h='';
   for(let d=0;d<7;d++){
     const j=w*7+d,l=sessLog(eff(j).id);
-    const blocked=!!(l&&(l.source||'manual')!=='strava'&&l.status);
-    h+='<option value="'+j+'"'+(j===p.i?' selected':'')+(blocked?' disabled':'')+'>'+shortDate(j)+'</option>';
+    h+='<option value="'+j+'"'+(j===p.i?' selected':'')+'>'+shortDate(j)+(l&&l.status?' · logged':'')+'</option>';
   }
   return h;
 }
 function stravaSheetContent(){
   let rows='';
   stravaPend.forEach((p,idx)=>{
-    const e=eff(p.i);
+    const e=eff(p.i),tl=sessLog(e.id)||{};
+    const repl=tl.status?(tl.source==='strava'?' · replaces earlier import':' · replaces manual log'):'';
     rows+='<div class="sheetrow" style="cursor:default;flex-wrap:wrap;gap:8px">'
       +'<div style="flex:1 1 100%"><b>'+fmtKm(p.km)+' km'+(p.pace?' · '+esc(p.pace)+' /km':'')+'</b>'
       +(p.n>1?' <span style="color:var(--sub);font-size:12px">('+p.n+' runs)</span>':'')
-      +'<div style="color:var(--sub);font-size:13px;margin-top:2px">→ '+shortDate(p.i)+' · '+esc(headline(e))+((sessLog(e.id)||{}).source==='strava'?' · replaces earlier import':'')+'</div></div>'
+      +'<div style="color:var(--sub);font-size:13px;margin-top:2px">→ '+shortDate(p.i)+' · '+esc(headline(e))+repl+'</div></div>'
       +'<select data-action="stravaday" data-idx="'+idx+'" aria-label="Import to a different day" style="flex:1;min-width:130px">'+stravaDayOpts(p)+'</select>'
       +'<button class="btn2" data-action="stravarow" data-idx="'+idx+'" style="flex:none">Accept</button>'
       +'</div>';
   });
   return '<h2 style="margin:0">Import from Strava</h2>'
-    +'<p class="note" style="margin:6px 0 2px">'+stravaPend.length+' run'+(stravaPend.length===1?'':'s')+' matched to plan days. Days with manual logs are never touched.</p>'
+    +'<p class="note" style="margin:6px 0 2px">'+stravaPend.length+' run'+(stravaPend.length===1?'':'s')+' matched to plan days. Accepting makes Strava the record for distance and pace — your RPE and notes are kept.</p>'
     +rows
     +'<button class="btn" style="width:100%;margin-top:14px" data-action="stravaall">Accept all</button>'
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Not now</button>';
@@ -1114,7 +1116,7 @@ function stravaApply(list){
 function stravaCard(){
   const st=stravaState();
   if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2><span class="chip neutral">Not connected</span></div>'
-    +'<p class="note" style="margin:8px 0 0">Connect once and finished runs land here ready to confirm. Manual logs always win, and you can disconnect any time.</p>'
+    +'<p class="note" style="margin:8px 0 0">Connect once and finished runs land here ready to confirm. Strava is the record for distance and pace; RPE and notes stay yours, and you can disconnect any time.</p>'
     +'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravaconnect">Connect Strava</button></section>';
   const who=st.athlete?((st.athlete.firstname||'')+' '+(st.athlete.lastname||'')).trim():'';
   return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2>'

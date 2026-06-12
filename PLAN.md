@@ -8,7 +8,11 @@ https://mullenlearning.github.io/berlin26/ (see README + memory).
 ## Standing constraints
 
 - All writes flow through `logSession()` / `logWeight()` / `mergePayload()` with a
-  `source` tag. **Manual always wins; nothing imported lands silently** (confirm step).
+  `source` tag. **Nothing imported lands silently** (confirm step, always undoable).
+- **Strava is primary for run distance/pace** (Luke's call, 12 Jun evening — supersedes
+  the original "manual always wins"): accepting an import overwrites km/pace/status on
+  any day, including manually logged ones; manual-only fields (RPE, notes, fuelling)
+  are always kept.
 - Manual entry remains a full fallback when any integration is down.
 - The repo is **public**: secrets never in the repo. Client secret lives in a Cloudflare
   Worker env var; tokens live in `localStorage` only and are **excluded from the backup
