@@ -106,10 +106,19 @@ into it). RPE is dead — the easy-drift warning is dormant until the readiness 
 Oura API v2 (`api.ouraring.com/v2/usercollection/...`) with a **personal access token**
 (no OAuth needed): daily sleep, readiness, HRV, resting HR, temperature. Token stored
 like Strava's (own localStorage key, excluded from backups). Slots into the planned
-`S.health` schema + readiness score (backlog #3). To check first: whether the API sends
-CORS headers for browser calls — if not, add a `/oura` proxy route to the existing
-Worker (same pattern as `/token`). Apple Health Shortcut (below) then mainly covers
-weight; may shrink in scope.
+`S.health` schema + readiness score (backlog #3). **CORS checked live 12 Jun: blocked**
+(no ACAO for our origin on preflight or GET) → add a `/oura/*` pass-through route to
+the existing Worker; token stays client-side, passes via header, Worker is a dumb pipe
+(one dashboard re-paste for Luke). Oura data is ambient measurement, not a training
+log — it lands in `S.health` without a confirm sheet (the confirm constraint covers
+sessions/weights). **Feature menu sent 12 Jun late, awaiting Luke's picks:**
+A morning readiness card (folds into check-in), B plan-aware training verdict with
+one-tap Move (replaces dead RPE-drift warning), C sleep line + trend, D HRV/RHR block
+trends chart, E illness early-warning banner (HRV↓+RHR↑+temp↑ vs 7-day baseline),
+F bedtime nudge in tomorrow preview, G Oura burn display chip, H extras (SpO2, stress,
+VO2max). Recommended core: A+B+D+E with C folded into A. First connect should backfill
+daily endpoints from block start (range queries, one call per endpoint). Apple Health
+Shortcut (below) then mainly covers weight; may shrink in scope.
 
 ## Night 2 — Apple Health (priority 2)
 
