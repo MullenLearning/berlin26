@@ -220,6 +220,7 @@ svg{display:block;width:100%;height:auto}
 /* swipeable cards */
 [data-swipe]{touch-action:pan-y;position:relative;will-change:transform;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 [data-swipe] input,[data-swipe] select{-webkit-user-select:auto;user-select:auto}
+.ndot{width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:transparent}
 .swipe-snapback{transition:transform var(--dur-snap) var(--snap)}
 .swipe-hint{position:absolute;top:12px;right:12px;z-index:5;background:var(--raised);border:1px solid var(--line);
   border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;white-space:nowrap}
@@ -1917,7 +1918,7 @@ function wWeek(){
 }
 
 function wFuel(){
-  const e=eff(todayIdx),m=macroPct(e);
+  const e=eff(todayIdx);
   const hr=new Date().getHours();
   let tomorrow='';
   if(hr>=20&&todayIdx<RACE_IDX){ // eating decisions for the morning happen the night before
@@ -1933,23 +1934,15 @@ function wFuel(){
       }
       if(bed&&(te.zone==='Long'||te.zone==='Marathon'))bed=' Big one tomorrow — '+bed.slice(1,2).toLowerCase()+bed.slice(2);
     }
-    tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b> — '+fmtKcal(te.kcal)+' kcal · '+te.carbs+'g carbs'
+    tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b> — '+fmtKcal(te.kcal)+' kcal'
       +(te.type==='S'||te.type==='L'?'. Big breakfast.':te.type==='R'?'. Rest day, keep it light.':'')+bed+'</p>';
   }
-  const mbar=(lbl,g,pct,clr)=>'<div class="mbar"><span class="ml">'+lbl+'</span>'
-    +'<span class="mt"><i style="width:'+pct+'%;background:'+clr+'"></i></span>'
-    +'<span class="mg num">'+g+'g</span></div>';
   return '<section class="card">'
     +'<div class="spread"><h2>Fuel today</h2><div class="row">'+typeChip(e.type)
     +'<button class="btn3" data-action="nutadjust" data-i="'+todayIdx+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
     +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal · −'+fmtKcal(e.deficit)+' deficit</span></div>'
     +(nutAdjChip(e)?'<div class="row" style="margin-top:6px">'+nutAdjChip(e)+'</div>':'')
-    +'<div style="margin-top:6px">'
-    +mbar('Carbs',e.carbs,m.c,'var(--accent)')
-    +mbar('Protein',e.p,m.p,'var(--txt2)')
-    +mbar('Fat',e.fat,m.f,'var(--rest)')
-    +'</div>'
-    +'<p class="mini" style="margin:12px 2px 0">Protein first, 185 g every day · burn ≈'+fmtKcal(e.burn)+' kcal</p>'
+    +'<p class="mini" style="margin:12px 2px 0">plan burn ≈'+fmtKcal(e.burn)+' kcal · macros live in the full plan</p>'
     +tomorrow
     +'</section>';
 }
@@ -2601,22 +2594,101 @@ function vTrain(){
     +'</div>';
 }
 
+/* Macros live in the full-plan sheet only — Luke tracks them elsewhere.
+   The day card is an energy card: plan target, plan deficit, and (for today
+   and settled days) the actual burn + deficit from the dayBurn blend. */
 function nutDayCard(i){
-  const e=eff(i),m=macroPct(e);
+  const e=eff(i);
+  let actual='';
+  if(i<=clamp(rawT,0,RACE_IDX)){
+    const b=dayBurn(i);
+    if(b.burned!=null){
+      const d=b.burned-e.kcal,onp=Math.abs(d-e.deficit)<=200;
+      actual='<div class="row" style="margin-top:6px"><span class="chip neutral">burned '+fmtKcal(b.burned)+' actual</span>'
+        +'<span class="chip '+(onp?'c-easy':'c-long')+'">'+(d>=0?'−':'+')+fmtKcal(Math.abs(d))+' actual</span></div>';
+    }
+  }
   return '<section class="card">'
     +'<div class="spread"><div class="row"><b>'+longDate(i)+'</b>'+(i===rawT?'<span class="chip c-blue">Today</span>':'')+'</div>'
     +'<div class="row">'+typeChip(e.type)+'<button class="btn3" data-action="nutadjust" data-i="'+i+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
     +'<div class="row" style="margin-top:4px">'+movedChip(e)+nutAdjChip(e)+'</div>'
-    +'<div class="row" style="align-items:baseline;gap:6px;margin-top:2px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal</span></div>'
-    +'<div class="macros">'
-    +'<div class="macro"><span>Protein</span><b class="num">'+e.p+'g</b><span class="mini">'+m.p+'%</span></div>'
-    +'<div class="macro"><span>Carbs</span><b class="num">'+e.carbs+'g</b><span class="mini">'+m.c+'%</span></div>'
-    +'<div class="macro"><span>Fat</span><b class="num">'+e.fat+'g</b><span class="mini">'+m.f+'%</span></div>'
-    +'</div>'
-    +'<div class="row" style="margin-top:12px"><span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
-    +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal deficit</span></div>'
+    +'<div class="row" style="align-items:baseline;gap:6px;margin-top:2px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal target</span></div>'
+    +'<div class="row" style="margin-top:10px"><span class="chip neutral">plan burn '+fmtKcal(e.burn)+'</span>'
+    +'<span class="chip neutral">plan −'+fmtKcal(e.deficit)+'</span></div>'
+    +actual
     +'<p class="note" style="margin:10px 0 0">'+esc(headline(e))+(e.zone!=='Rest'?' · fuel for the work done.':'')+'</p>'
     +'</section>';
+}
+
+/* "The cut": today, this week, and the whole block — actual deficits banked
+   vs the plan, cross-checked against what the scale trend says. */
+function cutCard(){
+  const t=clamp(rawT,0,RACE_IDX),w0=Math.floor(t/7)*7;
+  let total=0,planCounted=0,weekAct=0,weekPlan=0,days=0;
+  for(let i=0;i<=t;i++){
+    const e=eff(i),b=dayBurn(i);
+    if(i>=w0)weekPlan+=e.deficit;
+    if(b.burned!=null){
+      const d=b.burned-e.kcal;
+      total+=d;planCounted+=e.deficit;days++;
+      if(i>=w0)weekAct+=d;
+    }
+  }
+  if(!days)
+    return '<section class="card"><div class="spread"><h2>The cut</h2><span class="chip neutral">no data yet</span></div>'
+      +'<p class="note" style="margin:8px 0 0">Connect Oura on the Training tab and the banked deficit starts counting here.</p></section>';
+  const tb=dayBurn(t),todayDef=tb.burned!=null?tb.burned-eff(t).kcal:null;
+  const lb=total/3500;
+  const first=S.weights.length?S.weights[0]:null,twn=trendWeight(),lwn=latestWeight();
+  const cur=twn?twn.lb:(lwn?lwn.lb:null);
+  const scale=(first&&cur!=null)?first.lb-cur:null;
+  const ratio=planCounted>0?total/planCounted:null;
+  const chip=ratio==null?'<span class="chip neutral">counting</span>'
+    :ratio>=1.1?'<span class="chip c-easy">ahead of the cut</span>'
+    :ratio>=0.9?'<span class="chip c-easy">on the cut</span>'
+    :ratio>=0.6?'<span class="chip c-long">behind the cut</span>'
+    :'<span class="chip c-hard">well behind</span>';
+  return '<section class="card"><div class="spread"><h2>The cut</h2>'+chip+'</div>'
+    +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+(total>=0?'−':'+')+fmtKcal(Math.abs(total))+'</span>'
+    +'<span class="sub" style="font-weight:600">kcal banked ≈ '+(lb>=0?'':'+')+fmtLb(Math.abs(lb))+' lb</span></div>'
+    +'<div class="row" style="gap:18px;margin-top:8px">'
+    +(todayDef!=null?'<div><span class="mini">Today</span><div class="big num">'+(todayDef>=0?'−':'+')+fmtKcal(Math.abs(todayDef))+'</div></div>':'')
+    +'<div><span class="mini">This week</span><div class="big num">'+(weekAct>=0?'−':'+')+fmtKcal(Math.abs(weekAct))+'</div></div>'
+    +(scale!=null?'<div><span class="mini">Scale says</span><div class="big num">'+(scale>=0?'−':'+')+fmtLb(Math.abs(scale))+' lb</div></div>':'')
+    +'</div>'
+    +'<p class="mini" style="margin:10px 2px 0">Since 8 Jun, '+days+' day'+(days===1?'':'s')+' counted · eaten assumed at plan · burns blend Oura + formula.</p>'
+    +'</section>';
+}
+
+/* cumulative deficit: the plan's line for the whole block, the actual line as it grows */
+function deficitChart(){
+  const W=360,H=150,L=34,Rm=4,T=10,B=20,ih=H-T-B,iw=W-L-Rm;
+  const t=clamp(rawT,0,RACE_IDX);
+  let planTot=0;const plan=[];
+  for(let i=0;i<=RACE_IDX;i++){planTot+=eff(i).deficit;plan.push(planTot);}
+  let actTot=0;const act=[];
+  for(let i=0;i<=t;i++){const b=dayBurn(i);if(b.burned!=null)actTot+=b.burned-eff(i).kcal;act.push(actTot);}
+  const max=Math.max(planTot,actTot,3500)*1.05;
+  const X=i=>L+iw*i/RACE_IDX,Y=v=>T+ih*(1-Math.max(v,0)/max);
+  let g='';
+  for(let v=17500;v<max;v+=17500){ // gridlines every 5 lb of deficit
+    g+='<line class="gridline" x1="'+L+'" y1="'+Y(v)+'" x2="'+(W-Rm)+'" y2="'+Y(v)+'"/>'
+      +'<text class="axis" x="'+(L-4)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+Math.round(v/3500)+'lb</text>';
+  }
+  g+='<path d="'+plan.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('')+'" fill="none" stroke="var(--sub)" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>';
+  if(act.length>1)g+='<path d="'+act.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('')+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+  [0,4,8,12].forEach(w=>{g+='<text class="axis" x="'+X(w*7+3.5)+'" y="'+(H-7)+'" text-anchor="middle">W'+(w+1)+'</text>';});
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Cumulative deficit, actual versus plan">'+g+'</svg>';
+}
+
+function openPlanSheet(){
+  let wkOpts='<option value="all">All weeks</option>';
+  for(let j=0;j<16;j++)wkOpts+='<option value="'+j+'"'+(ui.nutWeek===String(j)?' selected':'')+'>Week '+(j+1)+'</option>';
+  openSheet('<div class="spread"><h2 style="margin:0">Full plan · all 112 days</h2><button class="btn3" data-action="jumptoday">Jump to today</button></div>'
+    +'<div style="margin-top:8px"><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
+    +'<div class="scroll-x" style="margin-top:6px"><table style="min-width:580px"><thead><tr><th>W</th><th>Day</th><th><span class="sr">Day type</span></th><th class="right">kcal</th><th class="right">Prot</th><th class="right">Carb</th><th class="right">Fat</th><th class="right">Burn</th><th class="right">Deficit</th><th class="right">Plan lb</th></tr></thead><tbody id="nutbody">'+nutTableBody()+'</tbody></table></div>'
+    +'<p class="mini" style="margin:8px 2px 0">Protein fixed at 185 g · moved days carry their fuelling · * = edited or rebalanced.</p>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>');
 }
 
 function nutTableBody(){
@@ -2637,38 +2709,49 @@ function nutTableBody(){
 function vNut(){
   const i=clamp(ui.nutDay,0,RACE_IDX);
   const w=Math.floor(i/7);
+  const t=clamp(rawT,0,RACE_IDX);
   let strip='<div class="daystrip" id="nutstrip" data-w="'+w+'">';
   const maxK=Math.max.apply(null,Array.from({length:7},(_,d)=>eff(w*7+d).kcal));
+  let weekAct=0,weekPlan=0,weekDays=0;
   for(let d=0;d<7;d++){
     const j=w*7+d,e=eff(j);
-    const editable=j>=clamp(rawT,0,RACE_IDX)&&j!==RACE_IDX&&rawT<=RACE_IDX;
+    const editable=j>=t&&j!==RACE_IDX&&rawT<=RACE_IDX;
     const h=Math.round(10+42*e.kcal/maxK);
+    weekPlan+=e.deficit;
+    let tick='<div class="ndot" aria-hidden="true"></div>';
+    if(j<=t&&j<=rawT){ // settled (and today's running) deficit tick
+      const b=dayBurn(j);
+      if(b.burned!=null){
+        const d2=b.burned-e.kcal;
+        weekAct+=d2;weekDays++;
+        tick='<div class="ndot" aria-hidden="true" style="background:var('+(Math.abs(d2-e.deficit)<=200?'--easy':'--long')+')"></div>';
+      }
+    }
     strip+='<button data-action="selnutday" data-i="'+j+'" class="'+(j===i?'sel':'')+'"'+(j===i?' aria-current="date"':'')
-      +' aria-label="'+DOW[d]+' — '+fmtKcal(e.kcal)+' kcal, '+e.carbs+' g carbs, '+DAYTYPE[e.type].label+(editable?'. Drag the bar to adjust':'')+'">'
+      +' aria-label="'+DOW[d]+' — '+fmtKcal(e.kcal)+' kcal, '+DAYTYPE[e.type].label+(editable?'. Drag the bar to adjust':'')+'">'
       +'<div class="d" aria-hidden="true">'+DOW[d]+'</div>'
       +'<div class="nbar'+(editable?' ed':'')+'" data-bar="'+j+'" aria-hidden="true"><span class="ndelta"></span><i style="height:'+h+'px;background:var(--'+DAYTYPE[e.type].c+')"></i></div>'
       +'<div class="k num" aria-hidden="true">'+(Math.round(e.kcal/100)/10)+'k</div>'
+      +tick
       +'</button>';
   }
   strip+='</div>'+(S.hints&&S.hints.bar?'':'<p class="mini" style="margin:4px 2px 0">Tap a day to inspect · drag a bar up or down and the rest of the week rebalances live.</p>');
+  const rollup=weekDays?'<p class="mini" style="margin:6px 2px 0">Week '+(w+1)+(w===Math.floor(t/7)?' so far':'')+': '
+    +(weekAct>=0?'−':'+')+fmtKcal(Math.abs(weekAct))+' of planned −'+fmtKcal(weekPlan)+'.</p>':'';
   let chips='<div class="weekchips">';
   for(let j=0;j<16;j++)chips+='<button data-action="selnutweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
   chips+='</div>';
 
-  let wkOpts='<option value="all">All weeks</option>';
-  for(let j=0;j<16;j++)wkOpts+='<option value="'+j+'"'+(ui.nutWeek===String(j)?' selected':'')+'>Week '+(j+1)+'</option>';
-
   return '<div><h1>Nutrition</h1>'
     +'<div class="sub">Carb-periodised cut · 210 → ~189 lb by race day</div>'
+    +cutCard()
+    +'<div style="margin-top:14px">'+chips+'</div>'+strip+rollup
     +nutDayCard(i)
-    +'<p class="mini" style="margin:8px 2px 0">Protein first, 185 g every day · in-run race fuel (60–90 g carbs/hr) sits on top.</p>'
-    +'<div style="margin-top:14px">'+chips+'</div>'+strip
     +'<section class="card"><h2>Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
     +'<p class="mini" style="margin:8px 2px 0">Spikes = long-run fuelling · troughs = rest days. The curve drifts down as weight falls.</p></section>'
-    +'<section class="card"><div class="spread"><h2>Full plan · all 112 days</h2><button class="btn3" data-action="jumptoday">Jump to today</button></div>'
-    +'<div style="margin-top:4px"><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
-    +'<div class="scroll-x" style="margin-top:6px"><table style="min-width:580px"><thead><tr><th>W</th><th>Day</th><th><span class="sr">Day type</span></th><th class="right">kcal</th><th class="right">Prot</th><th class="right">Carb</th><th class="right">Fat</th><th class="right">Burn</th><th class="right">Deficit</th><th class="right">Plan lb</th></tr></thead><tbody id="nutbody">'+nutTableBody()+'</tbody></table></div>'
-    +'<p class="mini" style="margin:8px 2px 0">Protein is fixed at 185 g on every row · moved days carry their fuelling with them · * = edited or rebalanced.</p></section>'
+    +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
+    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan · gridlines every 5 lb of deficit.</p></section>'
+    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="planopen" aria-haspopup="dialog">Full plan · all 112 days</button>'
     +'</div>';
 }
 
@@ -2994,9 +3077,12 @@ document.addEventListener('click',ev=>{
     ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();
   }
   else if(a==='selnutweek'){const w=Number(el.dataset.w);ui.nutDay=w*7+Math.min(ui.nutDay%7,6);rerenderKeepScroll();}
-  else if(a==='jumptoday'){
+  else if(a==='jumptoday'){ // lives inside the full-plan sheet now
     ui.nutWeek='all';ui.nutDay=todayIdx;
-    render();
+    const sel=document.querySelector('#sheet select[data-action="nutweekfilter"]');
+    if(sel)sel.value='all';
+    const b=document.getElementById('nutbody');
+    if(b)b.innerHTML=nutTableBody();
     const r=document.getElementById('nrow-'+todayIdx);
     if(r){
       const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3004,6 +3090,7 @@ document.addEventListener('click',ev=>{
       r.classList.add('hl');
     }
   }
+  else if(a==='planopen'){openPlanSheet();}
   else if(a==='wtopen'){ui.wtOpen=true;rerenderKeepScroll();}
   else if(a==='wtcancel'){ui.wtOpen=false;rerenderKeepScroll();}
   else if(a==='wtsave'){

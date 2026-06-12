@@ -187,6 +187,17 @@ touches sessions or weights.
 - First sync backfills from a week before the block so baselines exist on day one;
   syncs run on open/resume (throttled) plus Sync now on the Training tab.
 
+## Nutrition tab v2 (12 Jun, late)
+
+The tab turned from plan-display into deficit-tracking, powered by the same burn
+blend as the Energy balance widget: **"The cut"** (today / this week / block-total
+deficits banked, ≈ lb converted at 3,500 kcal, cross-checked against the scale
+trend), per-day deficit ticks under the week strip with a weekly roll-up, an
+actual burn/deficit row on the day card, and a cumulative **Deficit banked** chart
+(actual vs plan). Macros left every surface except the full 112-day table — Luke
+tracks them elsewhere — and that table moved off the tab into a **Full plan**
+sheet (week filter + jump-to-today intact).
+
 ## Phase 2–4 (future data sources)
 
 Phase 1 is manual-only by design. The code is structured for later importers:
