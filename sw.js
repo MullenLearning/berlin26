@@ -19,12 +19,16 @@ self.addEventListener('activate', e => {
 
 /* Navigations: network-first with a short timeout so a flaky connection falls
    back to the cached app instead of hanging on a blank screen. Static assets:
-   cache-first. Only successful responses are ever cached. */
-function networkWithTimeout(req, ms) {
+   cache-first. Only successful responses are ever cached.
+   cache:'no-cache' forces revalidation past the HTTP cache (GitHub Pages sends
+   max-age=600, which otherwise delays app updates by up to 10 minutes) — with
+   an unchanged ETag that's a cheap 304, not a re-download. Fetched by URL
+   because a navigate-mode Request can't be re-issued with extra options. */
+function networkWithTimeout(url, ms) {
   return new Promise((resolve, reject) => {
     const ctl = new AbortController();
     const timer = setTimeout(() => { ctl.abort(); reject(new Error('timeout')); }, ms);
-    fetch(req, { signal: ctl.signal }).then(r => { clearTimeout(timer); resolve(r); }, err => { clearTimeout(timer); reject(err); });
+    fetch(url, { signal: ctl.signal, cache: 'no-cache' }).then(r => { clearTimeout(timer); resolve(r); }, err => { clearTimeout(timer); reject(err); });
   });
 }
 
@@ -32,7 +36,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.mode === 'navigate') {
     e.respondWith(
-      networkWithTimeout(e.request, 2500)
+      networkWithTimeout(e.request.url, 2500)
         .then(r => {
           if (r && r.ok) {
             const copy = r.clone();
