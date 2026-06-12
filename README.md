@@ -12,6 +12,7 @@ move/swap days with fuelling that follows the session.
 | `manifest.webmanifest` | PWA manifest (name, icons, standalone display) |
 | `sw.js` | Service worker — offline caching when hosted over HTTPS |
 | `icon-*.png` | Home-screen icons (regenerate with `python3 make_icons.py`) |
+| `worker/` | Cloudflare Worker for the Strava OAuth token exchange (see `worker/README.md`) |
 
 `index.html` works entirely on its own (you can open it directly in a browser); the other
 files add install/offline polish when hosted.
@@ -133,13 +134,33 @@ one-handed at 6am. Highlights:
 Every gesture keeps a tap path, every control keeps its aria state, and
 `prefers-reduced-motion` swaps springs for fades throughout.
 
+## Strava auto-import (v2, Night 1)
+
+Connect once from the **Training tab** and finished runs land as proposed logs —
+nothing is written without a confirm tap, and manually logged days are never touched.
+
+- **OAuth**: the in-app Connect button opens Strava's authorize page
+  (`activity:read_all`); the redirect lands back on the app with `?code=`, which a
+  small Cloudflare Worker (`worker/`) exchanges for tokens — Strava's `/oauth/token`
+  sends no CORS headers, so the browser can't do this alone. Activity reads are
+  CORS-open and go browser → Strava directly; the Worker never sees them.
+- **Tokens** live in localStorage key `berlin2026.strava` — deliberately *outside* the
+  app state `S`, so backup exports never contain them. Disconnect deletes the key.
+- **Sync** runs on app open and resume (15-min throttle) plus a manual **Sync now**
+  row. Same-day runs merge into one proposal; the confirm sheet offers per-row accept,
+  accept-all, and a "different day" override. Accepted rows flow through `logSession()`
+  with `source:'strava'`, fire the payoff frame, and arrive with an undo snackbar.
+- **Failures stay quiet**: an expired grant shows one reconnect prompt and a Reconnect
+  state on the card; network failures are a mini status line, never an alert.
+
 ## Phase 2–4 (future data sources)
 
 Phase 1 is manual-only by design. The code is structured for later importers:
 all writes flow through `logSession()` / `logWeight()` in `index.html` (§3 of the script),
-each entry carries a `source` tag (`manual` today), and future sources register in
-`DATA_SOURCES`. Planned order per the spec: **Apple Health → Strava → Oura** — each lands
-its data through the same two functions, with manual entry remaining the fallback.
+each entry carries a `source` tag, and sources register in `DATA_SOURCES`
+(`manual`, `strava`, `shortcut` today). Apple Health (via iOS Shortcuts) is next; each
+source lands its data through the same two functions, with manual entry remaining the
+fallback.
 
 **The Phase 2 bridge already exists.** Two zero-backend ingestion paths accept a JSON
 payload and merge it additively (existing entries on the phone always win):

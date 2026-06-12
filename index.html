@@ -831,7 +831,7 @@ function payoff(pre,e){
 /* Phase 2–4 hook: register future importers (Apple Health, Strava, Oura) in
    DATA_SOURCES; all writes flow through logSession()/logWeight() with a
    source tag, so imported data lands beside manual entries without rework. */
-const DATA_SOURCES={manual:{label:'Manual'}};
+const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
 function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
@@ -947,6 +947,184 @@ function swapDays(w,a,b){
   save();
 }
 function resetWeek(w){delete S.order[w];save();}
+
+/* ---------------- 3b. Strava ----------------
+   Tokens live in their own localStorage key — NOT inside S — so backup
+   exports never contain them. The Cloudflare Worker does only what the
+   browser can't: /oauth/token sends no CORS headers, so code→token and
+   refresh go through the proxy; activity GETs are CORS-open (verified
+   ACAO:* live, 12 Jun 2026) and stay browser-direct. */
+const STRAVA_CLIENT_ID='257604';
+const STRAVA_PROXY=(storageOK&&localStorage.getItem('berlin2026.stravaProxy'))||'https://berlin26-strava.REPLACE-ME.workers.dev';
+const STRAVA_KEY='berlin2026.strava';
+function stravaState(){try{const r=localStorage.getItem(STRAVA_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function stravaSave(st){try{localStorage.setItem(STRAVA_KEY,JSON.stringify(st));}catch(e){}}
+function stravaPatch(p){const st=stravaState();if(st)stravaSave(Object.assign(st,p));}
+function stravaConnected(){return !!stravaState();}
+function fmtSyncTime(iso){const d=new Date(iso);return DOW[(d.getDay()+6)%7]+' '+p2(d.getHours())+':'+p2(d.getMinutes());}
+
+function stravaConnect(){
+  if(STRAVA_PROXY.indexOf('REPLACE-ME')>=0){snack('The Cloudflare Worker isn’t set up yet — see worker/README.md.');return;}
+  location.href='https://www.strava.com/oauth/authorize?client_id='+STRAVA_CLIENT_ID
+    +'&redirect_uri='+encodeURIComponent(location.origin+location.pathname)
+    +'&response_type=code&scope=activity:read_all&approval_prompt=auto';
+}
+
+/* a valid access token, refreshed through the Worker when <5 min remain */
+function stravaToken(){
+  const st=stravaState();
+  if(!st||!st.refresh)return Promise.reject({auth:1});
+  if(st.expiresAt-Date.now()/1000>300)return Promise.resolve(st.access);
+  return fetch(STRAVA_PROXY+'/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:st.refresh})})
+    .then(r=>{if(r.status===400||r.status===401||r.status===403)throw{auth:1};if(!r.ok)throw{net:1};return r.json();})
+    .then(d=>{
+      if(!d.access_token)throw{auth:1};
+      stravaPatch({access:d.access_token,refresh:d.refresh_token||st.refresh,expiresAt:d.expires_at});
+      return d.access_token;
+    });
+}
+
+function stravaFetchActivities(token,after,page,acc){
+  return fetch('https://www.strava.com/api/v3/athlete/activities?after='+after+'&per_page=200&page='+page,{headers:{Authorization:'Bearer '+token}})
+    .then(r=>{if(r.status===401||r.status===403)throw{auth:1};if(!r.ok)throw{net:1};return r.json();})
+    .then(list=>{
+      acc=acc.concat(list||[]);
+      return (list&&list.length===200&&page<5)?stravaFetchActivities(token,after,page+1,acc):acc;
+    });
+}
+
+/* runs → one proposal per plan day; a day holding any non-Strava entry is off-limits */
+function stravaProposals(acts){
+  const byDay={};
+  (acts||[]).forEach(a=>{
+    if(!a||a.type!=='Run'||!(a.distance>0))return;
+    const iso=String(a.start_date_local||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return;
+    const i=isoToIdx(iso);
+    if(i<0||i>RACE_IDX)return;
+    const d=byDay[i]||(byDay[i]={i:i,km:0,secs:0,n:0});
+    d.km+=a.distance/1000;d.secs+=a.moving_time||0;d.n++;
+  });
+  const out=[];
+  for(const k in byDay){
+    const d=byDay[k];
+    d.km=Math.round(d.km*10)/10;
+    if(d.km<0.3)continue;
+    const sk=d.secs/d.km;
+    d.pace=(sk>=120&&sk<=1200)?fmtPace(Math.round(sk)):null;
+    const l=sessLog(eff(d.i).id);
+    if(l&&(l.source||'manual')!=='strava')continue;                                 // manual always wins
+    if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already imported, unchanged
+    out.push(d);
+  }
+  return out.sort((a,b)=>a.i-b.i);
+}
+
+let stravaBusy=false,stravaPend=[],stravaLastTry=0;
+function stravaSync(manual){
+  const st=stravaState();
+  if(!st||stravaBusy)return;
+  if(st.needsAuth&&!manual)return; // one re-auth prompt already shown; don't nag on every open
+  stravaBusy=true;stravaLastTry=Date.now();
+  stravaToken()
+    .then(tok=>{
+      const after=Math.max(Math.floor(START_UTC/1000)-1,st.lastSync?Math.floor(Date.parse(st.lastSync)/1000)-2*86400:0);
+      return stravaFetchActivities(tok,after,1,[]);
+    })
+    .then(acts=>{
+      stravaBusy=false;
+      const props=stravaProposals(acts);
+      stravaPatch({lastSync:new Date().toISOString(),needsAuth:0,err:null,
+        note:props.length?props.length+' run'+(props.length===1?'':'s')+' found':'no new runs'});
+      if(props.length){
+        if(document.getElementById('sheet').hidden)openStravaSheet(props);
+        else if(manual)snack(props.length+' run'+(props.length===1?'':'s')+' ready — close this sheet and sync again.');
+      }else if(manual)snack('Strava: nothing new to import.');
+      if(ui.tab==='train')rerenderKeepScroll();
+    })
+    .catch(err=>{
+      stravaBusy=false;
+      const wasAuth=!!(stravaState()&&stravaState().needsAuth);
+      if(err&&err.auth){
+        stravaPatch({needsAuth:1});
+        if(!wasAuth||manual)snack('Strava needs reconnecting — Training tab, Reconnect Strava.');
+      }else{
+        stravaPatch({err:'Couldn’t reach Strava just now.'});
+        if(manual)snack('Couldn’t reach Strava — try again in a minute.');
+      }
+      if(ui.tab==='train')rerenderKeepScroll();
+    });
+}
+
+function stravaDayOpts(p){
+  const w=Math.floor(p.i/7);let h='';
+  for(let d=0;d<7;d++){
+    const j=w*7+d,l=sessLog(eff(j).id);
+    const blocked=!!(l&&(l.source||'manual')!=='strava');
+    h+='<option value="'+j+'"'+(j===p.i?' selected':'')+(blocked?' disabled':'')+'>'+shortDate(j)+'</option>';
+  }
+  return h;
+}
+function stravaSheetContent(){
+  let rows='';
+  stravaPend.forEach((p,idx)=>{
+    const e=eff(p.i);
+    rows+='<div class="sheetrow" style="cursor:default;flex-wrap:wrap;gap:8px">'
+      +'<div style="flex:1 1 100%"><b>'+fmtKm(p.km)+' km'+(p.pace?' · '+esc(p.pace)+' /km':'')+'</b>'
+      +(p.n>1?' <span style="color:var(--sub);font-size:12px">('+p.n+' runs)</span>':'')
+      +'<div style="color:var(--sub);font-size:13px;margin-top:2px">→ '+shortDate(p.i)+' · '+esc(headline(e))+(sessLog(e.id)?' · replaces earlier import':'')+'</div></div>'
+      +'<select data-action="stravaday" data-idx="'+idx+'" aria-label="Import to a different day" style="flex:1;min-width:130px">'+stravaDayOpts(p)+'</select>'
+      +'<button class="btn2" data-action="stravarow" data-idx="'+idx+'" style="flex:none">Accept</button>'
+      +'</div>';
+  });
+  return '<h2 style="margin:0">Import from Strava</h2>'
+    +'<p class="note" style="margin:6px 0 2px">'+stravaPend.length+' run'+(stravaPend.length===1?'':'s')+' matched to plan days. Days with manual logs are never touched.</p>'
+    +rows
+    +'<button class="btn" style="width:100%;margin-top:14px" data-action="stravaall">Accept all</button>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Not now</button>';
+}
+function openStravaSheet(props){stravaPend=props;openSheet(stravaSheetContent());}
+function stravaSheetRefresh(){
+  const panel=document.querySelector('#sheet .panel');
+  if(!panel)return;
+  if(stravaPend.length)panel.innerHTML=stravaSheetContent();
+  else closeSheet();
+}
+function stravaApply(list){
+  if(!list.length)return;
+  const snap={};
+  list.forEach(p=>{const id=eff(p.i).id;snap[id]=S.sessions[id]?Object.assign({},S.sessions[id]):null;});
+  const todayE=eff(todayIdx);
+  const pre=list.some(p=>p.i===todayIdx)?capturePayoff(todayE):null;
+  list.forEach(p=>{
+    const patch={status:'done',km:p.km};
+    if(p.pace)patch.pace=p.pace;
+    logSession(eff(p.i).id,patch,'strava');
+  });
+  stravaPatch({note:list.length+' run'+(list.length===1?'':'s')+' imported'});
+  if(pre)payoff(pre,todayE);else rerenderKeepScroll();
+  snack('Imported '+list.length+' run'+(list.length===1?'':'s')+' from Strava',()=>{
+    for(const id in snap){if(snap[id])S.sessions[id]=snap[id];else delete S.sessions[id];}
+    save();rerenderKeepScroll();
+  });
+}
+function stravaCard(){
+  const st=stravaState();
+  if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2><span class="chip neutral">Not connected</span></div>'
+    +'<p class="note" style="margin:8px 0 0">Connect once and finished runs land here ready to confirm. Manual logs always win, and you can disconnect any time.</p>'
+    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravaconnect">Connect Strava</button></section>';
+  const who=st.athlete?((st.athlete.firstname||'')+' '+(st.athlete.lastname||'')).trim():'';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2>'
+    +(st.needsAuth?'<span class="chip c-hard">Reconnect</span>':'<span class="chip c-easy">Connected</span>')+'</div>'
+    +'<p class="note" style="margin:8px 0 0">Connected'+(who?' as '+esc(who):'')+'.</p>'
+    +'<p class="mini" style="margin:4px 2px 0">'+(st.lastSync?'Last sync: '+fmtSyncTime(st.lastSync)+(st.note?' · '+esc(st.note):''):'Not synced yet')+'</p>'
+    +(st.err?'<p class="mini" style="margin:2px 2px 0">'+esc(st.err)+'</p>':'')
+    +(st.needsAuth
+      ?'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravaconnect">Reconnect Strava</button>'
+      :'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravasync">Sync now</button>')
+    +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="stravadisconnect">Disconnect</button>'
+    +'</section>';
+}
 
 /* ---------------- 4. Derived data ---------------- */
 
@@ -1314,6 +1492,7 @@ function logChips(l){
   const fr=fuelRate(l);
   if(fr!=null)h+='<span class="chip '+(fr>=60?'c-easy':'c-long')+'">'+fr+' g/hr</span>';
   if(l.note)h+='<span class="chip neutral">'+esc(l.note.slice(0,26))+(l.note.length>26?'…':'')+'</span>';
+  if(l.source&&l.source!=='manual')h+='<span class="chip neutral">via '+esc(DATA_SOURCES[l.source]?DATA_SOURCES[l.source].label:l.source)+'</span>';
   return h;
 }
 
@@ -1887,6 +2066,7 @@ function vTrain(){
     +days
     +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:520px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
+    +stravaCard()
     +'</div>';
 }
 
@@ -2323,6 +2503,24 @@ document.addEventListener('click',ev=>{
     }).catch(()=>alert('Couldn’t read the clipboard.'));
   }
   else if(a==='importpick'){document.getElementById('importfile').click();}
+  else if(a==='stravaconnect'){stravaConnect();}
+  else if(a==='stravasync'){stravaSync(true);}
+  else if(a==='stravadisconnect'){
+    if(confirm('Disconnect Strava? The tokens on this phone are deleted; imported logs stay.')){
+      try{localStorage.removeItem(STRAVA_KEY);}catch(e){}
+      rerenderKeepScroll();
+    }
+  }
+  else if(a==='stravarow'){
+    const p=stravaPend.splice(Number(el.dataset.idx),1)[0];
+    if(p)stravaApply([p]);
+    stravaSheetRefresh();
+  }
+  else if(a==='stravaall'){
+    const list=stravaPend.slice();stravaPend=[];
+    closeSheet();
+    stravaApply(list);
+  }
 });
 
 const NUM_FIELDS={km:1,rpe:1,carbs:1,mins:1};
@@ -2355,6 +2553,10 @@ document.addEventListener('change',ev=>{
     fieldDirty=true;flushFieldRender();
   }
   else if(a==='nutweekfilter'){ui.nutWeek=el.value;const b=document.getElementById('nutbody');if(b)b.innerHTML=nutTableBody();}
+  else if(a==='stravaday'){
+    const p=stravaPend[Number(el.dataset.idx)];
+    if(p){p.i=Number(el.value);stravaSheetRefresh();}
+  }
   else if(el.id==='importfile'&&el.files&&el.files[0]){
     const fr=new FileReader();
     fr.onload=()=>{
@@ -2491,6 +2693,43 @@ if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catc
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshToday();});
 addEventListener('pageshow',refreshToday);
 addEventListener('focus',refreshToday);
+
+/* ---------------- 10b. Strava boot ---------------- */
+/* OAuth return: Strava redirects back with ?code= (and the scope actually granted) */
+const stravaQS=new URLSearchParams(location.search);
+if(stravaQS.get('code')||stravaQS.get('error')){
+  history.replaceState(null,'',location.pathname+location.hash);
+  const stravaCode=stravaQS.get('code'),stravaScope=stravaQS.get('scope')||'';
+  if(stravaCode){ // no code = cancelled on Strava's page; nothing to do
+    fetch(STRAVA_PROXY+'/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:stravaCode})})
+      .then(r=>{if(!r.ok)throw 0;return r.json();})
+      .then(d=>{
+        if(!d.access_token||!d.refresh_token)throw 0;
+        stravaSave({access:d.access_token,refresh:d.refresh_token,expiresAt:d.expires_at,athlete:d.athlete||null,lastSync:null,note:null,err:null,needsAuth:0});
+        snack('Strava connected'+(d.athlete&&d.athlete.firstname?' as '+d.athlete.firstname:''));
+        rerenderKeepScroll();
+        if(stravaScope&&stravaScope.indexOf('activity:read')<0)snack('Strava connected without activity access — disconnect, reconnect, and leave every permission ticked.');
+        else stravaSync(false);
+      })
+      .catch(()=>snack('Couldn’t finish connecting Strava — try again in a minute.'));
+  }
+}else if(stravaConnected()){
+  setTimeout(()=>stravaSync(false),600); // routine sync on open
+}
+/* …and on resume, throttled — iOS PWAs resume far more often than they reload */
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&stravaConnected()&&Date.now()-stravaLastTry>15*60000)stravaSync(false);
+});
+/* The OAuth hop runs the app in iOS's in-app browser, which shares this origin's
+   storage — if that context (or another tab) saved newer state while we were
+   backgrounded, adopt it instead of clobbering it on the next save. */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!storageOK||saveWarned)return;
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw&&raw!==JSON.stringify(S)){S=loadState();rerenderKeepScroll();}
+  }catch(e){}
+});
 
 /* ---------------- 11. PWA ---------------- */
 if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0){

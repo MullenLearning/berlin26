@@ -17,13 +17,21 @@ https://mullenlearning.github.io/berlin26/ (see README + memory).
 
 ---
 
-## Night 1 — Strava auto-import (priority 1)
+## Night 1 — Strava auto-import (priority 1) — **BUILT 12 Jun, awaiting Worker deploy**
+
+Code complete and tested against a mocked Strava API (connect card, sync, confirm
+sheet, day override, manual-win guard, undo, 401/network handling, token-free backups).
+**Remaining to go live (~5 min, Luke):** deploy `worker/berlin26-strava.js` per
+`worker/README.md`, then put the workers.dev URL into `STRAVA_PROXY` in `index.html`
+(search `REPLACE-ME`) and push. Until then the Connect button explains itself and
+nothing breaks.
+
+**CORS finding (verified live 12 Jun):** `/api/v3` GETs send `ACAO: *` — activity reads
+stay browser-direct; the Worker only handles `/token` + `/refresh`.
 
 **Decision already made (researched 12 Jun):** Strava's `/oauth/token` endpoint does not
 send CORS headers, so browser-only token exchange is impossible. A free Cloudflare Worker
-proxies token exchange + refresh. Whether plain API GETs (`/api/v3/athlete/activities`)
-work browser-direct is unconfirmed — test live first; if CORS blocks them too, the same
-Worker proxies GETs (adds ~10 lines).
+proxies token exchange + refresh.
 
 ### Luke's prep — DONE (12 Jun)
 Strava API app created: **Client ID `257604`** (public, used in the authorize URL),
