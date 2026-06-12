@@ -87,6 +87,27 @@ needs importing before Night 1 completes.
 
 ---
 
+## Pending Luke's confirmation — day-card redesign (12 Jun evening)
+
+Strava-primary changed the card's job from collecting to displaying. Luke wants: RPE
+gone, Done/Partial and inline km/pace fields gone, Missed kept somewhere. A field menu
+(Tier A: summary call — duration, start time, HR avg/max, Relative Effort, cadence,
+elevation, tags; Tier B: per-run detail call — calories, watts, splits, best efforts,
+description, gear; Tier C: streams for charts) was sent 12 Jun; **awaiting his picks**
+before building. Planned shape: plan info + result line per chosen fields; Missed
+button only on past unlogged days; log sheet stays via long-press as manual fallback;
+re-key the easy-day-drift warning from RPE to Relative Effort.
+
+## Night 3 — Oura (jumped queue ahead of Apple Health, Luke's call 12 Jun)
+
+Oura API v2 (`api.ouraring.com/v2/usercollection/...`) with a **personal access token**
+(no OAuth needed): daily sleep, readiness, HRV, resting HR, temperature. Token stored
+like Strava's (own localStorage key, excluded from backups). Slots into the planned
+`S.health` schema + readiness score (backlog #3). To check first: whether the API sends
+CORS headers for browser calls — if not, add a `/oura` proxy route to the existing
+Worker (same pattern as `/token`). Apple Health Shortcut (below) then mainly covers
+weight; may shrink in scope.
+
 ## Night 2 — Apple Health (priority 2)
 
 Brief feature 1. No OAuth, no server: an iOS **Shortcut** reads Health and hands off via
