@@ -154,6 +154,14 @@ days, while RPE, notes, and fuelling entries are always kept. Every import is un
   with `source:'strava'`, fire the payoff frame, and arrive with an undo snackbar.
 - **Failures stay quiet**: an expired grant shows one reconnect prompt and a Reconnect
   state on the card; network failures are a mini status line, never an alert.
+- **Rich imports, display-first cards** (v2, 12 Jun): each accepted run carries
+  duration, start time, HR avg/max, cadence, elevation, and the route polyline from
+  the summary call; a best-effort follow-up fetch adds calories, per-km splits, and
+  the shoe used, plus low-res HR/pace streams. Day cards show the plan and the result
+  (chips + meta line + route shape and sparkline; tap for the run sheet with splits) —
+  no inline entry. "Missed?" appears only on past unlogged run days; **rest days are
+  untracked**. The log sheet (long-press, or "Edit manually" in the run sheet) remains
+  the manual fallback; RPE is retired.
 
 ## Phase 2–4 (future data sources)
 

@@ -87,16 +87,19 @@ needs importing before Night 1 completes.
 
 ---
 
-## Pending Luke's confirmation — day-card redesign (12 Jun evening)
+## Day-card redesign — **BUILT 12 Jun (late)**
 
-Strava-primary changed the card's job from collecting to displaying. Luke wants: RPE
-gone, Done/Partial and inline km/pace fields gone, Missed kept somewhere. A field menu
-(Tier A: summary call — duration, start time, HR avg/max, Relative Effort, cadence,
-elevation, tags; Tier B: per-run detail call — calories, watts, splits, best efforts,
-description, gear; Tier C: streams for charts) was sent 12 Jun; **awaiting his picks**
-before building. Planned shape: plan info + result line per chosen fields; Missed
-button only on past unlogged days; log sheet stays via long-press as manual fallback;
-re-key the easy-day-drift warning from RPE to Relative Effort.
+Luke's picks, all shipped: result line = duration, start time, HR avg/max, cadence,
+elevation; per-run detail adds calories, per-km splits, gear name; low-res streams
+drive a pace+HR sparkline on the card and a fuller chart in a tap-in run sheet
+(splits table there too); the GPS route renders as an SVG shape in the accent blue
+(Strava-feed style — tiles deliberately avoided to stay single-file/offline).
+Done/Partial/RPE/inline fields removed; "Missed?" only on past unlogged run days;
+**rest days are untracked** (no status, skipped by the catch-up deck); log sheet
+remains the manual fallback (RPE arc deleted, long-run fuelling g/hr inputs moved
+into it). RPE is dead — the easy-drift warning is dormant until the readiness score
+(Oura) replaces it. Enrichment is best-effort: summary fields land at accept; detail
++ streams patch in afterwards and never block.
 
 ## Night 3 — Oura (jumped queue ahead of Apple Health, Luke's call 12 Jun)
 

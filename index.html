@@ -683,62 +683,8 @@ function lastPaceFor(zone){ // prefill from the most recent comparable session
   }
   return null;
 }
-const RPE_WORDS=['barely moving','very easy','chatty','steady','working','comfortably hard','hard','very hard','brutal','eyeballs out'];
-const RPE_VARS=['--rec','--rec','--easy','--easy','--long','--long','--long','--hard','--hard','--hard'];
-const ARC_LEN=Math.PI*100;
-function arcHTML(){
-  return '<div class="arcwrap">'
-    +'<svg id="sharc" viewBox="0 0 260 150" tabindex="0" role="slider" aria-label="Effort, RPE 1 to 10" aria-valuemin="1" aria-valuemax="10" data-v="">'
-    +'<path d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="var(--track)" stroke-width="10" stroke-linecap="round"/>'
-    +'<path id="arcfg" d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="var(--easy)" stroke-width="10" stroke-linecap="round" stroke-dasharray="'+ARC_LEN.toFixed(1)+'" stroke-dashoffset="'+ARC_LEN.toFixed(1)+'"/>'
-    +'<g id="arcghosts"></g>'
-    +'<circle id="arcthumb" r="13" fill="var(--card)" stroke="var(--accent)" stroke-width="3" cx="30" cy="130" style="display:none"/>'
-    +'</svg>'
-    +'<div class="arcval"><b id="arcnum">–</b><div class="arcword" id="arcword">slide to rate effort</div></div></div>';
-}
-function arcPoint(v,rad){
-  const f=(v-1)/9,a=Math.PI*(1-f);
-  return {x:130+(rad||100)*Math.cos(a),y:130-(rad||100)*Math.sin(a)};
-}
-function arcSet(v){
-  const svg=document.getElementById('sharc');if(!svg)return;
-  const fg=svg.querySelector('#arcfg'),th=svg.querySelector('#arcthumb');
-  svg.dataset.v=v;svg.setAttribute('aria-valuenow',v);
-  const f=(v-1)/9,p=arcPoint(v);
-  fg.style.strokeDashoffset=(ARC_LEN*(1-f)).toFixed(1);
-  fg.style.stroke='var('+RPE_VARS[v-1]+')';
-  fg.style.strokeWidth=(8+v*0.9).toFixed(1);
-  th.style.display='';th.setAttribute('cx',p.x.toFixed(1));th.setAttribute('cy',p.y.toFixed(1));
-  document.getElementById('arcnum').textContent=v;
-  document.getElementById('arcword').textContent=RPE_WORDS[v-1];
-}
-function initArc(val,ghosts){
-  const svg=document.getElementById('sharc');if(!svg)return;
-  const g=svg.querySelector('#arcghosts');
-  (ghosts||[]).forEach(gv=>{ // recent easy-day history, visible before you even log
-    const p=arcPoint(gv);
-    g.innerHTML+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="var(--sub)" opacity="0.45"/>';
-  });
-  if(val)arcSet(val);
-  let drag=false;
-  const fromEvent=e=>{
-    const r=svg.getBoundingClientRect(),sc=260/r.width;
-    const x=(e.clientX-r.left)*sc,y=(e.clientY-r.top)*sc;
-    let a=Math.atan2(130-y,x-130); // 0..π across the top
-    a=Math.max(0,Math.min(Math.PI,a));
-    return Math.max(1,Math.min(10,Math.round(1+9*(1-a/Math.PI))));
-  };
-  svg.addEventListener('pointerdown',e=>{drag=true;try{svg.setPointerCapture(e.pointerId);}catch(_){}
-    const v=fromEvent(e);if(String(v)!==svg.dataset.v){haptic();arcSet(v);}});
-  svg.addEventListener('pointermove',e=>{if(!drag)return;
-    const v=fromEvent(e);if(String(v)!==svg.dataset.v){haptic();arcSet(v);}});
-  ['pointerup','pointercancel'].forEach(ev=>svg.addEventListener(ev,()=>{drag=false;}));
-  svg.addEventListener('keydown',e=>{
-    const cur=+svg.dataset.v||5;
-    if(e.key==='ArrowRight'||e.key==='ArrowUp'){e.preventDefault();arcSet(Math.min(10,cur+1));}
-    if(e.key==='ArrowLeft'||e.key==='ArrowDown'){e.preventDefault();arcSet(Math.max(1,cur-1));}
-  });
-}
+/* The RPE arc retired 12 Jun with the move to Strava-sourced effort data —
+   subjective effort tracking ended with it (readiness score will replace it). */
 
 function openLogSheet(i){
   const e=eff(i),l=sessLog(e.id)||{};
@@ -746,11 +692,7 @@ function openLogSheet(i){
   const pace0=parsePace(l.pace)||lastPaceFor(e.zone)||ZONE_MID_PACE[e.zone]||360;
   const status0=l.status||'done';
   const isRest=e.zone==='Rest'&&e.km<=0;
-  const ghosts=[];
-  for(let k=clamp(rawTodayIdx(),0,RACE_IDX);k>=0&&ghosts.length<3;k--){
-    const ee=eff(k);if(ee.zone!=='Easy'&&ee.zone!=='Recovery')continue;
-    const ll=sessLog(ee.id);if(ll&&ll.rpe!=null&&k!==i)ghosts.push(ll.rpe);
-  }
+  const isLong=e.zone==='Long'||e.zone==='Marathon';
   const segB=(s,lbl)=>'<button data-action="shstatus" data-s="'+s+'" aria-pressed="'+(s===status0)+'" class="'+(s===status0?'on-'+s:'')+'">'+lbl+'</button>';
   openSheet('<h2 style="margin:0">'+shortDate(i)+' · '+esc(headline(e))+'</h2>'
     +(paceLine(e)?'<p class="mini" style="margin:4px 2px 0">'+paceLine(e)+'</p>':'')
@@ -760,7 +702,10 @@ function openLogSheet(i){
       +'<div class="stepval"><b id="shkm" data-v="'+km0+'">'+fmtKm(km0)+'</b><span>km</span></div>'
       +'<button id="shup" aria-label="0.1 km more">+</button></div></div>'
       +'<div class="shsec"><label class="f">Pace</label>'+rulerHTML('shpace',180,480,1,Math.max(180,Math.min(480,pace0)),'/km',30,0,'pace',5)+'</div>'
-      +'<div class="shsec"><label class="f">Effort</label>'+arcHTML()+'</div>')
+      +(isLong?'<div class="shsec"><label class="f">Fuelling practice</label><div class="loggrid">'
+        +'<div><label class="f" for="shcarbs">Carbs taken (g)</label><input id="shcarbs" type="number" inputmode="numeric" min="0" max="500" value="'+(l.carbs!=null?esc(l.carbs):'')+'" placeholder="e.g. 75"></div>'
+        +'<div><label class="f" for="shmins">Duration (min)</label><input id="shmins" type="number" inputmode="numeric" min="0" max="600" value="'+(l.mins!=null?esc(l.mins):'')+'" placeholder="e.g. 110"></div>'
+        +'</div></div>':''))
     +'<div class="shsec" id="shnotewrap"><button class="btn3" data-action="shnotetoggle">+ Add note</button></div>'
     +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
     +'<button class="sheetrow" data-action="movestart" data-i="'+i+'" style="justify-content:center;color:var(--txt2);font-weight:700;margin-top:8px">Move this day instead</button>'
@@ -768,7 +713,6 @@ function openLogSheet(i){
     document.querySelector('[data-swipe][data-i="'+i+'"]')||document.getElementById('day-'+i),
     ()=>{ // wiring runs only once the sheet DOM actually exists (VT builds async)
       initRulers();
-      initArc(l.rpe||null,ghosts);
       // stepper: tap = 0.1, hold = repeat
       const kmEl=document.getElementById('shkm');
       if(kmEl){
@@ -902,6 +846,31 @@ function sanitizePayload(data){
       if(typeof r.mins==='number'&&isFinite(r.mins)&&r.mins>0&&r.mins<=600)o.mins=r.mins;
       if(typeof r.pace==='string'&&r.pace)o.pace=r.pace.slice(0,40);
       if(typeof r.note==='string'&&r.note)o.note=r.note.slice(0,300);
+      // Strava-import extras (v2): all optional, all bounded
+      if(typeof r.secs==='number'&&r.secs>0&&r.secs<86400)o.secs=Math.round(r.secs);
+      if(typeof r.elap==='number'&&r.elap>0&&r.elap<86400)o.elap=Math.round(r.elap);
+      if(typeof r.start==='string'&&/^\d{2}:\d{2}$/.test(r.start))o.start=r.start;
+      if(typeof r.hrA==='number'&&r.hrA>=30&&r.hrA<=250)o.hrA=Math.round(r.hrA);
+      if(typeof r.hrM==='number'&&r.hrM>=30&&r.hrM<=250)o.hrM=Math.round(r.hrM);
+      if(typeof r.cad==='number'&&r.cad>0&&r.cad<=200)o.cad=Math.round(r.cad*10)/10;
+      if(typeof r.elev==='number'&&isFinite(r.elev)&&r.elev>=0&&r.elev<=10000)o.elev=Math.round(r.elev);
+      if(typeof r.kcal==='number'&&r.kcal>0&&r.kcal<=10000)o.kcal=Math.round(r.kcal);
+      if(typeof r.act==='number'&&isFinite(r.act)&&r.act>0)o.act=r.act;
+      if(typeof r.gear==='string'&&r.gear)o.gear=r.gear.slice(0,60);
+      if(typeof r.poly==='string'&&r.poly)o.poly=r.poly.slice(0,12000);
+      if(Array.isArray(r.splits)){
+        const sp=r.splits.slice(0,60)
+          .map(s=>Array.isArray(s)?[Math.round(+s[0]||0),Math.round(+s[1]||0),Math.round(+s[2]||0)]:null)
+          .filter(s=>s&&s[0]>0&&s[0]<7200&&s[1]>=0&&s[1]<=250&&s[2]>=100&&s[2]<=2000);
+        if(sp.length)o.splits=sp;
+      }
+      const numArr=a=>{
+        if(!Array.isArray(a)||a.length<2)return null;
+        return a.slice(0,200).map(n=>{n=+n;return isFinite(n)?Math.round(n*100)/100:0;});
+      };
+      const hrS=numArr(r.hrS),vS=numArr(r.vS);
+      if(hrS)o.hrS=hrS;
+      if(vS)o.vS=vS;
       o.source=typeof r.source==='string'?r.source.slice(0,20):'manual';
       if(o.status||o.km!=null||o.pace||o.note||o.rpe!=null)out.sessions[k]=o;
     }
@@ -1005,8 +974,17 @@ function stravaProposals(acts){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return;
     const i=isoToIdx(iso);
     if(i<0||i>RACE_IDX)return;
-    const d=byDay[i]||(byDay[i]={i:i,km:0,secs:0,n:0});
-    d.km+=a.distance/1000;d.secs+=a.moving_time||0;d.n++;
+    const d=byDay[i]||(byDay[i]={i:i,km:0,secs:0,elap:0,elev:0,hrW:0,hrT:0,hrM:0,cadW:0,cadT:0,n:0,best:null});
+    const mt=a.moving_time||0;
+    d.km+=a.distance/1000;d.secs+=mt;d.elap+=a.elapsed_time||0;
+    d.elev+=a.total_elevation_gain||0;d.n++;
+    if(a.average_heartrate>0){d.hrW+=a.average_heartrate*(mt||1);d.hrT+=(mt||1);}
+    if(a.max_heartrate>0)d.hrM=Math.max(d.hrM,a.max_heartrate);
+    if(a.average_cadence>0){d.cadW+=a.average_cadence*(mt||1);d.cadT+=(mt||1);}
+    // detail-level data (map, splits, streams, start time) comes from the day's longest run
+    if(!d.best||(a.distance||0)>d.best.dist)d.best={dist:a.distance||0,act:Number(a.id)||null,
+      start:String(a.start_date_local||'').slice(11,16),
+      poly:(a.map&&a.map.summary_polyline)?String(a.map.summary_polyline).slice(0,12000):null};
   });
   const out=[];
   for(const k in byDay){
@@ -1015,11 +993,57 @@ function stravaProposals(acts){
     if(d.km<0.3)continue;
     const sk=d.secs/d.km;
     d.pace=(sk>=120&&sk<=1200)?fmtPace(Math.round(sk)):null;
+    d.elev=Math.round(d.elev);
+    d.hrA=d.hrT?Math.round(d.hrW/d.hrT):null;
+    d.hrM=d.hrM?Math.round(d.hrM):null;
+    d.cad=d.cadT?Math.round(d.cadW/d.cadT*10)/10:null;
+    d.act=d.best&&d.best.act;d.start=d.best&&/^\d{2}:\d{2}$/.test(d.best.start)?d.best.start:null;d.poly=d.best&&d.best.poly;
     const l=sessLog(eff(d.i).id);
     if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already logged identically — nothing to change
     out.push(d);
   }
   return out.sort((a,b)=>a.i-b.i);
+}
+
+/* best-effort enrichment after accept: one detail call (calories, splits, gear
+   name rides along) + one low-res streams call (HR + speed traces) per run.
+   Failures leave the summary-level log intact — never blocking, never retried. */
+function stravaEnrich(p,id){
+  stravaToken().then(tok=>{
+    const H={headers:{Authorization:'Bearer '+tok}};
+    return Promise.all([
+      fetch('https://www.strava.com/api/v3/activities/'+p.act,H).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetch('https://www.strava.com/api/v3/activities/'+p.act+'/streams?keys=heartrate,velocity_smooth&key_by_type=true&resolution=low',H).then(r=>r.ok?r.json():null).catch(()=>null)
+    ]);
+  }).then(res=>{
+    const det=res[0],str=res[1],patch={};
+    if(det){
+      if(typeof det.calories==='number'&&det.calories>0)patch.kcal=Math.round(det.calories);
+      if(det.gear&&det.gear.name)patch.gear=String(det.gear.name).slice(0,60);
+      if(Array.isArray(det.splits_metric)){
+        const sp=det.splits_metric.slice(0,60)
+          .map(s=>[Math.round(s.moving_time||0),s.average_heartrate?Math.round(s.average_heartrate):0,Math.round(s.distance||0)])
+          .filter(s=>s[0]>0&&s[0]<7200&&s[2]>=100);
+        if(sp.length)patch.splits=sp;
+      }
+    }
+    if(str){
+      const ds=st=>{ // downsample to ≤120 points — all a card-width sparkline can show
+        if(!st||!Array.isArray(st.data)||st.data.length<2)return null;
+        const a=st.data,step=Math.max(1,Math.ceil(a.length/120)),o=[];
+        for(let k=0;k<a.length;k+=step){const n=+a[k];o.push(isFinite(n)?Math.round(n*100)/100:0);}
+        return o.length>1?o:null;
+      };
+      const hr=ds(str.heartrate),v=ds(str.velocity_smooth);
+      if(hr)patch.hrS=hr.map(Math.round);
+      if(v)patch.vS=v;
+    }
+    const cur=S.sessions[id];
+    if(!Object.keys(patch).length)return;
+    if(!cur||cur.source!=='strava'||cur.act!==p.act)return; // undone or replaced meanwhile — don't resurrect
+    logSession(id,patch,'strava');
+    rerenderKeepScroll();
+  }).catch(()=>{});
 }
 
 let stravaBusy=false,stravaPend=[],stravaLastTry=0;
@@ -1101,11 +1125,23 @@ function stravaApply(list){
   list.forEach(p=>{const id=eff(p.i).id;snap[id]=S.sessions[id]?Object.assign({},S.sessions[id]):null;});
   const todayE=eff(todayIdx);
   const pre=list.some(p=>p.i===todayIdx)?capturePayoff(todayE):null;
+  const enrich=[];
   list.forEach(p=>{
+    const id=eff(p.i).id;
     const patch={status:'done',km:p.km};
     if(p.pace)patch.pace=p.pace;
-    logSession(eff(p.i).id,patch,'strava');
+    if(p.secs)patch.secs=Math.round(p.secs);
+    if(p.elap)patch.elap=Math.round(p.elap);
+    if(p.start)patch.start=p.start;
+    if(p.hrA)patch.hrA=p.hrA;
+    if(p.hrM)patch.hrM=p.hrM;
+    if(p.cad)patch.cad=p.cad;
+    if(p.elev)patch.elev=p.elev;
+    if(p.act){patch.act=p.act;enrich.push({p:p,id:id});}
+    if(p.poly)patch.poly=p.poly;
+    logSession(id,patch,'strava');
   });
+  enrich.forEach(x=>stravaEnrich(x.p,x.id));
   stravaPatch({note:list.length+' run'+(list.length===1?'':'s')+' imported'});
   if(pre)payoff(pre,todayE);else rerenderKeepScroll();
   snack('Imported '+list.length+' run'+(list.length===1?'':'s')+' from Strava',()=>{
@@ -1129,6 +1165,120 @@ function stravaCard(){
       :'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravasync">Sync now</button>')
     +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="stravadisconnect">Disconnect</button>'
     +'</section>';
+}
+
+/* ---- run visuals: route shape + pace/HR sparkline, zero dependencies ---- */
+function fmtDur(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return (h?h+':'+p2(m):m)+':'+p2(s%60);}
+function decodePoly(str){ // Google encoded polyline → [[lat,lng],...]
+  let i=0,lat=0,lng=0;const pts=[];
+  while(i<str.length){
+    let b,sh=0,r=0;
+    do{b=str.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5;}while(b>=32);
+    lat+=(r&1)?~(r>>1):(r>>1);
+    sh=0;r=0;
+    do{b=str.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5;}while(b>=32);
+    lng+=(r&1)?~(r>>1):(r>>1);
+    pts.push([lat*1e-5,lng*1e-5]);
+  }
+  return pts;
+}
+function routeSVG(poly,big){ // the route as a line on the card — Strava's own feed style
+  if(!poly)return '';
+  try{
+    let pts=decodePoly(poly);
+    if(pts.length<2)return '';
+    const step=Math.max(1,Math.ceil(pts.length/300));
+    if(step>1)pts=pts.filter((_,ix)=>ix%step===0||ix===pts.length-1);
+    const kx=Math.cos((pts.reduce((s,p)=>s+p[0],0)/pts.length)*Math.PI/180); // equirectangular: shrink lng by cos(lat)
+    const xs=pts.map(p=>p[1]*kx),ys=pts.map(p=>-p[0]);
+    const minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
+    const minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys);
+    const W=big?320:104,H=big?180:84,pad=6;
+    const sc=Math.min((W-2*pad)/((maxX-minX)||1e-9),(H-2*pad)/((maxY-minY)||1e-9));
+    const ox=(W-(maxX-minX)*sc)/2-minX*sc,oy=(H-(maxY-minY)*sc)/2-minY*sc;
+    let d='';
+    for(let k=0;k<pts.length;k++)d+=(k?'L':'M')+(xs[k]*sc+ox).toFixed(1)+' '+(ys[k]*sc+oy).toFixed(1);
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="'+(big?'width:100%':'width:'+W+'px;flex:none')+';height:auto;display:block" role="img" aria-label="Route map">'
+      +'<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/></svg>';
+  }catch(e){return '';}
+}
+function runChart(l,big){ // pace (accent) + HR (hard hue); pauses (v<0.5 m/s) break the line
+  const v=l.vS,hr=l.hrS;
+  if((!v||v.length<2)&&(!hr||hr.length<2))return '';
+  const W=320,H=big?120:84,pad=5;
+  let parts='';
+  if(v&&v.length>1){
+    const pace=v.map(x=>x>=0.5?1000/x:null);
+    const vals=pace.filter(x=>x!=null).slice().sort((a,b)=>a-b);
+    if(vals.length>1){
+      const min=vals[Math.floor(vals.length*0.05)]-15,max=vals[Math.min(vals.length-1,Math.floor(vals.length*0.95))]+15;
+      let d='',pen=0;
+      pace.forEach((pv,ix)=>{
+        if(pv==null){pen=0;return;}
+        const x=pad+(W-2*pad)*ix/(pace.length-1);
+        const y=pad+(H-2*pad)*((Math.min(Math.max(pv,min),max)-min)/(max-min)); // faster sits higher
+        d+=(pen?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);pen=1;
+      });
+      if(d)parts+='<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="1.5"/>';
+    }
+  }
+  if(hr&&hr.length>1){
+    const vals=hr.filter(x=>x>30);
+    if(vals.length>1){
+      const min=Math.min.apply(null,vals)-5,max=Math.max.apply(null,vals)+5;
+      let d='',pen=0;
+      hr.forEach((x0,ix)=>{
+        if(!(x0>30)){pen=0;return;}
+        const x=pad+(W-2*pad)*ix/(hr.length-1);
+        const y=pad+(H-2*pad)*(1-(x0-min)/(max-min));
+        d+=(pen?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);pen=1;
+      });
+      if(d)parts+='<path d="'+d+'" fill="none" stroke="var(--hard)" stroke-width="1.5" opacity="0.85"/>';
+    }
+  }
+  if(!parts)return '';
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Pace and heart rate trace">'+parts+'</svg>'
+    +(big?'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent)">—</span> pace · <span style="color:var(--hard)">—</span> heart rate</p>':'');
+}
+function resultMeta(l){ // the quiet second line under the result chips
+  const b=[];
+  if(l.start)b.push('started '+esc(l.start));
+  if(l.cad)b.push(Math.round(l.cad*2)+' spm'); // Strava stores per-leg cadence; the world reads steps/min
+  if(l.elev!=null&&l.elev>0)b.push(Math.round(l.elev)+' m climbed');
+  if(l.gear)b.push(esc(l.gear));
+  return b.join(' · ');
+}
+function runVisual(l,i){
+  const map=routeSVG(l.poly,false),ch=runChart(l,false);
+  if(!map&&!ch)return '';
+  return '<button data-action="runsheet" data-i="'+i+'" aria-label="Open run details" '
+    +'style="display:flex;gap:12px;align-items:center;width:100%;margin-top:10px;background:none;border:1px solid var(--bord);border-radius:12px;padding:10px;cursor:pointer">'
+    +map+(ch?'<div style="flex:1;min-width:0">'+ch+'</div>':'')+'</button>';
+}
+function openRunSheet(i){
+  const e=eff(i),l=sessLog(e.id)||{};
+  let chips='<div class="row" style="margin-top:8px">'+logChips(l)+'</div>';
+  const meta=resultMeta(l);
+  let splits='';
+  if(l.splits&&l.splits.length){
+    let rows='';
+    l.splits.forEach((s,ix)=>{
+      const m=s[2]||1000;
+      rows+='<tr><td>'+(m>=950?(ix+1):(Math.round(m/100)/10))+'</td>'
+        +'<td class="num right">'+fmtPace(Math.round(s[0]/(m/1000)))+'</td>'
+        +'<td class="num right">'+(s[1]?s[1]:'–')+'</td></tr>';
+    });
+    splits='<h2 style="margin:16px 0 6px">Splits</h2><div class="scroll-x"><table style="width:100%;min-width:200px"><thead><tr><th>km</th><th class="right">Pace</th><th class="right">HR</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }
+  openSheet('<h2 style="margin:0">'+shortDate(i)+' · '+esc(headline(e))+'</h2>'
+    +chips
+    +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
+    +(l.poly?'<div style="margin-top:12px">'+routeSVG(l.poly,true)+'</div>':'')
+    +((l.vS||l.hrS)?'<div style="margin-top:12px">'+runChart(l,true)+'</div>':'')
+    +splits
+    +qaRow('logsheet',i,'Edit manually')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>',
+    document.getElementById('day-'+i));
 }
 
 /* ---------------- 4. Derived data ---------------- */
@@ -1337,29 +1487,8 @@ function nutAdjChip(e){
   return '';
 }
 
-function statusSeg(e,compact){
-  const l=sessLog(e.id)||{};
-  const b=(s,lbl)=>'<button data-action="status" data-sid="'+e.id+'" data-status="'+s+'" aria-pressed="'+(l.status===s)+'" class="'+(l.status===s?('on-'+s):'')+'">'+lbl+'</button>';
-  let h='<div class="seg">'+b('done','Done')+b('partial','Partial')+b('missed','Missed')+'</div>';
-  if(l.status){
-    const isLong=e.zone==='Long'||e.zone==='Marathon';
-    let rpeOpts='<option value="">–</option>';
-    for(let r=1;r<=10;r++)rpeOpts+='<option value="'+r+'"'+(l.rpe===r?' selected':'')+'>'+r+(r<=3?' · easy':r<=5?' · steady':r<=7?' · hard':' · max')+'</option>';
-    h+='<div class="loggrid">'
-      +'<div><label class="f" for="km-'+e.id+'">Actual km</label><input id="km-'+e.id+'" type="number" inputmode="decimal" step="0.1" min="0" data-field="km" data-sid="'+e.id+'" value="'+esc(l.km!=null?l.km:'')+'" placeholder="'+fmtKm(e.km)+'"></div>'
-      +'<div><label class="f" for="pace-'+e.id+'">Pace /km</label><input id="pace-'+e.id+'" type="text" data-field="pace" data-sid="'+e.id+'" value="'+esc(l.pace||'')+'" placeholder="5:58"></div>'
-      +'<div><label class="f" for="rpe-'+e.id+'">Effort · RPE</label><select id="rpe-'+e.id+'" data-field="rpe" data-sid="'+e.id+'">'+rpeOpts+'</select></div>'
-      +(isLong
-        ?'<div><label class="f" for="carbs-'+e.id+'">Carbs taken (g)</label><input id="carbs-'+e.id+'" type="number" inputmode="numeric" min="0" max="500" data-field="carbs" data-sid="'+e.id+'" value="'+esc(l.carbs!=null?l.carbs:'')+'" placeholder="e.g. 75"></div>'
-         +'<div><label class="f" for="mins-'+e.id+'">Duration (min)</label><input id="mins-'+e.id+'" type="number" inputmode="numeric" min="0" max="600" data-field="mins" data-sid="'+e.id+'" value="'+esc(l.mins!=null?l.mins:'')+'" placeholder="e.g. 110"></div>'
-        :'')
-      +'<div class="full"><label class="f" for="note-'+e.id+'">Note</label><input id="note-'+e.id+'" type="text" data-field="note" data-sid="'+e.id+'" value="'+esc(l.note||'')+'" placeholder="How did it go?"></div>'
-      +'</div>';
-    const fr=isLong?fuelRate(l):null;
-    if(fr!=null)h+='<div class="row" style="margin-top:8px"><span class="chip c-'+(fr>=60?'easy':'long')+'">'+fr+' g/hr'+(fr>=60?' · race-ready':' · build toward 60–90')+'</span></div>';
-  }
-  return h;
-}
+/* statusSeg (the Done/Partial/Missed segment + inline edit grid) retired
+   12 Jun — cards are display-first now; the log sheet is the manual fallback. */
 
 /* ---------------- 7. Charts (inline SVG) ---------------- */
 
@@ -1491,9 +1620,11 @@ function ring(pct,size,inner){
 }
 function logChips(l){
   let h='';
-  if(l.km!=null)h+='<span class="chip neutral">'+fmtKm(l.km)+' km</span>';
+  if(l.km!=null&&l.km>0)h+='<span class="chip neutral">'+fmtKm(l.km)+' km</span>';
   if(l.pace)h+='<span class="chip neutral">'+esc(l.pace)+' /km</span>';
-  if(l.rpe!=null)h+='<span class="chip neutral">RPE '+l.rpe+'</span>';
+  if(l.secs)h+='<span class="chip neutral">'+fmtDur(l.secs)+'</span>';
+  if(l.hrA)h+='<span class="chip neutral">HR '+l.hrA+(l.hrM?'/'+l.hrM:'')+'</span>';
+  if(l.kcal)h+='<span class="chip neutral">'+fmtKcal(l.kcal)+' kcal</span>';
   const fr=fuelRate(l);
   if(fr!=null)h+='<span class="chip '+(fr>=60?'c-easy':'c-long')+'">'+fr+' g/hr</span>';
   if(l.note)h+='<span class="chip neutral">'+esc(l.note.slice(0,26))+(l.note.length>26?'…':'')+'</span>';
@@ -1503,6 +1634,14 @@ function logChips(l){
 
 function wSession(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
+  const isRest=e.zone==='Rest'&&e.km<=0;
+  const imported=!!(l.status&&l.source==='strava');
+  if(isRest) // rest days just happen — no logging, no status
+    return '<section class="card">'
+      +'<div class="row">'+zoneChip(e)+movedChip(e)+'</div>'
+      +'<div class="big" style="margin-top:8px">'+headline(e)+'</div>'
+      +'<p class="detail">'+esc(e.text)+'</p>'
+      +'</section>';
   return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
     +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
     +'<div class="row">'+zoneChip(e)+movedChip(e)
@@ -1514,7 +1653,9 @@ function wSession(){
     +'<p class="detail">'+esc(e.text)+'</p>'
     +(l.status
       ?'<div class="row" style="margin-top:10px">'+logChips(l)+'</div>'
-       +'<button class="btn2" style="width:100%;margin-top:12px" data-action="logsheet" data-i="'+todayIdx+'">Edit log</button>'
+       +(resultMeta(l)?'<p class="mini" style="margin:6px 2px 0">'+resultMeta(l)+'</p>':'')
+       +(imported?runVisual(l,todayIdx)
+         :'<button class="btn2" style="width:100%;margin-top:12px" data-action="logsheet" data-i="'+todayIdx+'">Edit log</button>')
       :'<button class="btn" style="width:100%;margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log session</button>'
        +(S.hints&&S.hints.sess?'':'<div class="swipe-onboard">or swipe the card right to log as planned</div>'))
     +'</section>';
@@ -1523,7 +1664,12 @@ function wSession(){
 function unloggedPast(){
   const list=[];
   if(rawT<=0)return list;
-  for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){const lg=sessLog(eff(k).id);if(!lg||!lg.status)list.push(k);}
+  for(let k=Math.min(rawT,RACE_IDX)-1;k>=0;k--){
+    const ek=eff(k);
+    if(ek.zone==='Rest'&&ek.km<=0)continue; // rest days aren't tracked — nothing to catch up
+    const lg=sessLog(ek.id);
+    if(!lg||!lg.status)list.push(k);
+  }
   return list; // newest first
 }
 function wCatchup(){ // a deck: clear a three-day backlog in three swipes
@@ -2023,9 +2169,29 @@ function racePack(){
     +'</section>';
 }
 
+/* Day cards are display-first (Luke's call, 12 Jun): runs arrive from Strava,
+   so the card shows the plan and, once imported, the result. No inline entry —
+   the log sheet (long-press / run sheet → Edit manually) is the manual
+   fallback. Rest days just happen: no status, nothing to track. */
 function dayCard(i){
   const e=eff(i),l=sessLog(e.id)||{};
   const isToday=i===rawT;
+  const isRest=e.zone==='Rest'&&e.km<=0;
+  let body='';
+  if(l.status&&!isRest){
+    const meta=resultMeta(l);
+    body='<div class="row" style="margin-top:10px">'
+      +'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Done':l.status==='partial'?'Partial':'Missed')+'</span>'
+      +logChips(l)+'</div>'
+      +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
+      +runVisual(l,i);
+    if((e.zone==='Long'||e.zone==='Marathon')&&l.status==='done'&&fuelRate(l)==null)
+      body+='<button class="btn3" data-action="logsheet" data-i="'+i+'" style="margin-top:8px">Log fuelling (g/hr)</button>';
+  }else if(!isRest&&i<rawT){
+    body='<div class="row" style="margin-top:10px">'
+      +'<button class="btn3" data-action="missed" data-i="'+i+'">Missed?</button>'
+      +'<span class="mini" style="color:var(--sub)">imports from Strava on sync</span></div>';
+  }
   return '<section class="card" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
     +'<div class="spread"><div class="row">'
     +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
@@ -2036,7 +2202,7 @@ function dayCard(i){
     +rebalLine(e)
     +'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(e.text)+'</p>'
     +'<div class="row" style="margin-top:8px"><span class="chip c-'+DAYTYPE[e.type].c+'">'+DAYTYPE[e.type].label+' · '+fmtKcal(e.kcal)+' kcal</span></div>'
-    +statusSeg(e,true)
+    +body
     +'</section>';
 }
 
@@ -2316,9 +2482,12 @@ document.addEventListener('swipeleft',ev=>{
 
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-action]');
-  if(!el){ // tapping a session/deck card (not a control inside it) opens the log sheet
+  if(!el){ // tapping a session/deck card (not a control inside it): imported runs open their run sheet, everything else the log sheet
     const sc=ev.target.closest('[data-swipe="sess"],[data-swipe="deck"]');
-    if(sc&&!ev.target.closest('button,input,select,a'))openLogSheet(+sc.dataset.i);
+    if(sc&&!ev.target.closest('button,input,select,a')){
+      const i3=+sc.dataset.i,l3=sessLog(eff(i3).id);
+      if(l3&&l3.status&&l3.source==='strava')openRunSheet(i3);else openLogSheet(i3);
+    }
     return;
   }
   const a=el.dataset.action;
@@ -2394,8 +2563,9 @@ document.addEventListener('click',ev=>{
       const pv=readRuler('shpace');
       if(pv)patch.pace=fmtPace(pv);
     }
-    const arc=document.getElementById('sharc');
-    if(arc&&arc.dataset.v)patch.rpe=+arc.dataset.v;
+    const cEl=document.getElementById('shcarbs'),mEl=document.getElementById('shmins');
+    if(cEl){const cv=parseFloat(cEl.value);patch.carbs=(isFinite(cv)&&cv>=0&&cv<=500)?cv:null;}
+    if(mEl){const mv=parseFloat(mEl.value);patch.mins=(isFinite(mv)&&mv>0&&mv<=600)?mv:null;}
     const note=document.getElementById('shnote');
     if(note&&note.value)patch.note=note.value.slice(0,300);
     const prev=S.sessions[e2.id]?Object.assign({},S.sessions[e2.id]):null;
@@ -2526,6 +2696,17 @@ document.addEventListener('click',ev=>{
     closeSheet();
     stravaApply(list);
   }
+  else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
+  else if(a==='missed'){
+    const i2=Number(el.dataset.i),e2=eff(i2);
+    const prev=S.sessions[e2.id]?Object.assign({},S.sessions[e2.id]):null;
+    logSession(e2.id,{status:'missed',km:0});
+    rerenderKeepScroll();
+    snack('Marked missed · '+headline(e2),()=>{
+      if(prev)S.sessions[e2.id]=prev;else delete S.sessions[e2.id];
+      save();rerenderKeepScroll();
+    });
+  }
 });
 
 const NUM_FIELDS={km:1,rpe:1,carbs:1,mins:1};
@@ -2602,12 +2783,14 @@ function doExport(text,name,type,isBackup){
 function buildCSV(){
   const q=v=>{v=v==null?'':String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
   const wmap={};S.weights.forEach(w=>{wmap[w.date]=w.lb;});
-  const head=['date','week','phase','day','zone','day_type','planned_km','status','actual_km','pace','rpe','carbs_g','duration_min','note','kcal_target','protein_g','carbs_target_g','fat_g','burn_kcal','deficit_kcal','plan_weight_lb','logged_weight_lb','moved'];
+  const head=['date','week','phase','day','zone','day_type','planned_km','status','actual_km','pace','moving_s','start','hr_avg','hr_max','cadence_spm','elev_m','run_kcal','gear','carbs_g','duration_min','note','kcal_target','protein_g','carbs_target_g','fat_g','burn_kcal','deficit_kcal','plan_weight_lb','logged_weight_lb','moved'];
   const lines=[head.join(',')];
   for(let i=0;i<N_DAYS;i++){
     const e=eff(i),l=sessLog(e.id)||{};
     lines.push([isoAt(i),e.w+1,e.wk.phase,DOW[e.pos],e.zone,DAYTYPE[e.type].label,e.planKm,
-      l.status||'',l.km!=null?l.km:'',l.pace||'',l.rpe!=null?l.rpe:'',l.carbs!=null?l.carbs:'',l.mins!=null?l.mins:'',l.note||'',
+      l.status||'',l.km!=null?l.km:'',l.pace||'',
+      l.secs!=null?l.secs:'',l.start||'',l.hrA!=null?l.hrA:'',l.hrM!=null?l.hrM:'',l.cad!=null?Math.round(l.cad*2):'',l.elev!=null?l.elev:'',l.kcal!=null?l.kcal:'',l.gear||'',
+      l.carbs!=null?l.carbs:'',l.mins!=null?l.mins:'',l.note||'',
       e.kcal,e.p,e.carbs,e.fat,e.burn,e.deficit,e.planWt,wmap[isoAt(i)]!=null?wmap[isoAt(i)]:'',e.moved?'yes':''].map(q).join(','));
   }
   return lines.join('\n');
