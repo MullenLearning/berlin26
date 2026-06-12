@@ -238,6 +238,13 @@ svg{display:block;width:100%;height:auto}
 .arcval b{font-size:30px;font-weight:800;font-family:var(--disp)}
 .arcword{font-size:13px;color:var(--txt2);font-weight:600;min-height:18px}
 .swipe-onboard{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
+/* drag-and-drop the week */
+.card.dragging{z-index:40;box-shadow:0 18px 44px rgba(0,0,0,.55);transition:none;position:relative}
+.card.droptarget{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.card.dropinert{opacity:.45}
+body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+.dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(0,0,0,.4);background:var(--raised);color:var(--txt2)}
+.dragpreview{font-size:12.5px;font-weight:700;color:var(--accent);margin-top:8px;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){
   .fade,.hl,.pop{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
@@ -1343,6 +1350,114 @@ function widgetConfig(){
   WIDGET_DEFS.forEach(d=>{if(!seen[d.id])out.push({id:d.id,on:!WIDGET_DEFAULT_OFF[d.id]});});
   return out;
 }
+/* ---------------- Drag and drop the week (long-press a Training day card) ---------------- */
+let dragSt=null;
+function startDayDrag(card,x,y){
+  const w=ui.week,pos=+card.dataset.day;
+  dragSt={card:card,w:w,pos:pos,x0:x,y0:y,target:null};
+  card.classList.add('dragging');
+  document.body.classList.add('dragactive');
+  card.style.transform='scale(1.02) rotate(.4deg)';
+  const e=eff(w*7+pos);
+  const g=document.createElement('div');
+  g.className='dragghost chip';
+  g.textContent=DAYTYPE[e.type].label+' · '+fmtKcal(e.kcal)+' kcal travels too';
+  card.appendChild(g);
+  document.addEventListener('pointermove',dayDragMove,{passive:false});
+  document.addEventListener('pointerup',dayDragEnd);
+  document.addEventListener('pointercancel',dayDragEnd);
+}
+function setDropTarget(t){
+  if(!dragSt||dragSt.target===t)return;
+  if(dragSt.target){
+    dragSt.target.classList.remove('droptarget');
+    dragSt.target.querySelectorAll('.dragpreview').forEach(p=>p.remove());
+    dragSt.card.querySelectorAll('.dragpreview').forEach(p=>p.remove());
+  }
+  dragSt.target=null;
+  if(!t)return;
+  const w=dragSt.w,a=dragSt.pos,b=+t.dataset.day;
+  if(w*7+b===RACE_IDX||w*7+a===RACE_IDX){ // race day is untouchable
+    t.classList.add('dropinert');setTimeout(()=>t.classList.remove('dropinert'),350);
+    return;
+  }
+  dragSt.target=t;
+  t.classList.add('droptarget');
+  // swap preview: the consequence at the moment of decision
+  const ea=eff(w*7+a),eb=eff(w*7+b);
+  const pa=document.createElement('div');pa.className='dragpreview';
+  pa.textContent=DOW[a]+' becomes '+fmtKcal(eb.kcal)+' kcal · '+eb.carbs+'g carbs';
+  const pb=document.createElement('div');pb.className='dragpreview';
+  pb.textContent=DOW[b]+' becomes '+fmtKcal(ea.kcal)+' kcal · '+ea.carbs+'g carbs';
+  dragSt.card.appendChild(pa);t.appendChild(pb);
+}
+function dayDragMove(e){
+  if(!dragSt)return;
+  e.preventDefault();
+  const dy=e.clientY-dragSt.y0;
+  dragSt.card.style.transform='translateY('+dy+'px) scale(1.02) rotate(.4deg)';
+  if(e.clientY<130)window.scrollBy(0,-10);
+  else if(e.clientY>innerHeight-150)window.scrollBy(0,10);
+  dragSt.card.style.pointerEvents='none';
+  const below=document.elementFromPoint(e.clientX,e.clientY);
+  dragSt.card.style.pointerEvents='';
+  const t=below&&below.closest?below.closest('.card[data-day]'):null;
+  setDropTarget(t&&t!==dragSt.card?t:null);
+}
+function dayDragEnd(){
+  if(!dragSt)return;
+  const card=dragSt.card,target=dragSt.target,w=dragSt.w,pos=dragSt.pos;
+  document.removeEventListener('pointermove',dayDragMove);
+  document.removeEventListener('pointerup',dayDragEnd);
+  document.removeEventListener('pointercancel',dayDragEnd);
+  document.body.classList.remove('dragactive');
+  card.querySelectorAll('.dragghost,.dragpreview').forEach(g=>g.remove());
+  dragSt=null;
+  if(target){
+    const b=+target.dataset.day;
+    const prevOrder=orderOf(w).slice();
+    swapDays(w,pos,b);
+    haptic(true);
+    rerenderKeepScroll();
+    requestAnimationFrame(()=>{
+      [w*7+pos,w*7+b].forEach(ix=>{const c=document.getElementById('day-'+ix);if(c)c.classList.add('hl');});
+      document.querySelectorAll('.tag-moved').forEach(t2=>t2.classList.add('pop'));
+    });
+    snack('Swapped '+DOW[pos]+' and '+DOW[b]+' — fuelling follows',()=>{
+      const ident=prevOrder.every((v,i)=>v===i);
+      if(ident)delete S.order[w];else S.order[w]=prevOrder;
+      save();rerenderKeepScroll();
+    });
+  }else{
+    card.classList.add('swipe-snapback');
+    card.style.transform='';
+    setTimeout(()=>card.classList.remove('swipe-snapback','dragging'),320);
+  }
+}
+
+/* reset with a scrub: show what it will undo before the button arms */
+function origHeadline(w,d){
+  const s=WEEKS[w].days[d];
+  return headline({w:w,op:d,i:-1,zone:s[0],km:s[1]});
+}
+function openResetSheet(w){
+  const o=orderOf(w);
+  let rows='';
+  for(let d=0;d<7;d++){
+    if(o[d]===d)continue;
+    rows+='<div class="sheetrow" style="cursor:default"><span class="d">'+DOW[d]+'</span>'
+      +'<span class="t">returns to <b style="color:var(--ink)">'+esc(origHeadline(w,d))+'</b></span></div>';
+    const c=document.getElementById('day-'+(w*7+d));
+    if(c)c.classList.add('hl'); // flash the affected cards behind the sheet
+  }
+  openSheet('<h2 style="margin:0">Reset week '+(w+1)+' to plan</h2>'
+    +'<p class="note" style="margin:6px 0 2px">This is what changes back. Your logs are kept.</p>'
+    +rows
+    +'<button class="btn" style="width:100%;margin-top:14px" id="resetarm" data-action="resetconfirm" data-w="'+w+'" disabled>Reset week</button>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+  setTimeout(()=>{const b=document.getElementById('resetarm');if(b)b.disabled=false;},800);
+}
+
 function openNutAdjustSheet(i){
   const e=eff(i),edited=S.nutEdit&&S.nutEdit[i]!=null;
   const w=Math.floor(i/7);
@@ -1451,7 +1566,7 @@ function racePack(){
 function dayCard(i){
   const e=eff(i),l=sessLog(e.id)||{};
   const isToday=i===rawT;
-  return '<section class="card" id="day-'+i+'">'
+  return '<section class="card" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
     +'<div class="spread"><div class="row">'
     +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
     +zoneChip(e)+movedChip(e)
@@ -1786,9 +1901,14 @@ document.addEventListener('click',ev=>{
     S.theme=el.dataset.v;save();applyTheme();rerenderKeepScroll();openWidgetSheet();
   }
   else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();}
-  else if(a==='resetweek'){
+  else if(a==='resetweek'){openResetSheet(Number(el.dataset.w));}
+  else if(a==='resetconfirm'){
     const w=Number(el.dataset.w);
-    if(confirm('Reset week '+(w+1)+' to the original plan? Your logs are kept.')){resetWeek(w);closeSheet();rerenderKeepScroll();}
+    const prevOrder=orderOf(w).slice();
+    resetWeek(w);closeSheet();rerenderKeepScroll();
+    snack('Week '+(w+1)+' reset to plan',()=>{
+      S.order[w]=prevOrder;save();rerenderKeepScroll();
+    });
   }
   else if(a==='closesheet'){closeSheet();}
   else if(a==='selweek'){ui.week=Number(el.dataset.w);ui.scroll.train=0;render();}
@@ -1949,7 +2069,11 @@ document.addEventListener('input',ev=>{
 
 document.addEventListener('longpress',ev=>{
   const tr=ev.target.closest('.rtrack'); // long-press the tape = flip to keyboard entry
-  if(tr){const r=tr.closest('.ruler');if(r)rulerToKeyboard(r.id);}
+  if(tr){const r=tr.closest('.ruler');if(r)rulerToKeyboard(r.id);return;}
+  const card=ev.target.closest('.card[data-day]'); // long-press a Training day card = lift and drag
+  if(card&&ui.tab==='train'&&!ev.target.closest('button,input,select')){
+    startDayDrag(card,ev.detail.x,ev.detail.y);
+  }
 });
 
 document.addEventListener('keydown',ev=>{
