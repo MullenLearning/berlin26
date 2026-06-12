@@ -1028,7 +1028,10 @@ function stravaSync(manual){
   stravaBusy=true;stravaLastTry=Date.now();
   stravaToken()
     .then(tok=>{
-      const after=Math.max(Math.floor(START_UTC/1000)-1,st.lastSync?Math.floor(Date.parse(st.lastSync)/1000)-2*86400:0);
+      // routine syncs look back 2 days past the last sync; a manual Sync now
+      // re-fetches the whole block, so a dismissed proposal can always be recovered
+      const after=manual?Math.floor(START_UTC/1000)-1
+        :Math.max(Math.floor(START_UTC/1000)-1,st.lastSync?Math.floor(Date.parse(st.lastSync)/1000)-2*86400:0);
       return stravaFetchActivities(tok,after,1,[]);
     })
     .then(acts=>{
