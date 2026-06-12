@@ -1229,7 +1229,7 @@ function decodePoly(str){ // Google encoded polyline → [[lat,lng],...]
   }
   return pts;
 }
-function routeSVG(poly,big){ // the route as a line on the card — Strava's own feed style
+function routeSVG(poly,big,paint){ // the route as a line — optionally painted by a stream (Where It Hurt)
   if(!poly)return '';
   try{
     let pts=decodePoly(poly);
@@ -1243,10 +1243,30 @@ function routeSVG(poly,big){ // the route as a line on the card — Strava's own
     const W=big?320:104,H=big?180:84,pad=6;
     const sc=Math.min((W-2*pad)/((maxX-minX)||1e-9),(H-2*pad)/((maxY-minY)||1e-9));
     const ox=(W-(maxX-minX)*sc)/2-minX*sc,oy=(H-(maxY-minY)*sc)/2-minY*sc;
-    let d='';
-    for(let k=0;k<pts.length;k++)d+=(k?'L':'M')+(xs[k]*sc+ox).toFixed(1)+' '+(ys[k]*sc+oy).toFixed(1);
-    return '<svg viewBox="0 0 '+W+' '+H+'" style="'+(big?'width:100%':'width:'+W+'px;flex:none')+';height:auto;display:block" role="img" aria-label="Route map">'
-      +'<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/></svg>';
+    const P=k=>(xs[k]*sc+ox).toFixed(1)+' '+(ys[k]*sc+oy).toFixed(1);
+    let body='';
+    const s=paint&&paint.s&&paint.s.length>=4?paint.s:null;
+    if(s){ // heat the path: cool accent → amber → red by percentile of the stream
+      const vals=s.filter(v=>v>0).slice().sort((a,b)=>a-b);
+      const q1=vals[Math.floor(vals.length*0.45)]||0,q2=vals[Math.floor(vals.length*0.8)]||1e9;
+      const col=v=>v<=0?'var(--accent)':v<q1?'var(--accent)':v<q2?'var(--long)':'var(--hard)';
+      let d='',cur=null;
+      for(let k=1;k<pts.length;k++){
+        const v=s[Math.min(s.length-1,Math.round((k/(pts.length-1))*(s.length-1)))];
+        const c=col(v);
+        if(c!==cur){
+          if(d)body+='<path d="'+d+'" fill="none" stroke="'+cur+'" stroke-width="'+(big?2.4:2)+'" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>';
+          d='M'+P(k-1);cur=c;
+        }
+        d+='L'+P(k);
+      }
+      if(d)body+='<path d="'+d+'" fill="none" stroke="'+cur+'" stroke-width="'+(big?2.4:2)+'" stroke-linejoin="round" stroke-linecap="round" opacity="0.92"/>';
+    }else{
+      let d='';
+      for(let k=0;k<pts.length;k++)d+=(k?'L':'M')+P(k);
+      body='<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>';
+    }
+    return '<svg viewBox="0 0 '+W+' '+H+'" style="'+(big?'width:100%':'width:'+W+'px;flex:none')+';height:auto;display:block" role="img" aria-label="Route map'+(s?', coloured by effort':'')+'">'+body+'</svg>';
   }catch(e){return '';}
 }
 function runChart(l,big){ // pace (accent) + HR (hard hue); pauses (v<0.5 m/s) break the line
@@ -1296,13 +1316,13 @@ function resultMeta(l){ // the quiet second line under the result chips
   return b.join(' · ');
 }
 function runVisual(l,i){
-  const map=routeSVG(l.poly,false),ch=runChart(l,false);
+  const map=routeSVG(l.poly,false,l.hrS?{s:l.hrS}:null),ch=runChart(l,false);
   if(!map&&!ch)return '';
   return '<button data-action="runsheet" data-i="'+i+'" aria-label="Open run details" '
     +'style="display:flex;gap:12px;align-items:center;width:100%;margin-top:10px;background:none;border:1px solid var(--bord);border-radius:12px;padding:10px;cursor:pointer">'
     +map+(ch?'<div style="flex:1;min-width:0">'+ch+'</div>':'')+'</button>';
 }
-function openRunSheet(i){
+function runSheetContent(i){
   const e=eff(i),l=sessLog(e.id)||{};
   let chips='<div class="row" style="margin-top:8px">'+logChips(l)+'</div>';
   const meta=resultMeta(l);
@@ -1317,15 +1337,34 @@ function openRunSheet(i){
     });
     splits='<h2 style="margin:16px 0 6px">Splits</h2><div class="scroll-x"><table style="width:100%;min-width:200px"><thead><tr><th>km</th><th class="right">Pace</th><th class="right">HR</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
-  openSheet('<h2 style="margin:0">'+shortDate(i)+' · '+esc(headline(e))+'</h2>'
+  // Where It Hurt: paint the route by HR or speed; toggle only when both streams exist
+  const mode=ui.paintMode||'hr';
+  const stream=mode==='pace'?l.vS:l.hrS;
+  const canToggle=!!(l.hrS&&l.vS&&l.poly);
+  const toggle=canToggle
+    ?'<div class="seg" style="margin-top:8px;max-width:220px">'
+      +'<button data-action="paintmode" data-v="hr" aria-pressed="'+(mode==='hr')+'" class="'+(mode==='hr'?'selb':'')+'">Heart</button>'
+      +'<button data-action="paintmode" data-v="pace" aria-pressed="'+(mode==='pace')+'" class="'+(mode==='pace'?'selb':'')+'">Pace</button></div>'
+    :'';
+  const paintNote=(stream&&l.poly)?'<p class="mini" style="margin:6px 2px 0">The line is the road; the colour is '+(mode==='pace'?'speed':'effort')+' — <span style="color:var(--accent)">cool</span> → <span style="color:var(--long)">working</span> → <span style="color:var(--hard)">hot</span>.</p>':'';
+  let bp='';
+  const bpr=(e.zone==='Long'||e.zone==='Marathon')?breakpointOf(l):null;
+  if(bpr)bp='<p class="note" style="margin:10px 0 0">'+(bpr.held
+    ?'Your stride held the whole way — no breakpoint.'
+    :'Stride cracked at km '+bpr.km+' ('+bpr.drift+'% over the run’s rhythm).')+'</p>';
+  return '<h2 style="margin:0">'+shortDate(i)+' · '+esc(headline(e))+'</h2>'
     +chips
     +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
-    +(l.poly?'<div style="margin-top:12px">'+routeSVG(l.poly,true)+'</div>':'')
+    +(l.poly?'<div style="margin-top:12px">'+routeSVG(l.poly,true,stream?{s:stream}:null)+'</div>'+toggle+paintNote:'')
+    +bp
     +((l.vS||l.hrS)?'<div style="margin-top:12px">'+runChart(l,true)+'</div>':'')
     +splits
     +qaRow('logsheet',i,'Edit manually')
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>',
-    document.getElementById('day-'+i));
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>';
+}
+function openRunSheet(i){
+  ui.runSheetI=i;
+  openSheet(runSheetContent(i),document.getElementById('day-'+i));
 }
 
 /* ---------------- 3c. Oura ----------------
@@ -1472,6 +1511,191 @@ function ouraCard(){
       :'<button class="btn2" style="width:100%;margin-top:10px" data-action="ourasync">Sync now</button>')
     +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="ouradisconnect">Disconnect</button>'
     +'</section>';
+}
+
+/* ---------------- 3d. Derived intelligence ----------------
+   Pure functions crossing the plan, Strava and Oura. Computed live from S —
+   nothing here is stored, so every improvement re-reads history for free. */
+
+/* HR anchors: highest max seen in imports (fallback 185), Oura RHR baseline */
+function hrAnchors(){
+  let mx=0;
+  for(const k in S.sessions){const l=S.sessions[k];if(l&&l.hrM>mx)mx=l.hrM;}
+  const rb=ouraBase('rhr',todayISO())||((healthRef().d[todayISO()]||{}).rhr)||55;
+  return {max:Math.max(mx,185),rest:Math.min(rb,90)};
+}
+/* Banister TRIMP per session; zone-typical HR reserve when a run has no HR */
+const ZONE_HRR={Recovery:0.58,Easy:0.66,Long:0.73,Marathon:0.80,Threshold:0.85,Interval:0.89};
+function trimpOf(l,e){
+  if(!l||!(l.status==='done'||l.status==='partial'))return 0;
+  const mins=l.secs?l.secs/60:(l.km?l.km*6.2:(l.mins||0));
+  if(!mins)return 0;
+  const a=hrAnchors();
+  const hrr=l.hrA?clamp((l.hrA-a.rest)/(a.max-a.rest),0.3,0.98):(ZONE_HRR[e.zone]||0.66);
+  return mins*hrr*0.64*Math.exp(1.92*hrr);
+}
+/* fitness (42d) / fatigue (7d) / form, day by day from block start */
+function formSeries(){
+  const t=clamp(rawT,0,RACE_IDX),out=[];
+  let ctl=0,atl=0;
+  for(let i=0;i<=t;i++){
+    const e=eff(i),tr=trimpOf(sessLog(e.id),e);
+    ctl+=(tr-ctl)/42;atl+=(tr-atl)/7;
+    out.push({i:i,trimp:Math.round(tr),ctl:ctl,atl:atl,tsb:ctl-atl});
+  }
+  return out;
+}
+function formNow(){const s=formSeries();return s.length?s[s.length-1]:null;}
+function formWord(tsb){return tsb>5?'fresh':tsb>=-12?'productive':tsb>=-25?'loaded':'deep in the hole';}
+
+/* aerobic cost of a run: beats per kilometre (lower = fitter) */
+function beatsPerKm(l){
+  if(!l||!l.hrA||!(l.km>3)||!l.secs)return null;
+  return l.hrA*(l.secs/l.km)/60;
+}
+
+/* did last night bank yesterday's work? judged against 7-day baselines */
+function absorption(i){
+  const e=eff(i),l=sessLog(e.id);
+  if(!l||l.status!=='done')return null;
+  if(trimpOf(l,e)<15)return null; // nothing meaningful to absorb
+  const nIso=isoAt(i+1),h=healthRef().d[nIso];
+  if(!h)return null;
+  const hb=ouraBase('hrv',nIso),rb=ouraBase('rhr',nIso);
+  let pts=0,max=0;
+  if(h.hrv!=null&&hb){max++;if(h.hrv>=hb*0.95)pts++;}
+  if(h.rhr!=null&&rb){max++;if(h.rhr<=rb+3)pts++;}
+  if(h.deep!=null){max++;if(h.deep>=3600)pts++;}
+  if(h.slp!=null){max++;if(h.slp>=25200)pts++;}
+  if(max<2)return null;
+  const r=pts/max;
+  return r>=0.75?{label:'absorbed',cls:'c-easy'}:r>=0.5?{label:'mostly absorbed',cls:'c-long'}:{label:'still owing',cls:'c-hard'};
+}
+
+/* route signature: 32 distance-resampled points + centroid, for loop matching */
+const _sigCache={};
+function routeSig(poly){
+  if(!poly)return null;
+  const key=poly.length+poly.slice(0,16);
+  if(_sigCache[key]!==undefined)return _sigCache[key];
+  let out=null;
+  try{
+    const pts=decodePoly(poly);
+    if(pts.length>=8){
+      const kx=Math.cos(pts[0][0]*Math.PI/180)*111320,ky=110540;
+      const xy=pts.map(p=>[p[1]*kx,p[0]*ky]);
+      let tot=0;const cum=[0];
+      for(let k=1;k<xy.length;k++){tot+=Math.hypot(xy[k][0]-xy[k-1][0],xy[k][1]-xy[k-1][1]);cum.push(tot);}
+      if(tot>=400){
+        const sig=[];
+        for(let s2=0;s2<32;s2++){
+          const d=tot*s2/31;let k=1;
+          while(k<cum.length-1&&cum[k]<d)k++;
+          const f=(d-cum[k-1])/((cum[k]-cum[k-1])||1);
+          sig.push([xy[k-1][0]+f*(xy[k][0]-xy[k-1][0]),xy[k-1][1]+f*(xy[k][1]-xy[k-1][1])]);
+        }
+        const cx=sig.reduce((a,p)=>a+p[0],0)/32,cy=sig.reduce((a,p)=>a+p[1],0)/32;
+        out={c:[Math.round(cx),Math.round(cy)],p:sig.map(p=>[Math.round(p[0]-cx),Math.round(p[1]-cy)]),len:Math.round(tot)};
+      }
+    }
+  }catch(e){}
+  _sigCache[key]=out;
+  return out;
+}
+function sigMatch(a,b){ // same road? near centroid + aligned shape, either direction
+  if(!a||!b)return false;
+  if(Math.hypot(a.c[0]-b.c[0],a.c[1]-b.c[1])>700)return false;
+  if(Math.abs(a.len-b.len)>Math.max(a.len,b.len)*0.25)return false;
+  const md=rev=>{let s=0;for(let k=0;k<32;k++){const q=b.p[rev?31-k:k];s+=Math.hypot(a.p[k][0]-q[0],a.p[k][1]-q[1]);}return s/32;};
+  return Math.min(md(0),md(1))<120;
+}
+/* every imported run grouped by matching route, oldest first */
+function loopGroups(){
+  const runs=[];
+  for(let i=0;i<=clamp(rawT,0,RACE_IDX);i++){
+    const e=eff(i),l=sessLog(e.id);
+    if(l&&l.status==='done'&&l.poly&&l.source==='strava'){
+      const sig=routeSig(l.poly);
+      if(sig)runs.push({i:i,l:l,sig:sig});
+    }
+  }
+  const groups=[];
+  runs.forEach(r=>{
+    const g=groups.find(g2=>sigMatch(g2.sig,r.sig));
+    if(g)g.runs.push(r);else groups.push({sig:r.sig,runs:[r]});
+  });
+  groups.forEach(g=>{g.key=g.runs[0].i;g.name=(S.loops||{})[g.key]||null;});
+  return groups;
+}
+
+/* glycogen wall: where the tank empties at race effort, given practiced fuelling */
+function wallModel(){
+  const lw=latestWeight();
+  if(!lw)return null;
+  const kg=lw.lb/2.2046;
+  let kcal=0,km=0,best=0;
+  for(const k in S.sessions){
+    const l=S.sessions[k];
+    if(l&&l.kcal&&l.km>4){kcal+=l.kcal;km+=l.km;}
+    const fr=fuelRate(l);
+    if(fr&&fr>best)best=fr;
+  }
+  const perKm=km>10?kcal/km:kg*1.036;
+  const store=kg*22;                    // usable glycogen ≈ 22 kcal/kg — an estimate, not a promise
+  const intakePerKm=best*4*(4.97/60);   // practiced g/hr at ~4:58/km race pace
+  const drainPerKm=perKm*0.75-intakePerKm; // ~75% glycolytic at marathon effort
+  if(drainPerKm<=8)return {km:99,ghr:best,uncapped:true};
+  return {km:store/drainPerKm,ghr:best,perKm:Math.round(perKm)};
+}
+
+/* the km where a long run's stride cracked: efficiency >4% over the run's median, two km straight */
+function breakpointOf(l){
+  if(!l||!l.splits||l.splits.length<8)return null;
+  const ef=l.splits.map(s=>(s[1]&&s[0]&&s[2]>=900)?s[1]*(s[0]/(s[2]/1000))/60:null);
+  const vals=ef.filter(x=>x!=null);
+  if(vals.length<8)return null;
+  const med=vals.slice().sort((a,b)=>a-b)[Math.floor(vals.length/2)];
+  for(let k=2;k<ef.length-1;k++)
+    if(ef[k]!=null&&ef[k+1]!=null&&ef[k]>med*1.04&&ef[k+1]>med*1.04)
+      return {km:k+1,drift:Math.round((ef[k]/med-1)*100),held:false};
+  return {km:null,drift:null,held:true};
+}
+
+/* the pattern desk: publish a crossing only when the data has earned it */
+function patternScan(){
+  const t=clamp(rawT,0,RACE_IDX);
+  const days=[];
+  for(let i=0;i<=t;i++){
+    const h=healthRef().d[isoAt(i)],l=sessLog(eff(i).id);
+    const ef=beatsPerKm(l);
+    if(h)days.push({h:h,ef:ef});
+  }
+  const tests=[
+    {id:'earlybed',label:'pre-22:30 bedtime',
+     cond:d=>{if(!d.h.bin)return null;const m=+d.h.bin.slice(0,2)*60+(+d.h.bin.slice(3));return m>=300&&m<=1350;}, // 05:00–22:30 counts as early (post-midnight = late)
+     metric:d=>d.ef},
+    {id:'sleep730',label:'7h30+ of sleep',cond:d=>d.h.slp!=null?d.h.slp>=27000:null,metric:d=>d.ef},
+    {id:'ready80',label:'readiness 80+',cond:d=>d.h.rs!=null?d.h.rs>=80:null,metric:d=>d.ef}
+  ];
+  let best=null,progress=null;
+  tests.forEach(ts=>{
+    const yes=[],no=[];
+    days.forEach(d=>{
+      const c=ts.cond(d),m=ts.metric(d);
+      if(c==null||m==null)return;
+      (c?yes:no).push(m);
+    });
+    const n=Math.min(yes.length,no.length);
+    if(yes.length>=5&&no.length>=4){
+      const my=yes.reduce((a,b)=>a+b,0)/yes.length,mn=no.reduce((a,b)=>a+b,0)/no.length;
+      const eff2=(mn-my)/mn;
+      if(eff2>=0.03&&(!best||eff2>best.eff))
+        best={eff:eff2,text:'Runs after '+ts.label+' average '+Math.round(eff2*100)+'% fewer beats per km ('+yes.length+' vs '+no.length+' runs). The next test writes itself.'};
+    }else if(!progress||yes.length>progress.n){
+      progress={n:yes.length,text:'learning your patterns — '+ts.label+': '+yes.length+' of 5 runs banked'};
+    }
+  });
+  return best||progress;
 }
 
 /* ---------------- 4. Derived data ---------------- */
@@ -3180,6 +3404,11 @@ document.addEventListener('click',ev=>{
     }
   }
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
+  else if(a==='paintmode'){
+    ui.paintMode=el.dataset.v;
+    const panel=document.querySelector('#sheet .panel');
+    if(panel&&ui.runSheetI!=null)panel.innerHTML=runSheetContent(ui.runSheetI);
+  }
   else if(a==='missed'){
     const i2=Number(el.dataset.i),e2=eff(i2);
     const prev=S.sessions[e2.id]?Object.assign({},S.sessions[e2.id]):null;
