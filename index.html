@@ -849,9 +849,14 @@ function loadState(){
     return freshState();
   }
 }
+/* Some contexts (embedded previews, private browsing) block storage entirely —
+   probe once, run in-memory there, and explain calmly instead of alerting. */
+let storageOK=true;
+try{localStorage.setItem(KEY+'.probe','1');localStorage.removeItem(KEY+'.probe');}catch(e){storageOK=false;}
 let S=loadState();
 let saveWarned=false;
 function save(){
+  if(!storageOK)return; // in-memory session; the Today banner explains
   try{
     localStorage.setItem(KEY,JSON.stringify(S));
     // rolling snapshots: one per day, 7 slots keyed by weekday — cheap insurance against a bad restore
@@ -861,8 +866,11 @@ function save(){
       localStorage.setItem(KEY,JSON.stringify(S));
     }
   }
-  catch(e){
-    if(!saveWarned){saveWarned=true;alert('Couldn’t save to device storage. Your logs may not persist: free up space or leave private browsing, then log again.');}
+  catch(e){ // storage worked at startup but failed now: genuine quota/eviction issue
+    if(!saveWarned){
+      saveWarned=true;
+      if(typeof snack==='function')snack('Couldn’t save — logs may not persist. Free up storage, then log again.');
+    }
   }
 }
 function logSession(id,patch,source){
@@ -1768,6 +1776,8 @@ function vToday(){
   let note='';
   if(rawT<0)note='<div class="banner">Plan starts Monday 8 June 2026. Showing day 1, '+( -rawT)+' day'+(rawT===-1?'':'s')+' to go.</div>';
   if(rawT>RACE_IDX)note='<div class="banner">The block is complete. Showing race day — congratulations on Berlin!</div>';
+  if(!storageOK)
+    note+='<div class="banner">This viewer blocks storage, so nothing logged here is saved. The installed app on your phone persists everything as normal.</div>';
   const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
   const standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
   if(isIOS&&!standalone&&!S.hideInstallTip&&location.protocol.indexOf('http')===0)
