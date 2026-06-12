@@ -803,10 +803,13 @@ function save(){
   if(!storageOK)return; // in-memory session; the Today banner explains
   try{
     localStorage.setItem(KEY,JSON.stringify(S));
-    // rolling snapshots: one per day, 7 slots keyed by weekday — cheap insurance against a bad restore
+    // rolling snapshots: one per day, 7 slots keyed by weekday — cheap insurance against a bad restore.
+    // Bulky Strava visuals (streams/route/splits) are excluded: they're re-fetchable, and 8 full
+    // copies of them would crowd iOS's ~5MB localStorage quota. Backup exports stay complete.
     if(S._snap!==todayISO()){
       S._snap=todayISO();
-      localStorage.setItem(KEY+'.snap'+new Date().getDay(),JSON.stringify(S));
+      const slim=JSON.stringify(S,(k,v)=>(k==='hrS'||k==='vS'||k==='poly'||k==='splits')?undefined:v);
+      localStorage.setItem(KEY+'.snap'+new Date().getDay(),slim);
       localStorage.setItem(KEY,JSON.stringify(S));
     }
   }
