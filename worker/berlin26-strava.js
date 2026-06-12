@@ -9,17 +9,16 @@
      STRAVA_CLIENT_SECRET  <from https://www.strava.com/settings/api>
    No storage, no logging — tokens pass through and are never kept. */
 
-const ALLOWED_ORIGINS = [
-  'https://mullenlearning.github.io',
-  'http://localhost:8080',   // local dev (python3 -m http.server 8080)
-  'http://127.0.0.1:8080',
-];
+const PROD_ORIGIN = 'https://mullenlearning.github.io';
+// any localhost port is fine for dev — CORS here gates nothing secret, the
+// caller must already hold a valid code or refresh token
+const allowOrigin = (o) => o === PROD_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
 
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
     const cors = {
-      'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+      'Access-Control-Allow-Origin': allowOrigin(origin) ? origin : PROD_ORIGIN,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
       'Access-Control-Max-Age': '86400',

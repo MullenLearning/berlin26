@@ -955,7 +955,7 @@ function resetWeek(w){delete S.order[w];save();}
    refresh go through the proxy; activity GETs are CORS-open (verified
    ACAO:* live, 12 Jun 2026) and stay browser-direct. */
 const STRAVA_CLIENT_ID='257604';
-const STRAVA_PROXY=(storageOK&&localStorage.getItem('berlin2026.stravaProxy'))||'https://berlin26-strava.REPLACE-ME.workers.dev';
+const STRAVA_PROXY=(storageOK&&localStorage.getItem('berlin2026.stravaProxy'))||'https://berlin26-strava.luke-mullen1.workers.dev';
 const STRAVA_KEY='berlin2026.strava';
 function stravaState(){try{const r=localStorage.getItem(STRAVA_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
 function stravaSave(st){try{localStorage.setItem(STRAVA_KEY,JSON.stringify(st));}catch(e){}}

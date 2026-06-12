@@ -17,14 +17,16 @@ https://mullenlearning.github.io/berlin26/ (see README + memory).
 
 ---
 
-## Night 1 — Strava auto-import (priority 1) — **BUILT 12 Jun, awaiting Worker deploy**
+## Night 1 — Strava auto-import (priority 1) — **LIVE 12 Jun**
 
 Code complete and tested against a mocked Strava API (connect card, sync, confirm
 sheet, day override, manual-win guard, undo, 401/network handling, token-free backups).
-**Remaining to go live (~5 min, Luke):** deploy `worker/berlin26-strava.js` per
-`worker/README.md`, then put the workers.dev URL into `STRAVA_PROXY` in `index.html`
-(search `REPLACE-ME`) and push. Until then the Connect button explains itself and
-nothing breaks.
+Worker deployed at `https://berlin26-strava.luke-mullen1.workers.dev` (smoke-tested:
+token/refresh routes, CORS pinned to the Pages origin, env vars wired); `STRAVA_PROXY`
+points at it. **Remaining: Luke taps Connect Strava on the Training tab once** —
+first real OAuth grant + Saturday's 18 km are the live acceptance test. Note the
+deployed Worker allowlists localhost:8080; the repo copy now allows any localhost
+port (re-paste only if local dev ever needs it).
 
 **CORS finding (verified live 12 Jun):** `/api/v3` GETs send `ACAO: *` — activity reads
 stay browser-direct; the Worker only handles `/token` + `/refresh`.
