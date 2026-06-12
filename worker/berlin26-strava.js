@@ -1,9 +1,12 @@
-/* berlin26-strava — OAuth token proxy for the Berlin26 PWA.
-   Strava's /oauth/token endpoint sends no CORS headers, so the browser can't
-   call it directly. Plain API GETs are CORS-open (ACAO: *, verified live
-   12 Jun 2026), so only the two auth flows land here:
+/* berlin26-strava — API proxy for the Berlin26 PWA.
+   Two jobs, both things the browser can't do itself:
+   1. Strava OAuth (no CORS on /oauth/token):
      POST /token    {code}          → code → tokens   (first connect)
      POST /refresh  {refresh_token} → fresh tokens    (routine refresh)
+   2. Oura API v2 (no CORS at all, verified 12 Jun 2026):
+     GET /oura/v2/usercollection/<endpoint>?...  → forwarded with the
+     caller's Authorization header. The Oura token lives on the phone;
+     this is a dumb pipe with a path whitelist.
    Env vars (Worker → Settings → Variables; encrypt the secret):
      STRAVA_CLIENT_ID      257604
      STRAVA_CLIENT_SECRET  <from https://www.strava.com/settings/api>
@@ -19,8 +22,8 @@ export default {
     const origin = request.headers.get('Origin') || '';
     const cors = {
       'Access-Control-Allow-Origin': allowOrigin(origin) ? origin : PROD_ORIGIN,
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     };
@@ -31,7 +34,24 @@ export default {
       headers: { ...cors, 'Content-Type': 'application/json' },
     });
 
-    const path = new URL(request.url).pathname.replace(/\/+$/, '');
+    const reqUrl = new URL(request.url);
+    const path = reqUrl.pathname.replace(/\/+$/, '');
+
+    if (request.method === 'GET' && path.startsWith('/oura/')) {
+      const sub = path.slice(5); // '/v2/usercollection/...'
+      if (!/^\/v2\/usercollection\/[A-Za-z0-9_]+$/.test(sub)) return json({ error: 'not_found' }, 404);
+      const auth = request.headers.get('Authorization') || '';
+      if (!auth.startsWith('Bearer ')) return json({ error: 'missing_auth' }, 401);
+      let r;
+      try {
+        r = await fetch('https://api.ouraring.com' + sub + reqUrl.search, { headers: { Authorization: auth } });
+      } catch (e) {
+        return json({ error: 'oura_unreachable' }, 502);
+      }
+      const body = await r.text();
+      return new Response(body, { status: r.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
     if (request.method !== 'POST' || (path !== '/token' && path !== '/refresh')) {
       return json({ error: 'not_found' }, 404);
     }

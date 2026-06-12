@@ -777,7 +777,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},health:{d:{}},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -897,6 +897,31 @@ function sanitizePayload(data){
       const i=Number(k),v=Number(data.nutEdit[k]);
       if(Number.isInteger(i)&&i>=0&&i<N_DAYS&&isFinite(v)&&v>=1200&&v<=8000)out.nutEdit[i]=Math.round(v);
     }
+  }
+  // ambient Oura measurements (S.health) — every field bounded on the way back in
+  out.health={d:{}};
+  if(data&&data.health&&typeof data.health==='object'){
+    const num=(v,lo,hi,dec)=>{v=+v;if(!isFinite(v)||v<lo||v>hi)return null;const f=Math.pow(10,dec||0);return Math.round(v*f)/f;};
+    const hd=data.health.d||{};
+    for(const k in hd){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(k))continue;
+      const i=isoToIdx(k);
+      if(i<-7||i>RACE_IDX)continue;
+      const r=hd[k]||{},o={};
+      const F={rs:[0,100],ss:[0,100],slp:[0,60000],deep:[0,60000],rem:[0,60000],eff:[0,100],
+        hrv:[1,300],rhr:[20,220],ahr:[20,220],calA:[0,10000],calT:[0,10000],steps:[0,150000],bdi:[0,100]};
+      for(const f in F){const v=num(r[f],F[f][0],F[f][1]);if(v!=null)o[f]=v;}
+      const tmp=num(r.tmp,-3,3,2);if(tmp!=null)o.tmp=tmp;
+      const spo2=num(r.spo2,70,100,1);if(spo2!=null)o.spo2=spo2;
+      if(typeof r.bin==='string'&&/^\d{2}:\d{2}$/.test(r.bin))o.bin=r.bin;
+      if(['normal','stressful','restored'].indexOf(r.str)>=0)o.str=r.str;
+      if(Object.keys(o).length)out.health.d[k]=o;
+    }
+    const vo2=Number(data.health.vo2);
+    if(isFinite(vo2)&&vo2>=20&&vo2<=90)out.health.vo2=Math.round(vo2*10)/10;
+    const btS=Number(data.health.btS),btE=Number(data.health.btE);
+    if(Number.isInteger(btS)&&Math.abs(btS)<=43200)out.health.btS=btS;
+    if(Number.isInteger(btE)&&Math.abs(btE)<=43200)out.health.btE=btE;
   }
   return out;
 }
@@ -1300,6 +1325,152 @@ function openRunSheet(i){
     +qaRow('logsheet',i,'Edit manually')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>',
     document.getElementById('day-'+i));
+}
+
+/* ---------------- 3c. Oura ----------------
+   Additive to Strava: Strava owns the work, Oura owns the body (sleep,
+   readiness, HRV, RHR, temperature, burn). The API sends no CORS headers,
+   so reads go through the Worker's /oura pass-through; the personal access
+   token lives in its own localStorage key — on the phone, never in backups.
+   Oura data is ambient measurement, not a training log: it lands in
+   S.health without a confirm sheet and never touches sessions/weights. */
+const OURA_KEY='berlin2026.oura';
+const OURA_PROXY=STRAVA_PROXY+'/oura';
+function ouraState(){try{const r=localStorage.getItem(OURA_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function ouraSave(st){try{localStorage.setItem(OURA_KEY,JSON.stringify(st));}catch(e){}}
+function ouraPatch(p){const st=ouraState();if(st)ouraSave(Object.assign(st,p));}
+function ouraConnected(){return !!ouraState();}
+function healthRef(){if(!S.health||typeof S.health!=='object'||!S.health.d)S.health={d:{}};return S.health;}
+
+function ouraFetch(path,token){
+  return fetch(OURA_PROXY+path,{headers:{Authorization:'Bearer '+token}})
+    .then(r=>{if(r.status===401||r.status===403)throw{auth:1};if(!r.ok)throw{net:1};return r.json();});
+}
+function ouraFetchAll(path,token,acc,pages){ // follow next_token, bounded
+  return ouraFetch(path,token).then(d=>{
+    acc=acc.concat((d&&d.data)||[]);
+    if(d&&d.next_token&&(pages||0)<3)
+      return ouraFetchAll(path+(path.indexOf('?')>=0?'&':'?')+'next_token='+encodeURIComponent(d.next_token),token,acc,(pages||0)+1);
+    return acc;
+  });
+}
+
+let ouraBusy=false,ouraLastTry=0;
+function ouraSync(manual){
+  const st=ouraState();
+  if(!st||ouraBusy)return;
+  if(st.needsAuth&&!manual)return;
+  ouraBusy=true;ouraLastTry=Date.now();
+  const H=healthRef();
+  // first sync backfills from a week before the block so baselines exist on day 1
+  const startIso=st.lastSync
+    ?isoAt(Math.max(-7,isoToIdx(st.lastSync.slice(0,10))-2))
+    :isoAt(-7);
+  const endIso=todayISO();
+  const range='?start_date='+startIso+'&end_date='+endIso;
+  const day=iso=>{ // bounded entry accessor: out-of-block writes go to a discarded stub
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso)))return {};
+    const i=isoToIdx(iso);
+    if(i<-7||i>RACE_IDX)return {};
+    return H.d[iso]||(H.d[iso]={});
+  };
+  const grab=(ep,apply)=>ouraFetchAll('/v2/usercollection/'+ep+range,st.token,[])
+    .then(list=>{list.forEach(it=>{if(it)apply(it);});return 1;})
+    .catch(err=>{if(err&&err.auth)throw err;return 0;}); // network blips per-endpoint are non-fatal
+  Promise.all([
+    grab('daily_readiness',it=>{const e=day(it.day);if(it.score!=null)e.rs=Math.round(it.score);
+      if(typeof it.temperature_deviation==='number')e.tmp=Math.round(it.temperature_deviation*100)/100;}),
+    grab('daily_sleep',it=>{const e=day(it.day);if(it.score!=null)e.ss=Math.round(it.score);}),
+    grab('sleep',it=>{const e=day(it.day),dur=it.total_sleep_duration||0;
+      if(dur<=(e.slp||0))return; // several records per day (naps) — keep the main sleep
+      e.slp=dur;e.deep=it.deep_sleep_duration||0;e.rem=it.rem_sleep_duration||0;
+      if(it.efficiency)e.eff=Math.round(it.efficiency);
+      if(it.average_hrv)e.hrv=Math.round(it.average_hrv);
+      if(it.lowest_heart_rate)e.rhr=Math.round(it.lowest_heart_rate);
+      if(it.average_heart_rate)e.ahr=Math.round(it.average_heart_rate);
+      if(it.bedtime_start)e.bin=String(it.bedtime_start).slice(11,16);}),
+    grab('daily_activity',it=>{const e=day(it.day);
+      if(it.active_calories!=null)e.calA=Math.round(it.active_calories);
+      if(it.total_calories!=null)e.calT=Math.round(it.total_calories);
+      if(it.steps!=null)e.steps=Math.round(it.steps);}),
+    grab('daily_stress',it=>{const e=day(it.day);if(it.day_summary)e.str=String(it.day_summary).slice(0,12);}),
+    grab('daily_spo2',it=>{const e=day(it.day);
+      if(it.spo2_percentage&&it.spo2_percentage.average!=null)e.spo2=Math.round(it.spo2_percentage.average*10)/10;
+      if(it.breathing_disturbance_index!=null)e.bdi=Math.round(it.breathing_disturbance_index);}),
+    grab('sleep_time',it=>{if(it.optimal_bedtime&&it.optimal_bedtime.start_offset!=null){
+      H.btS=Math.round(it.optimal_bedtime.start_offset);H.btE=Math.round(it.optimal_bedtime.end_offset||it.optimal_bedtime.start_offset+2700);}}),
+    grab('vO2_max',it=>{if(it.vo2_max!=null)H.vo2=Math.round(it.vo2_max*10)/10;})
+  ]).then(oks=>{
+    ouraBusy=false;
+    const got=oks.reduce((s,x)=>s+x,0);
+    save();
+    ouraPatch({lastSync:new Date().toISOString(),needsAuth:0,err:null,
+      note:got?'synced':'nothing reachable'});
+    if(manual&&!got)snack('Couldn’t reach Oura — try again in a minute.');
+    rerenderKeepScroll();
+  }).catch(err=>{
+    ouraBusy=false;
+    if(err&&err.auth){
+      const wasAuth=!!(ouraState()&&ouraState().needsAuth);
+      ouraPatch({needsAuth:1});
+      if(!wasAuth||manual)snack('Oura token rejected — reconnect from the Training tab.');
+    }else{
+      ouraPatch({err:'Couldn’t reach Oura just now.'});
+      if(manual)snack('Couldn’t reach Oura — try again in a minute.');
+    }
+    rerenderKeepScroll();
+  });
+}
+
+/* 7-day baseline (data days within the previous 14 calendar days) */
+function ouraBase(field,iso){
+  const H=healthRef(),i0=isoToIdx(iso);
+  const vals=[];
+  for(let k=i0-1;k>=i0-14&&vals.length<7;k--){
+    const e=H.d[isoAt(k)];
+    if(e&&e[field]!=null)vals.push(e[field]);
+  }
+  if(vals.length<3)return null;
+  return vals.reduce((s,v)=>s+v,0)/vals.length;
+}
+/* the amber triad vs baseline: elevated RHR, suppressed HRV, raised temp */
+function ouraFlags(iso){
+  const H=healthRef(),e=H.d[iso];
+  if(!e)return [];
+  const out=[];
+  const rb=ouraBase('rhr',iso),hb=ouraBase('hrv',iso);
+  if(e.rhr!=null&&rb!=null&&e.rhr>=rb+5)out.push('RHR +'+Math.round(e.rhr-rb));
+  if(e.hrv!=null&&hb!=null&&e.hrv<=hb*0.85)out.push('HRV −'+Math.round((1-e.hrv/hb)*100)+'%');
+  if(e.tmp!=null&&e.tmp>=0.3)out.push('temp +'+e.tmp.toFixed(1)+'°');
+  return out;
+}
+function fmtSleep(sec){const h=Math.floor(sec/3600),m=Math.round(sec%3600/60);return h+'h '+p2(m)+'m';}
+function offClock(off){const s=((off%86400)+86400)%86400;return p2(Math.floor(s/3600))+':'+p2(Math.floor(s%3600/60));}
+
+function openOuraSheet(){
+  openSheet('<h2 style="margin:0">Connect Oura</h2>'
+    +'<p class="note" style="margin:6px 0 2px">Create a token at cloud.ouraring.com → Personal Access Tokens, then paste it here. It stays on this phone and is never part of backups.</p>'
+    +'<div class="shsec"><label class="f" for="ouratok">Personal access token</label>'
+    +'<input id="ouratok" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste token"></div>'
+    +'<p class="mini" id="ouraerr" hidden style="margin:6px 2px 0;color:var(--hard)">Oura rejected that token — check it was copied whole.</p>'
+    +'<button class="btn" style="width:100%;margin-top:14px" data-action="ouraconnectsave">Connect</button>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>',
+    null,()=>{const t=document.getElementById('ouratok');if(t)t.focus();});
+}
+function ouraCard(){
+  const st=ouraState();
+  if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Oura</h2><span class="chip neutral">Not connected</span></div>'
+    +'<p class="note" style="margin:8px 0 0">Sleep, readiness, HRV and burn land beside your runs — recovery for the body Strava can’t see.</p>'
+    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="ouraconnect">Connect Oura</button></section>';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Oura</h2>'
+    +(st.needsAuth?'<span class="chip c-hard">Reconnect</span>':'<span class="chip c-easy">Connected</span>')+'</div>'
+    +'<p class="mini" style="margin:8px 2px 0">'+(st.lastSync?'Last sync: '+fmtSyncTime(st.lastSync):'Not synced yet')+'</p>'
+    +(st.err?'<p class="mini" style="margin:2px 2px 0">'+esc(st.err)+'</p>':'')
+    +(st.needsAuth
+      ?'<button class="btn2" style="width:100%;margin-top:10px" data-action="ouraconnect">Reconnect Oura</button>'
+      :'<button class="btn2" style="width:100%;margin-top:10px" data-action="ourasync">Sync now</button>')
+    +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="ouradisconnect">Disconnect</button>'
+    +'</section>';
 }
 
 /* ---------------- 4. Derived data ---------------- */
@@ -1751,8 +1922,19 @@ function wFuel(){
   let tomorrow='';
   if(hr>=20&&todayIdx<RACE_IDX){ // eating decisions for the morning happen the night before
     const te=eff(todayIdx+1);
+    let bed='';
+    if(ouraConnected()){ // sleep is part of fuelling: Oura's bedtime window, or your own habit
+      const H=healthRef();
+      if(H.btS!=null)bed=' Lights out '+offClock(H.btS)+'–'+offClock(H.btE!=null?H.btE:H.btS+2700)+' (Oura).';
+      else{
+        const bins=[];
+        for(let k=todayIdx;k>=todayIdx-7&&bins.length<5;k--){const hh=H.d[isoAt(k)];if(hh&&hh.bin)bins.push(hh.bin);}
+        if(bins.length>=3)bed=' Your usual lights-out is ~'+esc(bins[Math.floor(bins.length/2)])+'.';
+      }
+      if(bed&&(te.zone==='Long'||te.zone==='Marathon'))bed=' Big one tomorrow — '+bed.slice(1,2).toLowerCase()+bed.slice(2);
+    }
     tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b> — '+fmtKcal(te.kcal)+' kcal · '+te.carbs+'g carbs'
-      +(te.type==='S'||te.type==='L'?'. Big breakfast.':te.type==='R'?'. Rest day, keep it light.':'')+'</p>';
+      +(te.type==='S'||te.type==='L'?'. Big breakfast.':te.type==='R'?'. Rest day, keep it light.':'')+bed+'</p>';
   }
   const mbar=(lbl,g,pct,clr)=>'<div class="mbar"><span class="ml">'+lbl+'</span>'
     +'<span class="mt"><i style="width:'+pct+'%;background:'+clr+'"></i></span>'
@@ -1814,15 +1996,159 @@ function wTrend(){
     +'<div class="svgwrap">'+weightChart()+'</div></section>';
 }
 
+/* ---- Oura widgets: recovery, energy balance, HRV/RHR trend ---- */
+function wRecovery(){
+  if(!ouraConnected())
+    return '<section class="card"><div class="spread"><h2>Recovery</h2><span class="chip neutral">Oura</span></div>'
+      +'<p class="note" style="margin:8px 0 0">Readiness, sleep and HRV appear here each morning once your ring is connected.</p>'
+      +'<button class="btn2" style="width:100%;margin-top:10px" data-action="ouraconnect">Connect Oura</button></section>';
+  const H=healthRef(),iso=todayISO(),h=H.d[iso];
+  if(!h||h.rs==null&&h.slp==null)
+    return '<section class="card"><div class="spread"><h2>Recovery</h2><span class="chip neutral">no data yet</span></div>'
+      +'<p class="mini" style="margin:8px 2px 0">Nothing for today yet — open the Oura app to sync the ring, then Sync now on the Training tab.</p></section>';
+  const e=eff(todayIdx);
+  const rsClass=h.rs==null?'neutral':h.rs>=85?'c-easy':h.rs>=70?'neutral':h.rs>=55?'c-long':'c-hard';
+  const rb=ouraBase('rhr',iso),hb=ouraBase('hrv',iso);
+  const sig=[];
+  if(h.hrv!=null)sig.push('<span class="chip neutral">HRV '+h.hrv+(hb?' · 7d '+Math.round(hb):'')+'</span>');
+  if(h.rhr!=null)sig.push('<span class="chip neutral">RHR '+h.rhr+(rb?(h.rhr-rb>=0?' · +':' · −')+Math.abs(Math.round(h.rhr-rb)):'')+'</span>');
+  if(h.tmp!=null)sig.push('<span class="chip neutral">temp '+(h.tmp>=0?'+':'')+h.tmp.toFixed(1)+'°</span>');
+  let sleepLine='';
+  if(h.slp)sleepLine='<p class="mini" style="margin:6px 2px 0">'+fmtSleep(h.slp)
+    +(h.deep?' · deep '+Math.round(h.deep/60)+'m':'')+(h.rem?' · REM '+Math.round(h.rem/60)+'m':'')
+    +(h.eff?' · '+h.eff+'% efficient':'')+(h.bin?' · lights out '+esc(h.bin):'')+'</p>';
+  // the plan-aware verdict: readiness meets today's session
+  const hard=!(e.zone==='Easy'||e.zone==='Recovery'||e.zone==='Rest');
+  const flags=ouraFlags(iso);
+  const caution=(h.rs!=null&&h.rs<60)||flags.length>=2;
+  let verdict='';
+  if(caution&&hard)
+    verdict='<p class="note" style="margin:10px 0 0">'+(flags.length?esc(flags.join(', '))+' vs your week':'Readiness '+h.rs)
+      +' and today is <b>'+esc(headline(e))+'</b> — consider swapping it with an easier day.</p>'
+      +'<button class="btn2" style="width:100%;margin-top:8px" data-action="movestart" data-i="'+todayIdx+'">Move today’s session</button>';
+  else if(caution)
+    verdict='<p class="note" style="margin:10px 0 0">Body says amber'+(flags.length?' ('+esc(flags.join(', '))+')':'')+' — keep today genuinely easy.</p>';
+  else if(h.rs!=null&&h.rs>=85&&hard)
+    verdict='<p class="note" style="margin:10px 0 0">Green light — recovered and ready for <b>'+esc(headline(e))+'</b>.</p>';
+  const extras=[];
+  if(h.str)extras.push('stress: '+esc(h.str));
+  if(h.spo2!=null)extras.push('SpO₂ '+h.spo2+'%');
+  if(h.bdi!=null&&h.bdi>10)extras.push('breathing disturbance '+h.bdi);
+  if(H.vo2)extras.push('VO₂max '+H.vo2);
+  return '<section class="card"><div class="spread"><h2>Recovery</h2>'
+    +(h.rs!=null?'<span class="chip '+rsClass+'">readiness '+h.rs+'</span>':'<span class="chip neutral">Oura</span>')+'</div>'
+    +'<div class="row" style="gap:18px;margin-top:4px">'
+    +(h.rs!=null?'<div><span class="mini">Readiness</span><div class="big num">'+h.rs+'</div></div>':'')
+    +(h.ss!=null?'<div><span class="mini">Sleep score</span><div class="big num">'+h.ss+'</div></div>':'')
+    +'</div>'
+    +sleepLine
+    +(sig.length?'<div class="row" style="margin-top:8px">'+sig.join('')+'</div>':'')
+    +verdict
+    +(extras.length?'<p class="mini" style="margin:10px 2px 0">'+extras.join(' · ')+'</p>':'')
+    +'</section>';
+}
+
+/* Energy balance: eaten (the day's plan, edits included) vs Total burned.
+   Total burned blends two independent estimates — Oura's day total and
+   Mifflin-St Jeor BMR ×1.2 from the LATEST weight log plus the day's actual
+   Strava run calories — because Oura alone reads high vs Luke's Garmin.
+   Oura's running figure only joins the blend once it's plausibly mature
+   (≥80% of the formula, or evening), so the number reads sane all day. */
+function dayBurn(i){
+  const ost=ouraState(),H=healthRef(),iso=isoAt(i),h=H.d[iso];
+  const lw=latestWeight();
+  const kg=(lw?lw.lb:planWtAt(clamp(i,0,RACE_IDX)))/2.2046;
+  let formula=null,run=0;
+  if(ost&&ost.h>0&&ost.age>0){
+    const bmr=10*kg+6.25*(ost.h*100)-5*ost.age+(ost.sex==='female'?-161:5);
+    const l=sessLog(eff(i).id);
+    if(l&&(l.status==='done'||l.status==='partial'))run=l.kcal!=null?l.kcal:(l.km?Math.round(l.km*kg*1.036):0);
+    formula=Math.round(bmr*1.2+run);
+  }
+  const oura=h&&h.calT?h.calT:null;
+  const mature=i<rawT||new Date().getHours()>=20||(oura&&formula&&oura>=formula*0.8);
+  const burned=oura&&formula?(mature?Math.round((oura+formula)/2):formula)
+    :(formula||oura||null);
+  return {burned:burned,oura:oura,formula:formula,run:run};
+}
+function wDeficit(){
+  const e=eff(todayIdx),b=dayBurn(todayIdx);
+  if(b.burned==null)
+    return '<section class="card"><div class="spread"><h2>Energy balance</h2><span class="chip neutral">needs Oura</span></div>'
+      +'<p class="note" style="margin:8px 0 0">Connect Oura (Training tab) and this card tracks eaten vs burned, live.</p></section>';
+  const eaten=e.kcal;
+  const def=b.burned-eaten; // positive = deficit, matching the plan's convention
+  const onPlan=Math.abs(def-e.deficit)<=200;
+  const breakdown=[];
+  if(b.oura)breakdown.push('Oura '+fmtKcal(b.oura));
+  if(b.formula)breakdown.push('formula '+fmtKcal(b.formula));
+  if(b.run)breakdown.push('run '+fmtKcal(b.run));
+  let yest='';
+  if(todayIdx>0){
+    const yb=dayBurn(todayIdx-1);
+    if(yb.burned!=null){
+      const yd=yb.burned-eff(todayIdx-1).kcal;
+      yest='<p class="mini" style="margin:8px 2px 0">Yesterday settled at '+(yd>=0?'−':'+')+fmtKcal(Math.abs(yd))+'.</p>';
+    }
+  }
+  return '<section class="card"><div class="spread"><h2>Energy balance</h2>'
+    +'<span class="chip '+(onPlan?'c-easy':'c-long')+'">'+(onPlan?'on plan':(def>e.deficit?'deeper than plan':'shy of plan'))+'</span></div>'
+    +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+'</span>'
+    +'<span class="sub" style="font-weight:600">kcal today · plan −'+fmtKcal(e.deficit)+'</span></div>'
+    +'<div class="row" style="gap:18px;margin-top:6px">'
+    +'<div><span class="mini">Eaten (plan)</span><div class="big num">'+fmtKcal(eaten)+'</div></div>'
+    +'<div><span class="mini">Total burned</span><div class="big num">'+fmtKcal(b.burned)+'</div></div>'
+    +'</div>'
+    +(breakdown.length>1?'<p class="mini" style="margin:8px 2px 0">'+breakdown.join(' · ')+'</p>':'')
+    +yest
+    +'</section>';
+}
+
+function wHrvTrend(){
+  const H=healthRef();
+  const pts=[];
+  for(let i=-7;i<=clamp(rawT,0,RACE_IDX);i++){
+    const h=H.d[isoAt(i)];
+    if(h&&(h.hrv!=null||h.rhr!=null))pts.push({i:i,hrv:h.hrv,rhr:h.rhr});
+  }
+  if(pts.length<3)
+    return '<section class="card"><h2>HRV · resting HR</h2><p class="note" style="margin:0">A few nights of ring data and the block trend appears here.</p></section>';
+  const W=360,Hh=130,L=10,R=10,T=12,B=10,iw=W-L-R,ih=Hh-T-B;
+  const x0=pts[0].i,x1=pts[pts.length-1].i;
+  const X=i=>L+iw*(x1>x0?(i-x0)/(x1-x0):0.5);
+  const line=(field,color)=>{
+    const vs=pts.filter(p=>p[field]!=null);
+    if(vs.length<2)return '';
+    let lo=Infinity,hi=-Infinity;
+    vs.forEach(p=>{lo=Math.min(lo,p[field]);hi=Math.max(hi,p[field]);});
+    lo-=3;hi+=3;
+    let d='';
+    vs.forEach((p,ix)=>{d+=(ix?'L':'M')+X(p.i).toFixed(1)+' '+(T+ih*(1-(p[field]-lo)/(hi-lo))).toFixed(1);});
+    return '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linejoin="round"/>';
+  };
+  const last=pts[pts.length-1];
+  return '<section class="card"><div class="spread"><h2>HRV · resting HR</h2><div class="row">'
+    +(last.hrv!=null?'<span class="chip neutral">HRV '+last.hrv+'</span>':'')
+    +(last.rhr!=null?'<span class="chip neutral">RHR '+last.rhr+'</span>':'')+'</div></div>'
+    +'<div class="svgwrap"><svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block" role="img" aria-label="HRV and resting heart rate trend">'
+    +line('hrv','var(--accent)')+line('rhr','var(--hard)')
+    +'</svg></div>'
+    +'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent)">—</span> HRV (up = adapting) · <span style="color:var(--hard)">—</span> resting HR (down = fitter)</p>'
+    +'</section>';
+}
+
 const WIDGET_DEFS=[
   {id:'morning',label:'Morning check-in (auto)',render:wMorning},
+  {id:'recov',label:'Recovery (Oura)',render:wRecovery},
   {id:'session',label:'Today’s session',render:wSession},
   {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
   {id:'week',label:'Week progress',render:wWeek},
   {id:'fuel',label:'Fuel target',render:wFuel},
+  {id:'deficit',label:'Energy balance (Oura)',render:wDeficit},
   {id:'weight',label:'Weight log',render:wWeight},
   {id:'race',label:'Race countdown',render:wRace},
   {id:'trend',label:'Weight trend chart',render:wTrend},
+  {id:'hrvtrend',label:'HRV · RHR trend',render:wHrvTrend},
   {id:'racepack',label:'Race pack (race week)',render:()=>eff(todayIdx).w===15?racePack():''},
 ];
 const WIDGET_DEFAULT_OFF={trend:1,race:1};
@@ -2141,6 +2467,11 @@ function vToday(){
       +'</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
   if(easyDrift())
     note+='<div class="banner">Your last three easy days all felt hard (RPE 6+). Consider an extra rest day or easing this week’s paces.</div>';
+  if(ouraConnected()){ // the amber triad: illness/overreach early warning vs the 7-day baseline
+    const ofl=ouraFlags(todayISO());
+    if(ofl.length>=2)
+      note+='<div class="banner">Overnight signals are off: '+esc(ofl.join(', '))+' vs your week. Back off today — easy effort or extra rest beats pushing through.</div>';
+  }
   if(rawT>=0&&rawT<=RACE_IDX&&rawT%7===6&&new Date().getHours()>=16) // Sunday evening: the week's chapter
     note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">The week is in the books.</span><button class="btn3" data-action="wrapped" style="color:var(--long);flex:none">Week wrapped</button></div>';
 
@@ -2259,6 +2590,7 @@ function vTrain(){
     +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:520px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
     +stravaCard()
+    +ouraCard()
     +'</div>';
 }
 
@@ -2725,6 +3057,34 @@ document.addEventListener('click',ev=>{
     closeSheet();
     stravaApply(list);
   }
+  else if(a==='ouraconnect'){openOuraSheet();}
+  else if(a==='ouraconnectsave'){
+    const inp=document.getElementById('ouratok');
+    const tok=inp?inp.value.trim():'';
+    if(!tok){if(inp)inp.focus();return;}
+    el.disabled=true;el.textContent='Checking…';
+    fetch(OURA_PROXY+'/v2/usercollection/personal_info',{headers:{Authorization:'Bearer '+tok}})
+      .then(r=>{if(!r.ok)throw r.status;return r.json();})
+      .then(d=>{
+        ouraSave({token:tok,h:+d.height||null,age:+d.age||null,sex:d.biological_sex||null,lastSync:null,note:null,err:null,needsAuth:0});
+        closeSheet();
+        snack('Oura connected');
+        rerenderKeepScroll();
+        ouraSync(false);
+      })
+      .catch(code=>{
+        el.disabled=false;el.textContent='Connect';
+        if(code===401||code===403){const er=document.getElementById('ouraerr');if(er)er.hidden=false;if(inp)inp.focus();}
+        else snack('Couldn’t reach the Worker — has the updated version been pasted in?');
+      });
+  }
+  else if(a==='ourasync'){ouraSync(true);}
+  else if(a==='ouradisconnect'){
+    if(confirm('Disconnect Oura? The token on this phone is deleted; recovery data already stored stays.')){
+      try{localStorage.removeItem(OURA_KEY);}catch(e){}
+      rerenderKeepScroll();
+    }
+  }
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
   else if(a==='missed'){
     const i2=Number(el.dataset.i),e2=eff(i2);
@@ -2936,6 +3296,12 @@ if(stravaQS.get('code')||stravaQS.get('error')){
 /* …and on resume, throttled — iOS PWAs resume far more often than they reload */
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&stravaConnected()&&Date.now()-stravaLastTry>15*60000)stravaSync(false);
+});
+
+/* Oura rides the same rhythm: sync on open and on throttled resume */
+if(ouraConnected())setTimeout(()=>ouraSync(false),1200);
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&ouraConnected()&&Date.now()-ouraLastTry>15*60000)ouraSync(false);
 });
 /* The OAuth hop runs the app in iOS's in-app browser, which shares this origin's
    storage — if that context (or another tab) saved newer state while we were

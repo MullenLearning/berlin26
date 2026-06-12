@@ -163,6 +163,30 @@ days, while RPE, notes, and fuelling entries are always kept. Every import is un
   untracked**. The log sheet (long-press, or "Edit manually" in the run sheet) remains
   the manual fallback; RPE is retired.
 
+## Oura recovery (v2, Night 3)
+
+Strava owns the work; Oura owns the body. Connect from the **Training tab** with a
+personal access token (cloud.ouraring.com → Personal Access Tokens) — it lives in
+localStorage key `berlin2026.oura`, outside backups, and reads go through the Worker's
+`/oura` pass-through because Oura's API sends no CORS headers. Data lands in `S.health`
+(in backups, bounded per field) as ambient measurement — no confirm sheet, and it never
+touches sessions or weights.
+
+- **Recovery widget**: readiness + sleep scores, sleep stages/efficiency/bedtime, HRV
+  and resting HR against 7-day baselines, temperature deviation, stress/SpO₂/VO₂max —
+  plus a plan-aware verdict (low readiness or 2-of-3 amber signals before a hard day
+  offers a one-tap Move).
+- **Energy balance widget**: eaten (the day's plan kcal, edits included, live) vs
+  **Total burned** — a blend of Oura's day total and Mifflin-St Jeor BMR ×1.2 from the
+  latest weight log plus the day's actual Strava run calories, because either estimate
+  alone drifts. Oura's running figure joins the blend only once mature.
+- **HRV · RHR trend**: both lines across the block — adaptation made visible.
+- **Amber banner**: ≥2 of {RHR +5, HRV −15%, temp +0.3°} vs baseline → "back off today".
+- **Bedtime nudge**: the 8pm tomorrow preview gains Oura's lights-out window, with
+  extra weight before long runs.
+- First sync backfills from a week before the block so baselines exist on day one;
+  syncs run on open/resume (throttled) plus Sync now on the Training tab.
+
 ## Phase 2–4 (future data sources)
 
 Phase 1 is manual-only by design. The code is structured for later importers:

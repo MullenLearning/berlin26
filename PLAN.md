@@ -101,7 +101,17 @@ into it). RPE is dead — the easy-drift warning is dormant until the readiness 
 (Oura) replaces it. Enrichment is best-effort: summary fields land at accept; detail
 + streams patch in afterwards and never block.
 
-## Night 3 — Oura (jumped queue ahead of Apple Health, Luke's call 12 Jun)
+## Night 3 — Oura — **BUILT 12 Jun (late), awaiting Worker re-paste + token**
+
+All of A–H shipped (live HR cut — Oura can't stream; deficit card built per Luke's
+spec: "Total burned" = blend of Oura's day total and Mifflin-St Jeor TDEE from the
+latest weight log + actual Strava run kcal, maturity-gated, breakdown line shown).
+Recovery/Energy balance/HRV-trend widgets, amber banner, plan-aware verdict with
+one-tap Move, bedtime nudge in the 8pm preview, Oura card on Training. **To go live,
+Luke:** (1) re-paste `worker/berlin26-strava.js` into the Cloudflare Worker (adds the
+`/oura` route), (2) Training tab → Connect Oura → paste a personal access token.
+
+## Night 3 — Oura (original notes, decided 12 Jun)
 
 Oura API v2 (`api.ouraring.com/v2/usercollection/...`) with a **personal access token**
 (no OAuth needed): daily sleep, readiness, HRV, resting HR, temperature. Token stored
