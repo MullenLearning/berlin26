@@ -1698,6 +1698,142 @@ function patternScan(){
   return best||progress;
 }
 
+/* The Locked City: the real Berlin course as a ribbon. Landmarks render once
+   a single long run has covered their distance — the last 10 km can never
+   unlock in training, so the Gate stays an outline until race day turns the
+   key. Geometry is approximate (a stylized ribbon, not navigation); landmarks
+   pin by fraction of path length, so absolute accuracy doesn't matter. */
+const BERLIN_COURSE=[[52.5147,13.3500],[52.5152,13.3590],[52.5158,13.3680],[52.5186,13.3745],[52.5200,13.3800],[52.5208,13.3880],[52.5214,13.3990],[52.5219,13.4090],[52.5219,13.4132],[52.5205,13.4240],[52.5185,13.4350],[52.5168,13.4450],[52.5155,13.4540],[52.5120,13.4560],[52.5080,13.4555],[52.5040,13.4520],[52.5010,13.4470],[52.4995,13.4330],[52.4990,13.4180],[52.4960,13.4210],[52.4920,13.4235],[52.4866,13.4247],[52.4868,13.4150],[52.4872,13.4050],[52.4888,13.3930],[52.4903,13.3800],[52.4922,13.3690],[52.4905,13.3600],[52.4870,13.3530],[52.4856,13.3445],[52.4820,13.3400],[52.4770,13.3360],[52.4710,13.3310],[52.4650,13.3265],[52.4590,13.3235],[52.4570,13.3210],[52.4610,13.3140],[52.4680,13.3110],[52.4750,13.3095],[52.4830,13.3070],[52.4900,13.3055],[52.4960,13.3060],[52.4998,13.3075],[52.5020,13.3160],[52.5035,13.3260],[52.5049,13.3350],[52.5022,13.3425],[52.5008,13.3480],[52.5040,13.3520],[52.5062,13.3545],[52.5070,13.3610],[52.5082,13.3690],[52.5096,13.3762],[52.5108,13.3840],[52.5128,13.3905],[52.5158,13.3895],[52.5168,13.3850],[52.5163,13.3777],[52.5155,13.3735]];
+const BERLIN_MARKS=[{km:0.4,name:'Victory Column'},{km:1.6,name:'Reichstag'},{km:4.6,name:'TV Tower'},{km:7.2,name:'Frankfurter Tor'},{km:11.4,name:'Kottbusser Tor'},{km:14.2,name:'Hermannplatz'},{km:21.4,name:'Rathaus Schöneberg'},{km:26.1,name:'Steglitz'},{km:31.2,name:'Wilmersdorf'},{km:35.6,name:'Ku’damm'},{km:40.1,name:'Potsdamer Platz'},{km:42.0,name:'Brandenburg Gate'}];
+
+function longestRunKm(){
+  let mx=0;
+  for(const k in S.sessions){const l=S.sessions[k];if(l&&l.status==='done'&&l.km>mx)mx=l.km;}
+  return mx;
+}
+function cityGeo(W,H,pad){ // course → scaled XY + cumulative distance per point
+  const kx=Math.cos(52.5*Math.PI/180);
+  const xs=BERLIN_COURSE.map(p=>p[1]*kx),ys=BERLIN_COURSE.map(p=>-p[0]);
+  const minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
+  const minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys);
+  const sc=Math.min((W-2*pad)/(maxX-minX),(H-2*pad)/(maxY-minY));
+  const ox=(W-(maxX-minX)*sc)/2-minX*sc,oy=(H-(maxY-minY)*sc)/2-minY*sc;
+  const P=BERLIN_COURSE.map((p,k)=>[xs[k]*sc+ox,ys[k]*sc+oy]);
+  const cum=[0];let tot=0;
+  for(let k=1;k<P.length;k++){tot+=Math.hypot(P[k][0]-P[k-1][0],P[k][1]-P[k-1][1]);cum.push(tot);}
+  const at=frac=>{ // point at a fraction of total path length
+    const d=tot*Math.max(0,Math.min(1,frac));let k=1;
+    while(k<cum.length-1&&cum[k]<d)k++;
+    const f=(d-cum[k-1])/((cum[k]-cum[k-1])||1);
+    return [P[k-1][0]+f*(P[k][0]-P[k-1][0]),P[k-1][1]+f*(P[k][1]-P[k-1][1])];
+  };
+  return {P:P,cum:cum,tot:tot,at:at};
+}
+function openCitySheet(){
+  const W=330,H=300,g=cityGeo(W,H,18);
+  const reach=longestRunKm(),frac=Math.min(reach/42.195,1);
+  const wall=wallModel();
+  // path split: covered by a single long run vs still locked
+  const cut=g.tot*frac,bp2=g.at(frac);
+  const bPt=bp2[0].toFixed(1)+' '+bp2[1].toFixed(1);
+  let covered='',locked='M'+bPt;
+  for(let k=0;k<g.P.length;k++){
+    const pt=g.P[k][0].toFixed(1)+' '+g.P[k][1].toFixed(1);
+    if(g.cum[k]<=cut)covered+=(covered?'L':'M')+pt;
+    else locked+='L'+pt;
+  }
+  covered+=(covered?'L':'M')+bPt; // meet the locked half exactly at the reach point
+  let marks='';
+  BERLIN_MARKS.forEach((m,ix)=>{
+    const p=g.at(m.km/42.195),open=reach>=m.km;
+    const dy=ix%2?14:-8;
+    marks+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(open?3:2.4)+'" fill="'+(open?'var(--accent)':'none')+'" stroke="'+(open?'var(--accent)':'var(--sub)')+'" stroke-width="1" opacity="'+(open?1:0.45)+'"/>'
+      +'<text x="'+p[0].toFixed(1)+'" y="'+(p[1]+dy).toFixed(1)+'" text-anchor="middle" style="font-size:8px;fill:'+(open?'var(--ink)':'var(--sub)')+';opacity:'+(open?0.95:0.5)+'">'+esc(m.name)+'</text>';
+  });
+  let wallMark='';
+  if(wall&&wall.km<42.2){
+    const p=g.at(wall.km/42.195);
+    wallMark='<line x1="'+(p[0]-5).toFixed(1)+'" y1="'+(p[1]-5).toFixed(1)+'" x2="'+(p[0]+5).toFixed(1)+'" y2="'+(p[1]+5).toFixed(1)+'" stroke="var(--hard)" stroke-width="2"/>'
+      +'<line x1="'+(p[0]-5).toFixed(1)+'" y1="'+(p[1]+5).toFixed(1)+'" x2="'+(p[0]+5).toFixed(1)+'" y2="'+(p[1]-5).toFixed(1)+'" stroke="var(--hard)" stroke-width="2"/>';
+  }
+  const next=BERLIN_MARKS.find(m=>m.km>reach);
+  openSheet('<div class="spread"><h2 style="margin:0">Berlin · the course</h2><span class="chip neutral">longest run '+fmtKm(reach)+' km</span></div>'
+    +'<div style="margin-top:12px"><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Berlin Marathon course, unlocked to '+fmtKm(reach)+' km">'
+    +'<path d="'+locked+'" fill="none" stroke="var(--bord)" stroke-width="2" stroke-linejoin="round" stroke-dasharray="3 3"/>'
+    +'<path d="'+covered+'" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>'
+    +marks+wallMark
+    +'</svg></div>'
+    +'<p class="note" style="margin:10px 0 0">Solid is ground a single run has covered; the dashed city stays locked until race day'
+    +(next?' — '+esc(next.name)+' falls at km '+next.km+'.':'.')+'</p>'
+    +(wall?(wall.km<42.2
+      ?'<p class="note" style="margin:8px 0 0">The <b style="color:var(--hard)">×</b> is the wall: at your burn rate and '+(wall.ghr?wall.ghr+' g/hr practiced fuelling':'no practiced fuelling yet')+', the tank empties ≈km '+fmtKm(Math.min(wall.km,42))+'. Every g/hr you train your gut to take drags it right — the block’s quietest game is pushing it past 42.2 before the taper. (An estimate, never a promise.)</p>'
+      :'<p class="note" style="margin:8px 0 0">At '+wall.ghr+' g/hr practiced, the tank outlasts the distance — the wall is off the course. Keep it there.</p>'):'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>');
+}
+
+/* The Morning Line: the app's first words each day. Facts ranked by
+   newsworthiness (deviation × weight); top two composed into one sentence
+   whose connective — and/but/so — is picked by whether they agree. */
+function morningLine(){
+  if(!ouraConnected())return '';
+  const iso=todayISO(),h=healthRef().d[iso],e=eff(todayIdx);
+  if(!h)return '';
+  const hb=ouraBase('hrv',iso),rb=ouraBase('rhr',iso);
+  const facts=[];
+  if(h.slp)facts.push({w:Math.abs(h.slp-27000)/2700,good:h.slp>=25200,txt:'slept '+fmtSleep(h.slp)});
+  if(h.hrv!=null&&hb)facts.push({w:Math.abs(h.hrv-hb)/hb*10,good:h.hrv>=hb*0.95,
+    txt:'HRV is '+Math.abs(Math.round(h.hrv-hb))+' '+(h.hrv>=hb?'over':'under')+' baseline'});
+  if(h.rhr!=null&&rb)facts.push({w:Math.abs(h.rhr-rb)/3,good:h.rhr<=rb+2,
+    txt:'resting HR is '+(h.rhr>rb?Math.round(h.rhr-rb)+' up':'settled')});
+  if(h.tmp!=null&&h.tmp>=0.3)facts.push({w:h.tmp*5,good:false,txt:'temperature is +'+h.tmp.toFixed(1)+'°'});
+  const ab=absorption(todayIdx-1);
+  if(ab)facts.push({w:ab.label==='absorbed'?0.8:2,good:ab.label!=='still owing',
+    txt:'yesterday’s work '+(ab.label==='still owing'?'isn’t banked yet':'is banked')});
+  const f=formNow();
+  if(f&&f.ctl>4)facts.push({w:Math.abs(f.tsb)/8,good:f.tsb>=-12,txt:'form is '+formWord(f.tsb)});
+  if(facts.length<2)return '';
+  facts.sort((a,b)=>b.w-a.w);
+  const A=facts[0],B=facts[1];
+  const cap=s2=>s2.charAt(0).toUpperCase()+s2.slice(1);
+  const isRest=e.zone==='Rest'&&e.km<=0;
+  const sess=isRest?'':headline(e);
+  if(isRest)return cap(A.txt)+(A.good===B.good?' and ':' but ')+B.txt+' — a well-placed rest day.';
+  if(A.good&&B.good)return cap(A.txt)+' and '+B.txt+', so the '+sess+' gets a green light.';
+  if(!A.good&&!B.good)return cap(A.txt)+' and '+B.txt+' — treat the '+sess+' as movement, not a target.';
+  if(A.good)return cap(A.txt)+' but '+B.txt+' — keep the '+sess+' honest and unheroic.';
+  return cap(A.txt)+', though '+B.txt+', so run the '+sess+' by feel.';
+}
+
+/* Is the cut paying? Weekly: deficit banked vs aerobic cost (beats/km) vs HRV. */
+function cutPaying(){
+  const t=clamp(rawT,0,RACE_IDX),wNow=Math.floor(t/7);
+  const med=a=>{if(!a.length)return null;const s2=a.slice().sort((x,y)=>x-y);return s2[Math.floor(s2.length/2)];};
+  const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  const weeks=[];
+  for(let w=Math.max(0,wNow-3);w<=wNow;w++){
+    const ef=[],hrv=[];let def=0,counted=0;
+    for(let d=0;d<7;d++){
+      const i=w*7+d;if(i>t)break;
+      const b=beatsPerKm(sessLog(eff(i).id));if(b)ef.push(b);
+      const h=healthRef().d[isoAt(i)];if(h&&h.hrv!=null)hrv.push(h.hrv);
+      const db=dayBurn(i);if(db.burned!=null){def+=db.burned-eff(i).kcal;counted++;}
+    }
+    weeks.push({w:w,ef:med(ef),hrv:avg(hrv),def:counted?Math.round(def):null,n:ef.length});
+  }
+  const have=weeks.filter(x=>x.ef!=null);
+  let verdict=null,cls='neutral';
+  if(have.length>=2){
+    const a=have[have.length-2],b=have[have.length-1];
+    const efD=(b.ef-a.ef)/a.ef,hrvD=(a.hrv&&b.hrv)?(b.hrv-a.hrv)/a.hrv:0;
+    if(efD<=-0.01&&hrvD>=-0.03){verdict='paying — cheaper kilometres at steady recovery';cls='c-easy';}
+    else if(efD>=0.02||hrvD<=-0.08){verdict='costing — aerobic price rising, consider easing the kcal';cls='c-hard';}
+    else{verdict='holding — neither buying speed nor eating recovery yet';cls='c-long';}
+  }
+  const first=S.weights.length?S.weights[0]:null,twn=trendWeight(),lwn=latestWeight();
+  const lost=first?(first.lb-(twn?twn.lb:(lwn?lwn.lb:first.lb))):0;
+  return {weeks:weeks,verdict:verdict,cls:cls,lost:lost,raceSecs:Math.round(lost*27)};
+}
+
 /* ---------------- 4. Derived data ---------------- */
 
 /* ---- week rebalance engine ----
@@ -2710,8 +2846,9 @@ function vToday(){
     +'<div><h1>'+longDate(todayIdx)+'</h1>'
     +'<div class="sub">Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY')+'</div></div>'
     +'<button class="btn3" data-action="editwidgets" aria-haspopup="dialog" style="margin-top:6px">Edit</button></div>'
-    /* the blue line: position along the 112-day course to Berlin */
-    +'<div class="course" role="img" aria-label="Day '+(todayIdx+1)+' of 112"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></div></div>'
+    /* the blue line: position along the 112-day course to Berlin — taps open the city */
+    +'<button class="course" data-action="cityopen" aria-label="Day '+(todayIdx+1)+' of 112 — open the Berlin course" style="display:block;width:100%;border:none;padding:0;cursor:pointer"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></button></div>'
+    +(morningLine()?'<p class="note" style="margin:10px 2px 0">'+morningLine()+'</p>':'')
     +note
     +widgets
     +'</div>';
@@ -2756,9 +2893,10 @@ function dayCard(i){
   let body='';
   if(l.status&&!isRest){
     const meta=resultMeta(l);
+    const ab=i<rawT?absorption(i):null; // did the night after bank it?
     body='<div class="row" style="margin-top:10px">'
       +'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Done':l.status==='partial'?'Partial':'Missed')+'</span>'
-      +logChips(l)+'</div>'
+      +logChips(l)+(ab?'<span class="chip '+ab.cls+'">'+ab.label+'</span>':'')+'</div>'
       +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
       +runVisual(l,i);
     if((e.zone==='Long'||e.zone==='Marathon')&&l.status==='done'&&fuelRate(l)==null)
@@ -2806,6 +2944,20 @@ function vTrain(){
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
     +'<div class="sub" style="margin-top:4px">w/c '+shortDate(w*7).slice(4)+' · target '+fmtKm(wk.target)+' km · long '+fmtKm(wk.long)+' km</div>'
+    +(function(){ // work done vs work absorbed — the gap is the honest overtraining signal
+      if(!ouraConnected())return '';
+      let done=0,abs2=0;
+      for(let d=0;d<7;d++){
+        const i2=w*7+d;if(i2>=rawT)break;
+        const e2=eff(i2),l2=sessLog(e2.id);
+        if(l2&&l2.status==='done'&&trimpOf(l2,e2)>=15){
+          done++;
+          const ab2=absorption(i2);
+          if(ab2&&ab2.label!=='still owing')abs2++;
+        }
+      }
+      return done?'<p class="mini" style="margin:6px 2px 0">'+done+' session'+(done===1?'':'s')+' done · '+abs2+' absorbed overnight</p>':'';
+    })()
     +'<p class="note" style="margin:8px 0 0">'+esc(wk.note)+'</p>'
     +(weekMoved(w)?'<button class="btn2" style="margin-top:10px;width:100%" data-action="resetweek" data-w="'+w+'">Reset week to plan</button>':'')
     +'</section>'
@@ -2969,6 +3121,26 @@ function vNut(){
   return '<div><h1>Nutrition</h1>'
     +'<div class="sub">Carb-periodised cut · 210 → ~189 lb by race day</div>'
     +cutCard()
+    +(function(){ // Is the cut paying? — the app answering for the riskiest thing it asks
+      if(!ouraConnected())return '';
+      const cp=cutPaying();
+      if(!cp.verdict&&!cp.lost)return '';
+      let rows='';
+      cp.weeks.forEach(x=>{
+        if(x.def==null&&x.ef==null)return;
+        rows+='<div class="row" style="gap:10px;margin-top:4px"><span class="mini" style="min-width:34px">W'+(x.w+1)+'</span>'
+          +'<span class="chip neutral">'+(x.def!=null?((x.def>=0?'−':'+')+fmtKcal(Math.abs(x.def))):'–')+'</span>'
+          +'<span class="chip neutral">'+(x.ef!=null?Math.round(x.ef)+' beats/km':'no HR yet')+'</span>'
+          +(x.hrv!=null?'<span class="chip neutral">HRV '+Math.round(x.hrv)+'</span>':'')+'</div>';
+      });
+      return '<section class="card"><div class="spread"><h2>Is the cut paying?</h2>'
+        +(cp.verdict?'<span class="chip '+cp.cls+'">'+cp.verdict.split(' — ')[0]+'</span>':'<span class="chip neutral">learning</span>')+'</div>'
+        +rows
+        +(cp.verdict?'<p class="note" style="margin:10px 0 0">'+cp.verdict.split(' — ')[1].charAt(0).toUpperCase()+cp.verdict.split(' — ')[1].slice(1)+'.</p>'
+          :'<p class="mini" style="margin:8px 2px 0">First week-on-week comparison lands once two weeks hold HR runs.</p>')
+        +(cp.lost>0.5?'<p class="mini" style="margin:8px 2px 0">Ballast: '+fmtLb(cp.lost)+' lb down — lighter alone is worth ≈'+cp.raceSecs+' s at Berlin (estimate).</p>':'')
+        +'</section>';
+    })()
     +'<div style="margin-top:14px">'+chips+'</div>'+strip+rollup
     +nutDayCard(i)
     +'<section class="card"><h2>Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
@@ -3404,6 +3576,7 @@ document.addEventListener('click',ev=>{
     }
   }
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
+  else if(a==='cityopen'){openCitySheet();}
   else if(a==='paintmode'){
     ui.paintMode=el.dataset.v;
     const panel=document.querySelector('#sheet .panel');
