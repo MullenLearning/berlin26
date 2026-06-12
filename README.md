@@ -103,6 +103,36 @@ Added after a four-lens product review (runner/coach, PWA engineering, roadmap, 
   - Originals are always shown ("plan 9 km · +1.3 rebalanced"); clearing edits or
     correcting logs reverts everything — nothing is destructively rewritten.
 
+## The feel layer (v1.5)
+
+Built from the v1.5 UX brief — same data model, no new integrations, everything
+one-handed at 6am. Highlights:
+
+- **Swipe to log**: session and catch-up cards swipe right (done at plan, undo snackbar)
+  or left (options / skipped); a backlog becomes a deck cleared in one swipe per day.
+- **One-thumb log sheet**: status, distance stepper, pace tape (5 s detents, prefilled
+  from your last comparable run), and a draggable **RPE arc** with zone hues, word anchors,
+  and ghost marks of recent easy-day efforts. No keyboard unless you add a note.
+- **The payoff frame**: after a log the week ring springs, streak rolls odometer-style,
+  long runs extend the course line — weeks 10–16 long runs sweep it fully (the app's
+  only big celebration). All suppressed under reduced motion.
+- **Drag-and-drop week**: long-press a Training day card to lift it; the fuelling chip
+  travels, targets highlight, race day stays inert, and both days preview their
+  before/after kcal mid-drag. The sheet remains the accessible fallback.
+- **Direct-manipulation calories**: drag a bar in the Nutrition week strip; future days
+  counter-shift live with gram deltas (25 kcal detents, caps, Escape cancels).
+- **Meal chips** (on plan / over / under), a **fuel tank** draining toward midnight, and
+  an 8pm **tomorrow preview** for night-before eating decisions.
+- **Weight**: scroll-snap ruler tape (0.1 lb detents, long-press for keyboard), inline
+  logging on the Today widget, a **morning check-in card** on first open of the day,
+  chart **touch scrubbing**, milestone ticks, and a one-line trend narration.
+- **One motion system** (snap + settle curves), **View Transitions** between tabs and
+  card-to-sheet morphs (Safari 18+, feature-detected), **long-press quick menus** on
+  cards, and a Sunday-night **Week wrapped** recap with save-as-image export.
+
+Every gesture keeps a tap path, every control keeps its aria state, and
+`prefers-reduced-motion` swaps springs for fades throughout.
+
 ## Phase 2–4 (future data sources)
 
 Phase 1 is manual-only by design. The code is structured for later importers:

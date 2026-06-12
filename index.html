@@ -264,6 +264,15 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .deckghost{height:12px;margin:-4px 10px 0;background:var(--card);border:1px solid var(--line-soft);border-top:none;border-radius:0 0 16px 16px;opacity:.65}
 .deckghost.g2{margin:-2px 22px 0;opacity:.35}
 #wchart{touch-action:pan-y}
+/* week wrapped */
+#wrap{position:fixed;inset:0;z-index:90;background:var(--bg);overflow-y:auto;scroll-snap-type:y mandatory;padding:0 20px;-webkit-overflow-scrolling:touch}
+#wrap section{min-height:100vh;min-height:100dvh;scroll-snap-align:start;display:flex;flex-direction:column;justify-content:center;gap:6px}
+#wrap .whero{font-size:64px;font-weight:800;font-family:var(--disp);letter-spacing:-2px;line-height:1}
+#wrap .wlabel{font-size:13px;color:var(--sub);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+#wrap .wbody{font-size:17px;color:var(--txt2);line-height:1.5;text-wrap:pretty}
+#wrapclose{position:fixed;top:calc(10px + env(safe-area-inset-top));right:14px;z-index:91;background:var(--raised);border:1px solid var(--line);border-radius:99px;padding:9px 16px;font-weight:700;color:var(--ink);min-height:44px}
+#wrapsave{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:91}
+.wdots{font-size:12px;color:var(--sub);text-align:center;padding:10px 0}
 @media (prefers-reduced-motion: reduce){
   .fade,.hl,.pop,.deck .card{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
@@ -738,7 +747,8 @@ function openLogSheet(i){
     +'<div class="shsec" id="shnotewrap"><button class="btn3" data-action="shnotetoggle">+ Add note</button></div>'
     +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
     +'<button class="sheetrow" data-action="movestart" data-i="'+i+'" style="justify-content:center;color:var(--txt2);font-weight:700;margin-top:8px">Move this day instead</button>'
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>',
+    document.querySelector('[data-swipe][data-i="'+i+'"]')||document.getElementById('day-'+i));
   initRulers();
   initArc(l.rpe||null,ghosts);
   // stepper: tap = 0.1, hold = repeat
@@ -1287,7 +1297,7 @@ function logChips(l){
 
 function wSession(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
-  return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'">'
+  return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
     +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
     +'<div class="row">'+zoneChip(e)+movedChip(e)
     +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')
@@ -1408,7 +1418,7 @@ function wWeight(){
   }else{
     body='<button class="btn" style="width:100%;margin-top:12px" data-action="wtopen">'+(todayEntry?'Edit today’s weigh-in':'Log weight')+'</button>';
   }
-  return '<section class="card"><div class="spread"><h2>Weight</h2>'
+  return '<section class="card" data-lp data-qa="wt"><div class="spread"><h2>Weight</h2>'
     +(dlt!=null?'<span class="chip c-'+deltaClass(dlt)+'" id="wverdict">'+(tw?'trend ':'')+(dlt>0?'+':'')+fmtLb(dlt)+' lb vs plan</span>':'<span class="chip neutral">no log yet</span>')+'</div>'
     +'<div class="row" style="gap:18px;margin-top:4px">'
     +'<div><span class="mini">Plan today</span><div class="big num">'+fmtLb(pw)+'</div></div>'
@@ -1648,6 +1658,75 @@ function updateTank(){
   t.setAttribute('y',97-fh);t.setAttribute('height',fh);
 }
 
+/* ---------------- Week wrapped: the block is the story, this is its chapter ---------------- */
+function weekStats(w){
+  const tgt=WEEKS[w].target,act=weekActualKm(w);
+  let bigKm=0,bigName='',done=0,fuel=null;
+  for(let d=0;d<7;d++){
+    const e=eff(w*7+d),l=sessLog(e.id);
+    if(l&&l.status){
+      if(l.status!=='missed')done++;
+      if(l.km>bigKm){bigKm=l.km;bigName=headline(e);}
+      const fr=fuelRate(l);if(fr!=null)fuel=fr;
+    }
+  }
+  return {tgt:tgt,act:act,pct:Math.round(act/tgt*100),done:done,bigKm:bigKm,bigName:bigName,fuel:fuel};
+}
+function openWrapped(){
+  const w=clamp(Math.floor(rawT/7),0,15),st=weekStats(w);
+  const nw=w<15?WEEKS[w+1]:null;
+  const div=document.createElement('div');
+  div.id='wrap';
+  div.innerHTML=
+    '<button id="wrapclose" data-action="wrapclose">Close</button>'
+    +'<section><div class="wlabel">Week '+(w+1)+' of 16 · '+WEEKS[w].phase+'</div>'
+    +'<div class="whero num">'+fmtKm(st.act)+'<span style="font-size:24px;color:var(--sub)"> of '+fmtKm(st.tgt)+' km</span></div>'
+    +'<p class="wbody">'+st.pct+'% of target · '+st.done+' sessions logged.</p><div class="wdots">scroll ↓</div></section>'
+    +'<section><div class="wlabel">Biggest session</div>'
+    +'<div class="whero num">'+(st.bigKm?fmtKm(st.bigKm):'–')+'<span style="font-size:24px;color:var(--sub)"> km</span></div>'
+    +'<p class="wbody">'+(st.bigName?esc(st.bigName):'Nothing logged yet this week.')+'</p></section>'
+    +'<section><div class="wlabel">Fuelling practice</div>'
+    +'<div class="whero num">'+(st.fuel!=null?st.fuel:'–')+'<span style="font-size:24px;color:var(--sub)"> g/hr</span></div>'
+    +'<p class="wbody">'+(st.fuel!=null?(st.fuel>=60?'Race-ready gut. Keep it there.':'Building toward the 60–90 g/hr race target.'):'Log carbs + duration on a long run to track gut training.')+'</p></section>'
+    +'<section><div class="wlabel">Weight</div>'
+    +'<p class="wbody" style="font-size:22px;font-weight:700;color:var(--ink)">'+trendNarration()+'</p></section>'
+    +'<section><div class="wlabel">Next week</div>'
+    +(nw?'<div class="whero num">'+fmtKm(nw.target)+'<span style="font-size:24px;color:var(--sub)"> km</span></div>'
+      +'<p class="wbody">Week '+nw.n+' · '+nw.phase+' — long run '+fmtKm(nw.long)+' km. '+esc(nw.note)+'</p>'
+      :'<p class="wbody">Race week is done. Berlin is run. 🎉</p>')
+    +'<button class="btn" id="wrapsave" data-action="wrapsave">Save as image</button></section>';
+  document.body.appendChild(div);
+  document.getElementById('app').inert=true;
+}
+function closeWrapped(){
+  const d=document.getElementById('wrap');
+  if(d)d.remove();
+  document.getElementById('app').inert=false;
+}
+function wrappedImage(){ // canvas render of the week summary for sharing
+  const w=clamp(Math.floor(rawT/7),0,15),st=weekStats(w);
+  const c=document.createElement('canvas');c.width=1080;c.height=1350;
+  const x=c.getContext('2d');
+  x.fillStyle='#0a0d15';x.fillRect(0,0,1080,1350);
+  x.fillStyle='#5b9bff';x.fillRect(80,120,140,10);
+  const T=(t,y,size,color,weight)=>{x.fillStyle=color;x.font=(weight||'800')+' '+size+'px -apple-system,system-ui,sans-serif';x.fillText(t,80,y);};
+  T('BERLIN 2026 — WEEK '+(w+1)+' OF 16',200,40,'#7e8ca3','700');
+  T(fmtKm(st.act)+' / '+fmtKm(st.tgt)+' km',330,110,'#ecf1f8');
+  T(st.pct+'% of target · '+st.done+' sessions logged',410,42,'#bac5d7','600');
+  T('Biggest: '+(st.bigName?st.bigName:'—'),530,46,'#ecf1f8','700');
+  if(st.fuel!=null)T('Fuelling: '+st.fuel+' g/hr',610,46,'#ecf1f8','700');
+  const narr=trendNarration();
+  x.font='600 36px -apple-system,system-ui,sans-serif';x.fillStyle='#bac5d7';
+  let line='',yy=720;
+  narr.split(' ').forEach(word=>{
+    if(x.measureText(line+' '+word).width>920){x.fillText(line,80,yy);yy+=52;line=word;}
+    else line=line?line+' '+word:word;
+  });
+  x.fillText(line,80,yy);
+  T(WEEKS[w].phase.toUpperCase()+' PHASE · '+(RACE_IDX-todayIdx)+' DAYS TO BERLIN',1240,36,'#5b9bff','700');
+  return new Promise(res=>c.toBlob(res,'image/png'));
+}
+
 /* reset with a scrub: show what it will undo before the button arms */
 function origHeadline(w,d){
   const s=WEEKS[w].days[d];
@@ -1729,6 +1808,8 @@ function vToday(){
       +'</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
   if(easyDrift())
     note+='<div class="banner">Your last three easy days all felt hard (RPE 6+). Consider an extra rest day or easing this week’s paces.</div>';
+  if(rawT>=0&&rawT<=RACE_IDX&&rawT%7===6&&new Date().getHours()>=16) // Sunday evening: the week's chapter
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">The week is in the books.</span><button class="btn3" data-action="wrapped" style="color:var(--long);flex:none">Week wrapped</button></div>';
 
   let widgets='';
   widgetConfig().forEach(w=>{
@@ -1818,7 +1899,7 @@ function vTrain(){
     +'<div class="sub">Goal '+RACE_GOAL+' · peak 85 km (W11)</div>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
-    +'<section class="card"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
+    +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
     +'<div class="sub" style="margin-top:4px">w/c '+shortDate(w*7).slice(4)+' · target '+fmtKm(wk.target)+' km · long '+fmtKm(wk.long)+' km</div>'
     +'<p class="note" style="margin:8px 0 0">'+esc(wk.note)+'</p>'
     +(weekMoved(w)?'<button class="btn2" style="margin-top:10px;width:100%" data-action="resetweek" data-w="'+w+'">Reset week to plan</button>':'')
@@ -1983,15 +2064,31 @@ function openMoveSheet(i){
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
 }
 let sheetTimer=null,sheetOpener=null;
-function openSheet(html){
+function openSheet(html,morphEl){
   clearTimeout(sheetTimer);
   sheetOpener=document.activeElement;
   const s=document.getElementById('sheet');
-  s.innerHTML='<div class="scrim" data-action="closesheet"></div>'
-    +'<div class="panel" role="dialog" aria-modal="true" aria-label="Move session" tabindex="-1">'+html+'</div>';
-  s.hidden=false;
-  document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{s.classList.add('open');s.querySelector('.panel').focus();}));
+  const build=()=>{
+    s.innerHTML='<div class="scrim" data-action="closesheet"></div>'
+      +'<div class="panel" role="dialog" aria-modal="true" aria-label="Move session" tabindex="-1">'+html+'</div>';
+    s.hidden=false;
+    document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
+  };
+  if(morphEl&&document.startViewTransition&&!REDUCE.matches){ // the card morphs into its sheet (Safari 18+)
+    morphEl.style.viewTransitionName='sheetmorph';
+    const vt=document.startViewTransition(()=>{
+      morphEl.style.viewTransitionName='';
+      build();
+      s.classList.add('open');
+      const p=s.querySelector('.panel');
+      p.style.viewTransitionName='sheetmorph';
+      p.focus();
+    });
+    vt.finished.then(()=>{const p=s.querySelector('.panel');if(p)p.style.viewTransitionName='';}).catch(()=>{});
+  }else{
+    build();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{s.classList.add('open');s.querySelector('.panel').focus();}));
+  }
 }
 function closeSheet(){
   const s=document.getElementById('sheet');
@@ -2007,16 +2104,20 @@ function closeSheet(){
 
 const view=document.getElementById('view');
 function render(anim){ // anim=true only on navigation — entrances must not replay on in-place updates
-  ['today','train','nut','wt'].forEach(t=>{
-    const b=document.getElementById('tb-'+t);
-    b.classList.toggle('sel',ui.tab===t);
-    if(ui.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
-  });
-  view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
-  if(anim&&view.firstElementChild)view.firstElementChild.classList.add('fade');
-  fieldDirty=false; // any full render supersedes a pending field re-render
-  bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
-  window.scrollTo(0,ui.scroll[ui.tab]||0);
+  const doRender=()=>{
+    ['today','train','nut','wt'].forEach(t=>{
+      const b=document.getElementById('tb-'+t);
+      b.classList.toggle('sel',ui.tab===t);
+      if(ui.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+    });
+    view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
+    if(anim&&!document.startViewTransition&&view.firstElementChild)view.firstElementChild.classList.add('fade');
+    fieldDirty=false; // any full render supersedes a pending field re-render
+    bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
+    window.scrollTo(0,ui.scroll[ui.tab]||0);
+  };
+  if(anim&&document.startViewTransition&&!REDUCE.matches)document.startViewTransition(doRender);
+  else doRender();
 }
 function bindChartScrub(){ // drag along the weight line, a dot follows with date + trend
   const svg=document.getElementById('wchart');
@@ -2109,6 +2210,24 @@ document.addEventListener('click',ev=>{
     }
   }
   else if(a==='mlater'){ui.morning=false;rerenderKeepScroll();}
+  else if(a==='rebalsum'){openRebalSummary(Number(el.dataset.w||ui.week));}
+  else if(a==='wrapped'){openWrapped();}
+  else if(a==='wrapclose'){closeWrapped();}
+  else if(a==='wrapsave'){
+    wrappedImage().then(blob=>{
+      const w=clamp(Math.floor(rawT/7),0,15);
+      const name='berlin26-week'+(w+1)+'.png';
+      let file=null;
+      try{file=new File([blob],name,{type:'image/png'});}catch(e){}
+      if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+        navigator.share({files:[file]}).catch(()=>{});
+      }else{
+        const u=URL.createObjectURL(blob),aEl=document.createElement('a');
+        aEl.href=u;aEl.download=name;document.body.appendChild(aEl);aEl.click();
+        setTimeout(()=>{URL.revokeObjectURL(u);aEl.remove();},400);
+      }
+    });
+  }
   else if(a==='shstatus'){
     const seg=document.getElementById('shseg');
     seg.dataset.status=el.dataset.s;
@@ -2366,17 +2485,56 @@ document.addEventListener('input',ev=>{
   }
 });
 
+function qaRow(action,i,label){
+  return '<button class="sheetrow" data-action="'+action+'"'+(i!=null?' data-i="'+i+'"':'')+' style="justify-content:center;font-weight:700;color:var(--ink)">'+label+'</button>';
+}
+function openRebalSummary(w){
+  let rows='';
+  for(let d=0;d<7;d++){
+    const e=eff(w*7+d),bits=[];
+    if(e.kmAdj)bits.push((e.kmAdj>0?'+':'−')+fmtKm(Math.abs(e.kmAdj))+' km');
+    if(e.nutEdited)bits.push('kcal edited to '+fmtKcal(e.kcal));
+    else if(e.nutAdj)bits.push((e.nutAdj>0?'+':'−')+fmtKcal(Math.abs(e.nutAdj))+' kcal');
+    if(e.moved)bits.push('moved from '+DOW[e.op]);
+    if(bits.length)rows+='<div class="sheetrow" style="cursor:default"><span class="d">'+DOW[d]+'</span><span class="t">'+bits.join(' · ')+'</span></div>';
+  }
+  openSheet('<h2 style="margin:0">Week '+(w+1)+' rebalance</h2>'
+    +(rows||'<p class="note" style="margin:10px 0 0">Everything sits on plan this week.</p>')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>');
+}
+
 document.addEventListener('longpress',ev=>{
   const tr=ev.target.closest('.rtrack'); // long-press the tape = flip to keyboard entry
   if(tr){const r=tr.closest('.ruler');if(r)rulerToKeyboard(r.id);return;}
   const card=ev.target.closest('.card[data-day]'); // long-press a Training day card = lift and drag
   if(card&&ui.tab==='train'&&!ev.target.closest('button,input,select')){
     startDayDrag(card,ev.detail.x,ev.detail.y);
+    return;
+  }
+  const qa=ev.target.closest('[data-qa]'); // quick-action menus, no visible chrome
+  if(!qa||ev.target.closest('button,input,select'))return;
+  const t=qa.dataset.qa;
+  if(t==='sess'){
+    const i=+qa.dataset.i;
+    openSheet('<h2 style="margin:0">'+shortDate(i)+'</h2>'
+      +qaRow('quickdone',i,'Log done as planned')+qaRow('logsheet',i,'Open the log sheet')+qaRow('movestart',i,'Move this day')
+      +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+  }else if(t==='wt'){
+    openSheet('<h2 style="margin:0">Weight</h2>'
+      +qaRow('wtopen',null,'Log weight')+qaRow('export',null,'Back up data')
+      +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
+  }else if(t==='week'){
+    const w=+qa.dataset.w;
+    openSheet('<h2 style="margin:0">Week '+(w+1)+'</h2>'
+      +qaRow('rebalsum',null,'Rebalance summary')+(weekMoved(w)?qaRow('resetweek',null,'Reset week to plan'):'')
+      +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>',null);
+    document.querySelectorAll('#sheet [data-action="rebalsum"],#sheet [data-action="resetweek"]').forEach(b=>b.dataset.w=w);
   }
 });
 
 document.addEventListener('keydown',ev=>{
   if(ev.key==='Escape'&&nutDragRevert){nutDragRevert();return;}
+  if(ev.key==='Escape'&&document.getElementById('wrap')){closeWrapped();return;}
   if(ev.key==='Escape'&&!document.getElementById('sheet').hidden){closeSheet();return;}
   if(ev.key==='Enter'||ev.key===' '){
     const t=ev.target.closest&&ev.target.closest('tr[data-action]');
