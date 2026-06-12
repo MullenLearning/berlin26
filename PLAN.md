@@ -25,8 +25,11 @@ proxies token exchange + refresh. Whether plain API GETs (`/api/v3/athlete/activ
 work browser-direct is unconfirmed — test live first; if CORS blocks them too, the same
 Worker proxies GETs (adds ~10 lines).
 
-### Luke's prep (do before the session — 10 minutes, see checklist at bottom)
-Strava API app credentials + Cloudflare account.
+### Luke's prep — DONE (12 Jun)
+Strava API app created: **Client ID `257604`** (public, used in the authorize URL),
+callback domain `mullenlearning.github.io`, secret held by Luke for the Worker env var.
+Cloudflare account ready. Note: the token shown on Strava's settings page is scope
+`read` only — ignore it; the app's OAuth flow requests `activity:read_all`.
 
 ### Worker (paste into Cloudflare dashboard, name e.g. `berlin26-strava`)
 - Routes: `POST /token` (code→tokens), `POST /refresh` (refresh_token→tokens),
