@@ -1013,7 +1013,7 @@ function stravaProposals(acts){
     const sk=d.secs/d.km;
     d.pace=(sk>=120&&sk<=1200)?fmtPace(Math.round(sk)):null;
     const l=sessLog(eff(d.i).id);
-    if(l&&(l.source||'manual')!=='strava')continue;                                 // manual always wins
+    if(l&&(l.source||'manual')!=='strava'&&l.status)continue;                       // a logged manual day always wins; a status-less draft doesn't block
     if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already imported, unchanged
     out.push(d);
   }
@@ -1063,7 +1063,7 @@ function stravaDayOpts(p){
   const w=Math.floor(p.i/7);let h='';
   for(let d=0;d<7;d++){
     const j=w*7+d,l=sessLog(eff(j).id);
-    const blocked=!!(l&&(l.source||'manual')!=='strava');
+    const blocked=!!(l&&(l.source||'manual')!=='strava'&&l.status);
     h+='<option value="'+j+'"'+(j===p.i?' selected':'')+(blocked?' disabled':'')+'>'+shortDate(j)+'</option>';
   }
   return h;
@@ -1075,7 +1075,7 @@ function stravaSheetContent(){
     rows+='<div class="sheetrow" style="cursor:default;flex-wrap:wrap;gap:8px">'
       +'<div style="flex:1 1 100%"><b>'+fmtKm(p.km)+' km'+(p.pace?' · '+esc(p.pace)+' /km':'')+'</b>'
       +(p.n>1?' <span style="color:var(--sub);font-size:12px">('+p.n+' runs)</span>':'')
-      +'<div style="color:var(--sub);font-size:13px;margin-top:2px">→ '+shortDate(p.i)+' · '+esc(headline(e))+(sessLog(e.id)?' · replaces earlier import':'')+'</div></div>'
+      +'<div style="color:var(--sub);font-size:13px;margin-top:2px">→ '+shortDate(p.i)+' · '+esc(headline(e))+((sessLog(e.id)||{}).source==='strava'?' · replaces earlier import':'')+'</div></div>'
       +'<select data-action="stravaday" data-idx="'+idx+'" aria-label="Import to a different day" style="flex:1;min-width:130px">'+stravaDayOpts(p)+'</select>'
       +'<button class="btn2" data-action="stravarow" data-idx="'+idx+'" style="flex:none">Accept</button>'
       +'</div>';
