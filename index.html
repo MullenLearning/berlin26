@@ -162,11 +162,6 @@ body.nutdrag .nbar i{transition:none}
 .mbar .mt{flex:1;height:7px;border-radius:99px;background:var(--track);overflow:hidden}
 .mbar .mt i{display:block;height:100%;border-radius:99px}
 .mbar .mg{flex:0 0 56px;text-align:right;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
-.mdots{display:flex;gap:10px;margin-top:14px}
-.mdots button{width:46px;height:46px;border-radius:99px;border:1.5px solid var(--line);background:var(--card);color:var(--sub);font-size:14px;font-weight:800}
-.mdots button.m-on{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
-.mdots button.m-over{background:var(--long-bg);border-color:var(--long);color:var(--long)}
-.mdots button.m-under{background:var(--rec-bg);border-color:var(--rec);color:var(--rec)}
 .dot{width:7px;height:7px;border-radius:99px;display:inline-block;margin-top:4px}
 .tag-moved{background:var(--blue-bg);color:var(--blue)}
 .note{font-size:13px;line-height:1.5;color:var(--sub)}
@@ -839,7 +834,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},meals:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
@@ -918,17 +913,6 @@ function sanitizePayload(data){
     for(const k in data.nutEdit){
       const i=Number(k),v=Number(data.nutEdit[k]);
       if(Number.isInteger(i)&&i>=0&&i<N_DAYS&&isFinite(v)&&v>=1200&&v<=8000)out.nutEdit[i]=Math.round(v);
-    }
-  }
-  out.meals={};
-  if(data&&data.meals&&typeof data.meals==='object'){
-    const MS_=['on','over','under'];
-    for(const k in data.meals){
-      const i=Number(k),r=data.meals[k]||{};
-      if(!Number.isInteger(i)||i<0||i>=N_DAYS)continue;
-      const o={};
-      ['b','l','d','s'].forEach(m=>{if(MS_.indexOf(r[m])>=0)o[m]=r[m];});
-      if(Object.keys(o).length)out.meals[i]=o;
     }
   }
   return out;
@@ -1250,7 +1234,7 @@ function trendNarration(){
   if(r==null)return 'Trend forming — one more week of weigh-ins gives a rate.';
   const planRate=21/16,ar=Math.abs(r);
   let verdict;
-  if(r>0.2)verdict='moving the wrong way; check the rest-day meal chips.';
+  if(r>0.2)verdict='moving the wrong way; tighten the rest days.';
   else if(ar>planRate+0.6)verdict='faster than the plan wants; protect the training, eat the carbs.';
   else if(ar<planRate-0.6)verdict='slower than plan, still fine; the deficit lives on rest days.';
   else verdict='right on the plan’s glide.';
@@ -1422,8 +1406,7 @@ function wFuel(){
     +mbar('Protein',e.p,m.p,'var(--txt2)')
     +mbar('Fat',e.fat,m.f,'var(--rest)')
     +'</div>'
-    +mealRow(todayIdx)
-    +mealSummary(todayIdx)
+    +'<p class="mini" style="margin:12px 2px 0">Protein first, 185 g every day · burn ≈'+fmtKcal(e.burn)+' kcal</p>'
     +tomorrow
     +'</section>';
 }
@@ -1643,27 +1626,6 @@ function bindNutBars(){
 }
 
 /* ---------------- meal chips + fuel tank + tomorrow preview ---------------- */
-const MEALS=[['b','Breakfast'],['l','Lunch'],['d','Dinner'],['s','Snacks']];
-function mealState(i,m){return (S.meals&&S.meals[i]||{})[m]||null;}
-function mealRow(i){ // four dots, one thumb: tap cycles on plan / over / under
-  return '<div class="mdots">'+MEALS.map(mm=>{
-    const st=mealState(i,mm[0]);
-    return '<button data-action="mealcyc" data-i="'+i+'" data-m="'+mm[0]+'" aria-pressed="'+(!!st)+'" aria-label="'+mm[1]+(st?', '+st:'')+'" class="'+(st?'m-'+st:'')+'">'+mm[1][0]+'</button>';
-  }).join('')+'</div>';
-}
-function mealSummary(i){ // one footer line: the day summarises itself once chips are set
-  const e=eff(i),r=S.meals&&S.meals[i]||{};
-  let o=0,u=0,n=0;
-  MEALS.forEach(mm=>{const s=r[mm[0]];if(s){n++;if(s==='over')o++;if(s==='under')u++;}});
-  let t;
-  if(!n)t='Protein first, 185 g every day · burn ≈'+fmtKcal(e.burn)+' kcal';
-  else{
-    const net=o-u;
-    t=(net===0?'Roughly on plan so far':net>0?'Running ~'+(net*150)+' kcal heavy — tomorrow absorbs it':'Running ~'+(-net*150)+' kcal light — top up tonight')
-      +' · burn ≈'+fmtKcal(e.burn)+' kcal';
-  }
-  return '<p class="mini" id="mealsum" style="margin:10px 2px 0">'+t+'</p>';
-}
 
 /* ---------------- Week wrapped: the block is the story, this is its chapter ---------------- */
 function weekStats(w){
@@ -1933,8 +1895,6 @@ function nutDayCard(i){
     +'</div>'
     +'<div class="row" style="margin-top:12px"><span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
     +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal deficit</span></div>'
-    +mealRow(i)
-    +mealSummary(i)
     +'<p class="note" style="margin:10px 0 0">'+esc(headline(e))+(e.zone!=='Rest'?' · fuel for the work done.':'')+'</p>'
     +'</section>';
 }
@@ -2276,23 +2236,6 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
-  else if(a==='mealcyc'){
-    const i2=+el.dataset.i,m=el.dataset.m;
-    const orderM=[null,'on','over','under'];
-    const cur=mealState(i2,m);
-    const nx=orderM[(orderM.indexOf(cur)+1)%4];
-    if(!S.meals)S.meals={};
-    if(!S.meals[i2])S.meals[i2]={};
-    if(nx)S.meals[i2][m]=nx;else delete S.meals[i2][m];
-    if(!Object.keys(S.meals[i2]).length)delete S.meals[i2];
-    save();
-    el.className=nx?'m-'+nx:'';
-    el.setAttribute('aria-pressed',!!nx);
-    el.setAttribute('aria-label',MEALS.find(x=>x[0]===m)[1]+(nx?', '+nx:''));
-    el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),450);
-    const card=el.closest('section'),old=card.querySelector('#mealsum');
-    if(old)old.outerHTML=mealSummary(i2);
-  }
   else if(a==='nutadjsave'){
     const i2=Number(el.dataset.i),inp=document.getElementById('adjkcal'),v=parseFloat(inp.value);
     if(v>=1200&&v<=8000){
