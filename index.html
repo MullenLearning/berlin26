@@ -1002,7 +1002,25 @@ function stravaProposals(acts){
     d.cad=d.cadT?Math.round(d.cadW/d.cadT*10)/10:null;
     d.act=d.best&&d.best.act;d.start=d.best&&/^\d{2}:\d{2}$/.test(d.best.start)?d.best.start:null;d.poly=d.best&&d.best.poly;
     const l=sessLog(eff(d.i).id);
-    if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null))continue; // already logged identically — nothing to change
+    if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null)){
+      // identical result already on the books. Imports accepted before the rich-card
+      // era lack the detail fields — upgrade those in place, quietly: same confirmed
+      // run, just the duration/HR/route/etc. it always had on Strava.
+      if((l.source||'manual')==='strava'&&!l.act&&d.act){
+        const up={act:d.act};
+        if(d.secs)up.secs=Math.round(d.secs);
+        if(d.elap)up.elap=Math.round(d.elap);
+        if(d.start)up.start=d.start;
+        if(d.hrA)up.hrA=d.hrA;
+        if(d.hrM)up.hrM=d.hrM;
+        if(d.cad)up.cad=d.cad;
+        if(d.elev)up.elev=d.elev;
+        if(d.poly)up.poly=d.poly;
+        logSession(eff(d.i).id,up,'strava');
+        stravaEnrich(d,eff(d.i).id);
+      }
+      continue;
+    }
     out.push(d);
   }
   return out.sort((a,b)=>a.i-b.i);
@@ -2485,11 +2503,19 @@ document.addEventListener('swipeleft',ev=>{
 
 document.addEventListener('click',ev=>{
   const el=ev.target.closest('[data-action]');
-  if(!el){ // tapping a session/deck card (not a control inside it): imported runs open their run sheet, everything else the log sheet
+  if(!el){ // tapping a card (not a control inside it): imported runs open their run sheet, everything else the log sheet
     const sc=ev.target.closest('[data-swipe="sess"],[data-swipe="deck"]');
     if(sc&&!ev.target.closest('button,input,select,a')){
       const i3=+sc.dataset.i,l3=sessLog(eff(i3).id);
       if(l3&&l3.status&&l3.source==='strava')openRunSheet(i3);else openLogSheet(i3);
+      return;
+    }
+    const dc=ev.target.closest('#view .card[data-day]'); // Training day cards are display-first — tap-through is the detail/edit path
+    if(dc&&dc.id&&!ev.target.closest('button,input,select,a')){
+      const i4=+dc.id.slice(4),e4=eff(i4);
+      if(e4.zone==='Rest'&&e4.km<=0)return; // rest days have nothing to open
+      const l4=sessLog(e4.id);
+      if(l4&&l4.status&&l4.source==='strava')openRunSheet(i4);else openLogSheet(i4);
     }
     return;
   }
