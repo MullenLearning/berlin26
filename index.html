@@ -150,6 +150,19 @@ tr[data-action]:active{background:var(--bg)}
 .daystrip button.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .daystrip .d{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase}
 .daystrip .k{font-size:12px;font-weight:800;margin-top:3px}
+.nbar{height:56px;display:flex;align-items:flex-end;justify-content:center;position:relative;margin:4px 0 2px;width:100%}
+.nbar i{display:block;width:14px;border-radius:5px 5px 2px 2px;opacity:.85;transition:height .2s var(--ease-out)}
+.nbar.ed{touch-action:none}
+.nbar.ed i{opacity:1}
+.ndelta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap}
+body.nutdrag .nbar i{transition:none}
+.mealrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.mealrow button{border:1px solid var(--line);background:var(--card);color:var(--sub);font-size:12px;font-weight:700;border-radius:999px;padding:8px 12px;min-height:40px}
+.mealrow button.m-on{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
+.mealrow button.m-over{background:var(--long-bg);border-color:var(--long);color:var(--long)}
+.mealrow button.m-under{background:var(--rec-bg);border-color:var(--rec);color:var(--rec)}
+.tank{flex:none}
+.tank rect.fill{transition:height .6s var(--settle),y .6s var(--settle)}
 .dot{width:7px;height:7px;border-radius:99px;display:inline-block;margin-top:4px}
 .tag-moved{background:var(--blue-bg);color:var(--blue)}
 .note{font-size:13px;line-height:1.5;color:var(--sub)}
@@ -783,7 +796,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},lastBackup:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},meals:{},lastBackup:null,hideInstallTip:false,theme:'dark'};}
 function loadState(){
   try{
     const raw=localStorage.getItem(KEY);
@@ -862,6 +875,17 @@ function sanitizePayload(data){
     for(const k in data.nutEdit){
       const i=Number(k),v=Number(data.nutEdit[k]);
       if(Number.isInteger(i)&&i>=0&&i<N_DAYS&&isFinite(v)&&v>=1200&&v<=8000)out.nutEdit[i]=Math.round(v);
+    }
+  }
+  out.meals={};
+  if(data&&data.meals&&typeof data.meals==='object'){
+    const MS_=['on','over','under'];
+    for(const k in data.meals){
+      const i=Number(k),r=data.meals[k]||{};
+      if(!Number.isInteger(i)||i<0||i>=N_DAYS)continue;
+      const o={};
+      ['b','l','d','s'].forEach(m=>{if(MS_.indexOf(r[m])>=0)o[m]=r[m];});
+      if(Object.keys(o).length)out.meals[i]=o;
     }
   }
   return out;
@@ -1274,20 +1298,32 @@ function wWeek(){
 
 function wFuel(){
   const e=eff(todayIdx),m=macroPct(e);
+  const hr=new Date().getHours();
+  let tomorrow='';
+  if(hr>=20&&todayIdx<RACE_IDX){ // eating decisions for the morning happen the night before
+    const te=eff(todayIdx+1);
+    tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b> — '+fmtKcal(te.kcal)+' kcal · '+te.carbs+'g carbs'
+      +(te.type==='S'||te.type==='L'?'. Big breakfast.':te.type==='R'?'. Rest day, keep it light.':'')+'</p>';
+  }
   return '<section class="card">'
     +'<div class="spread"><h2>Fuel today</h2><div class="row">'+typeChip(e.type)
     +'<button class="btn3" data-action="nutadjust" data-i="'+todayIdx+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
-    +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal target</span>'+nutAdjChip(e)+'</div>'
+    +'<div class="row" style="gap:16px;align-items:center">'
+    +'<div style="flex:1"><div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal</span></div>'
+    +'<div class="row" style="margin-top:8px">'+nutAdjChip(e)
+    +'<span class="chip neutral">'+fmtKcal(e.burn)+' burn</span>'
+    +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' deficit</span></div></div>'
+    +tankHTML()
+    +'</div>'
     +'<div class="macros">'
     +'<div class="macro"><span>Protein</span><b class="num">'+e.p+'g</b><span class="mini">'+m.p+'%</span></div>'
     +'<div class="macro"><span>Carbs</span><b class="num">'+e.carbs+'g</b><span class="mini">'+m.c+'%</span></div>'
     +'<div class="macro"><span>Fat</span><b class="num">'+e.fat+'g</b><span class="mini">'+m.f+'%</span></div>'
     +'</div>'
-    +'<div class="row" style="margin-top:12px">'
-    +'<span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
-    +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal if on target</span>'
-    +'</div>'
-    +'<p class="note" style="margin:10px 0 0">Protein first: <b>185 g every day</b>. In-run race fuel (60–90 g carbs/hr) sits on top. Phase avg deficit ~'+PHASE_DEFICIT[e.wk.phase]+' kcal/day.</p>'
+    +mealRow(todayIdx)
+    +mealSummary(todayIdx)
+    +'<p class="note" style="margin:10px 0 0">Protein first: <b>185 g every day</b>. In-run race fuel (60–90 g carbs/hr) sits on top.</p>'
+    +tomorrow
     +'</section>';
 }
 
@@ -1433,6 +1469,109 @@ function dayDragEnd(){
     card.style.transform='';
     setTimeout(()=>card.classList.remove('swipe-snapback','dragging'),320);
   }
+}
+
+/* ---------------- kcal bar drag: direct manipulation of the rebalance engine ---------------- */
+let nutDragRevert=null;
+function updateNutStrip(){
+  const strip=document.getElementById('nutstrip');if(!strip)return;
+  const w=+strip.dataset.w;
+  const vals=Array.from({length:7},(_,d)=>eff(w*7+d));
+  const maxK=Math.max.apply(null,vals.map(e=>e.kcal));
+  strip.querySelectorAll('button[data-i]').forEach((b,d)=>{
+    const e=vals[d];
+    b.querySelector('.nbar i').style.height=Math.round(10+42*e.kcal/maxK)+'px';
+    b.querySelector('.k').textContent=(Math.round(e.kcal/100)/10)+'k';
+    const del=b.querySelector('.ndelta');
+    const dv=e.nutEdited?e.kcal-e.planKcal:e.nutAdj;
+    del.textContent=dv?((dv>0?'+':'−')+Math.abs(dv)):'';
+  });
+}
+function bindNutBars(){
+  document.querySelectorAll('.nbar.ed').forEach(bar=>{
+    if(bar._nb)return;bar._nb=1;
+    const i=+bar.dataset.bar;
+    let y0=0,active=false,moved=false,base=0,plan=0,prevEdit=null,cur=0;
+    bar.addEventListener('pointerdown',e=>{
+      y0=e.clientY;active=true;moved=false;
+      prevEdit=S.nutEdit[i]!=null?S.nutEdit[i]:null;
+      plan=eff(i).planKcal;
+      base=prevEdit!=null?prevEdit:plan;
+      cur=base;
+      nutDragRevert=()=>{
+        if(prevEdit!=null)S.nutEdit[i]=prevEdit;else delete S.nutEdit[i];
+        active=false;document.body.classList.remove('nutdrag');updateNutStrip();nutDragRevert=null;
+      };
+      try{bar.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    bar.addEventListener('pointermove',e=>{
+      if(!active)return;
+      const dy=y0-e.clientY;
+      if(!moved){if(Math.abs(dy)<10)return;moved=true;document.body.classList.add('nutdrag');}
+      e.preventDefault();
+      let v=base+Math.round(dy*8/25)*25; // ~8 kcal per px, 25 kcal detents
+      v=Math.max(1200,Math.min(8000,v));
+      if(v!==cur){
+        cur=v;haptic();
+        if(v===plan)delete S.nutEdit[i];else S.nutEdit[i]=v; // transient until release
+        updateNutStrip();
+      }
+    });
+    bar.addEventListener('pointerup',()=>{
+      if(!active)return;active=false;
+      document.body.classList.remove('nutdrag');nutDragRevert=null;
+      if(!moved)return; // plain tap: selection click handles it
+      window._nutDragTs=Date.now();
+      if((prevEdit!=null?prevEdit:plan)===cur){updateNutStrip();return;}
+      save();rerenderKeepScroll();
+      const pe=prevEdit;
+      snack(DOW[i%7]+' set to '+fmtKcal(cur)+' kcal — week rebalanced',()=>{
+        if(pe!=null)S.nutEdit[i]=pe;else delete S.nutEdit[i];
+        save();rerenderKeepScroll();
+      });
+    });
+    bar.addEventListener('pointercancel',()=>{if(nutDragRevert)nutDragRevert();});
+  });
+}
+
+/* ---------------- meal chips + fuel tank + tomorrow preview ---------------- */
+const MEALS=[['b','Breakfast'],['l','Lunch'],['d','Dinner'],['s','Snacks']];
+function mealState(i,m){return (S.meals&&S.meals[i]||{})[m]||null;}
+function mealRow(i){
+  return '<div class="mealrow">'+MEALS.map(mm=>{
+    const st=mealState(i,mm[0]);
+    return '<button data-action="mealcyc" data-i="'+i+'" data-m="'+mm[0]+'" aria-pressed="'+(!!st)+'" class="'+(st?'m-'+st:'')+'">'+mm[1]+(st?' · '+st:'')+'</button>';
+  }).join('')+'</div>';
+}
+function mealSummary(i){
+  const r=S.meals&&S.meals[i]||{};
+  let o=0,u=0,n=0;
+  MEALS.forEach(mm=>{const s=r[mm[0]];if(s){n++;if(s==='over')o++;if(s==='under')u++;}});
+  if(!n)return '<p class="mini" id="mealsum" style="margin:8px 2px 0">Tap meals as the day goes: on plan, over, or under.</p>';
+  const net=o-u;
+  const t=net===0?'Roughly on plan so far.':net>0?'Running ~'+(net*150)+' kcal heavy — tomorrow absorbs it if it holds.':'Running ~'+(-net*150)+' kcal light — top up tonight, the deficit is already in the plan.';
+  return '<p class="mini" id="mealsum" style="margin:8px 2px 0">'+t+'</p>';
+}
+function tankFill(){
+  const now=new Date(),h=now.getHours()+now.getMinutes()/60;
+  let f=(24-Math.max(6,Math.min(24,h)))/18; // drains from 06:00 toward midnight
+  const r=S.meals&&S.meals[todayIdx]||{};
+  let net=0;
+  MEALS.forEach(mm=>{const s=r[mm[0]];if(s==='over')net++;if(s==='under')net--;});
+  return Math.max(0,Math.min(1,f-net*0.07));
+}
+function tankHTML(){
+  const f=tankFill(),fh=Math.round(86*f);
+  return '<svg class="tank" width="62" height="110" viewBox="0 0 62 110" role="img" aria-label="Fuel remaining: '+Math.round(f*100)+' percent of the day">'
+    +'<rect x="8" y="8" width="46" height="92" rx="12" fill="none" stroke="var(--bord)" stroke-width="2.5"/>'
+    +'<rect class="fill" x="11" y="'+(97-fh)+'" width="40" height="'+fh+'" rx="8" fill="var(--accent)" opacity="0.8"/>'
+    +'<line x1="11" x2="51" y1="'+(97-Math.round(86*0.25))+'" y2="'+(97-Math.round(86*0.25))+'" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.7"/>'
+    +'</svg>';
+}
+function updateTank(){
+  const t=document.querySelector('.tank .fill');if(!t)return;
+  const fh=Math.round(86*tankFill());
+  t.setAttribute('y',97-fh);t.setAttribute('height',fh);
 }
 
 /* reset with a scrub: show what it will undo before the button arms */
@@ -1632,6 +1771,8 @@ function nutDayCard(i){
     +'</div>'
     +'<div class="row" style="margin-top:12px"><span class="chip neutral">'+fmtKcal(e.burn)+' kcal burn</span>'
     +'<span class="chip neutral">−'+fmtKcal(e.deficit)+' kcal deficit</span></div>'
+    +mealRow(i)
+    +mealSummary(i)
     +'<p class="note" style="margin:10px 0 0">'+esc(headline(e))+(e.zone!=='Rest'?' · fuel for the work done.':'')+'</p>'
     +'</section>';
 }
@@ -1661,16 +1802,20 @@ function nutTableBody(){
 function vNut(){
   const i=clamp(ui.nutDay,0,RACE_IDX);
   const w=Math.floor(i/7);
-  let strip='<div class="daystrip">';
+  let strip='<div class="daystrip" id="nutstrip" data-w="'+w+'">';
+  const maxK=Math.max.apply(null,Array.from({length:7},(_,d)=>eff(w*7+d).kcal));
   for(let d=0;d<7;d++){
     const j=w*7+d,e=eff(j);
+    const editable=j>=clamp(rawT,0,RACE_IDX)&&j!==RACE_IDX&&rawT<=RACE_IDX;
+    const h=Math.round(10+42*e.kcal/maxK);
     strip+='<button data-action="selnutday" data-i="'+j+'" class="'+(j===i?'sel':'')+'"'+(j===i?' aria-current="date"':'')
-      +' aria-label="'+DOW[d]+' — '+fmtKcal(e.kcal)+' kcal, '+e.carbs+' g carbs, '+DAYTYPE[e.type].label+'">'
-      +'<div class="d" aria-hidden="true">'+DOW[d]+'</div><div class="k num" aria-hidden="true">'+(Math.round(e.kcal/100)/10)+'k</div>'
-      +'<div class="mini num" style="font-size:10px" aria-hidden="true">'+e.carbs+'C</div>'
-      +'<span class="dot" style="background:var(--'+DAYTYPE[e.type].c+')"></span></button>';
+      +' aria-label="'+DOW[d]+' — '+fmtKcal(e.kcal)+' kcal, '+e.carbs+' g carbs, '+DAYTYPE[e.type].label+(editable?'. Drag the bar to adjust':'')+'">'
+      +'<div class="d" aria-hidden="true">'+DOW[d]+'</div>'
+      +'<div class="nbar'+(editable?' ed':'')+'" data-bar="'+j+'" aria-hidden="true"><span class="ndelta"></span><i style="height:'+h+'px;background:var(--'+DAYTYPE[e.type].c+')"></i></div>'
+      +'<div class="k num" aria-hidden="true">'+(Math.round(e.kcal/100)/10)+'k</div>'
+      +'</button>';
   }
-  strip+='</div>';
+  strip+='</div><p class="mini" style="margin:4px 2px 0">Tap a day to inspect · drag a bar up or down and the rest of the week rebalances live.</p>';
   let chips='<div class="weekchips">';
   for(let j=0;j<16;j++)chips+='<button data-action="selnutweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
   chips+='</div>';
@@ -1793,7 +1938,7 @@ function render(anim){ // anim=true only on navigation — entrances must not re
   view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
   if(anim&&view.firstElementChild)view.firstElementChild.classList.add('fade');
   fieldDirty=false; // any full render supersedes a pending field re-render
-  bindSwipes();bindLongPress();initRulers();
+  bindSwipes();bindLongPress();initRulers();bindNutBars();
   window.scrollTo(0,ui.scroll[ui.tab]||0);
 }
 function rerenderKeepScroll(){
@@ -1871,6 +2016,24 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
+  else if(a==='mealcyc'){
+    const i2=+el.dataset.i,m=el.dataset.m;
+    const orderM=[null,'on','over','under'];
+    const cur=mealState(i2,m);
+    const nx=orderM[(orderM.indexOf(cur)+1)%4];
+    if(!S.meals)S.meals={};
+    if(!S.meals[i2])S.meals[i2]={};
+    if(nx)S.meals[i2][m]=nx;else delete S.meals[i2][m];
+    if(!Object.keys(S.meals[i2]).length)delete S.meals[i2];
+    save();
+    el.className=nx?'m-'+nx:'';
+    el.setAttribute('aria-pressed',!!nx);
+    el.textContent=MEALS.find(x=>x[0]===m)[1]+(nx?' · '+nx:'');
+    el.classList.add('pop');setTimeout(()=>el.classList.remove('pop'),450);
+    updateTank();
+    const card=el.closest('section'),old=card.querySelector('#mealsum');
+    if(old)old.outerHTML=mealSummary(i2);
+  }
   else if(a==='nutadjsave'){
     const i2=Number(el.dataset.i),inp=document.getElementById('adjkcal'),v=parseFloat(inp.value);
     if(v>=1200&&v<=8000){
@@ -1912,7 +2075,10 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='closesheet'){closeSheet();}
   else if(a==='selweek'){ui.week=Number(el.dataset.w);ui.scroll.train=0;render();}
-  else if(a==='selnutday'){ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();}
+  else if(a==='selnutday'){
+    if(window._nutDragTs&&Date.now()-window._nutDragTs<400)return; // a bar drag just ended, not a tap
+    ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();
+  }
   else if(a==='selnutweek'){const w=Number(el.dataset.w);ui.nutDay=w*7+Math.min(ui.nutDay%7,6);rerenderKeepScroll();}
   else if(a==='nuttype'){const t=el.dataset.t;ui.nutTypes[t]=!ui.nutTypes[t];rerenderKeepScroll();}
   else if(a==='jumptoday'){
@@ -2077,6 +2243,7 @@ document.addEventListener('longpress',ev=>{
 });
 
 document.addEventListener('keydown',ev=>{
+  if(ev.key==='Escape'&&nutDragRevert){nutDragRevert();return;}
   if(ev.key==='Escape'&&!document.getElementById('sheet').hidden){closeSheet();return;}
   if(ev.key==='Enter'||ev.key===' '){
     const t=ev.target.closest&&ev.target.closest('tr[data-action]');
