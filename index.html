@@ -30,6 +30,9 @@
   --track:#1d2638; --shadow:none;
   --disp:ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
+  /* the one motion system: fast snap for acknowledgements, soft settle for sheets/cards */
+  --snap:cubic-bezier(.3,1.5,.45,1); --dur-snap:280ms;
+  --settle:cubic-bezier(.22,1,.36,1); --dur-settle:420ms;
   --statusbar:var(--bg);
 }
 /* Light theme — the WCAG-checked palette; selected via the theme toggle (S.theme) */
@@ -182,6 +185,8 @@ svg{display:block;width:100%;height:auto}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .hl{animation:hl 2s ease}
 @keyframes hl{0%{background:var(--long-bg)}100%{background:transparent}}
+.pop{animation:pop var(--dur-snap) var(--snap)}
+@keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:none;opacity:1}}
 .course{height:4px;border-radius:99px;background:var(--track);margin:12px 2px 2px;overflow:hidden}
 .course i{display:block;height:100%;border-radius:99px;background:var(--accent);min-width:4px}
 .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
@@ -193,10 +198,38 @@ svg{display:block;width:100%;height:auto}
 .center{text-align:center}
 .footlinks{display:flex;justify-content:center;gap:18px;margin-top:18px}
 .note,.banner{text-wrap:pretty}
+/* ---- feel layer primitives ---- */
+#snack{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));z-index:80;
+  transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:transform var(--dur-snap) var(--snap),opacity .2s ease}
+#snack.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+.snackin{display:flex;gap:14px;align-items:center;background:var(--raised);border:1px solid var(--line);
+  border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.35);white-space:nowrap}
+.snackin button{color:var(--accent);font-weight:700;min-height:40px;padding:0 4px}
+/* swipeable cards */
+[data-swipe]{touch-action:pan-y;position:relative;will-change:transform;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+[data-swipe] input,[data-swipe] select{-webkit-user-select:auto;user-select:auto}
+.swipe-snapback{transition:transform var(--dur-snap) var(--snap)}
+.swipe-hint{position:absolute;top:0;bottom:0;display:flex;align-items:center;font-size:14px;font-weight:800;opacity:0;pointer-events:none}
+.swipe-hint.r{left:18px;color:var(--easy)} .swipe-hint.l{right:18px;color:var(--sub)}
+/* ruler tape (weight + pace) */
+.ruler{position:relative;margin-top:10px;-webkit-user-select:none;user-select:none}
+.rval{text-align:center;font-size:40px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.rval span{font-size:15px;color:var(--sub);font-weight:600;letter-spacing:0}
+.rtrack{overflow-x:auto;scroll-snap-type:x mandatory;display:flex;align-items:flex-end;height:56px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
+.rtrack::-webkit-scrollbar{display:none}
+.rtick{flex:0 0 12px;scroll-snap-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.rtick i{width:2px;height:16px;border-radius:2px;background:var(--bord)}
+.rtick.major i{height:28px;background:var(--sub)}
+.rtick b{font-size:10px;color:var(--sub);font-weight:700;margin-bottom:2px;font-variant-numeric:tabular-nums}
+.rpad{flex:0 0 50%}
+.rline{position:absolute;left:50%;bottom:0;width:2.5px;height:44px;background:var(--accent);border-radius:2px;transform:translateX(-50%);pointer-events:none}
+.rkbd{position:absolute;right:0;top:6px;color:var(--sub);font-size:12px;font-weight:700;padding:6px 8px;min-height:36px}
 @media (prefers-reduced-motion: reduce){
-  .fade,.hl{animation:none}
-  #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim{transition:none}
+  .fade,.hl,.pop{animation:none}
+  #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
   .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
+  .rtrack{scroll-behavior:auto}
 }
 </style>
 </head>
@@ -421,6 +454,151 @@ function fmtKm(v){return (Math.round(v*10)/10).toString();}
 function fmtKcal(v){return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function fmtLb(v){return (Math.round(v*10)/10).toFixed(1).replace(/\.0$/,'');}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+/* ---------------- Feel-layer primitives ---------------- */
+const REDUCE=matchMedia('(prefers-reduced-motion: reduce)');
+function haptic(strong){if(navigator.vibrate)try{navigator.vibrate(strong?16:6);}catch(e){}}
+
+let snackTimer=null,snackUndoFn=null;
+function snack(msg,undoFn){
+  let s=document.getElementById('snack');
+  if(!s){s=document.createElement('div');s.id='snack';document.body.appendChild(s);}
+  snackUndoFn=undoFn||null;
+  s.innerHTML='<div class="snackin"><span>'+esc(msg)+'</span>'+(undoFn?'<button data-action="snackundo">Undo</button>':'')+'</div>';
+  s.classList.add('show');
+  clearTimeout(snackTimer);
+  snackTimer=setTimeout(()=>{s.classList.remove('show');snackUndoFn=null;},4500);
+}
+function hideSnack(){const s=document.getElementById('snack');if(s)s.classList.remove('show');snackUndoFn=null;}
+
+function rollNum(el,from,to,dec,suffix){ // numbers never teleport
+  if(!el)return;
+  const fmt=v=>(dec?v.toFixed(dec):Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g,','))+(suffix||'');
+  if(REDUCE.matches||from===to||from==null){el.textContent=fmt(to);return;}
+  const t0=performance.now(),dur=600;
+  (function f(t){
+    const p=Math.min(1,(t-t0)/dur),v=from+(to-from)*(1-Math.pow(1-p,3));
+    el.textContent=fmt(p===1?to:v);
+    if(p<1)requestAnimationFrame(f);
+  })(t0);
+}
+
+/* horizontal swipe: rubber-band past the commit point, custom events on release */
+function bindSwipes(){
+  document.querySelectorAll('[data-swipe]').forEach(card=>{
+    if(card._swipe)return;card._swipe=1;
+    let x0=0,y0=0,dx=0,active=false,locked=false;
+    const LIM=110,COMMIT=90;
+    card.addEventListener('pointerdown',e=>{
+      if(e.button||e.target.closest('button,input,select,a'))return;
+      x0=e.clientX;y0=e.clientY;dx=0;active=true;locked=false;
+      card.classList.remove('swipe-snapback');
+    });
+    card.addEventListener('pointermove',e=>{
+      if(!active)return;
+      const mx=e.clientX-x0,my=e.clientY-y0;
+      if(!locked){
+        if(Math.abs(mx)>10&&Math.abs(mx)>Math.abs(my)*1.4){locked=true;try{card.setPointerCapture(e.pointerId);}catch(_){}}
+        else if(Math.abs(my)>10){active=false;return;}
+        else return;
+      }
+      dx=mx;
+      const a=Math.abs(dx),r=(Math.min(a,LIM)+Math.max(0,a-LIM)*0.22)*(dx<0?-1:1);
+      card.style.transform='translateX('+r+'px)';
+      const hr=card.querySelector('.swipe-hint.r'),hl=card.querySelector('.swipe-hint.l');
+      if(hr)hr.style.opacity=Math.min(1,Math.max(0,dx/COMMIT));
+      if(hl)hl.style.opacity=Math.min(1,Math.max(0,-dx/COMMIT));
+    });
+    const end=()=>{
+      if(!active)return;active=false;
+      card.classList.add('swipe-snapback');card.style.transform='';
+      if(!locked)return;
+      if(dx>COMMIT){haptic();card.dispatchEvent(new CustomEvent('swiperight',{bubbles:true}));}
+      else if(dx<-COMMIT){haptic();card.dispatchEvent(new CustomEvent('swipeleft',{bubbles:true}));}
+    };
+    card.addEventListener('pointerup',end);
+    card.addEventListener('pointercancel',end);
+  });
+}
+
+function bindLongPress(){
+  document.querySelectorAll('[data-lp]').forEach(el=>{
+    if(el._lp)return;el._lp=1;
+    let t=null,sx=0,sy=0;
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+    el.addEventListener('pointerdown',e=>{
+      sx=e.clientX;sy=e.clientY;
+      t=setTimeout(()=>{t=null;haptic(true);el.dispatchEvent(new CustomEvent('longpress',{bubbles:true,detail:{x:sx,y:sy}}));},420);
+    });
+    el.addEventListener('pointermove',e=>{
+      if(t&&(Math.abs(e.clientX-sx)>8||Math.abs(e.clientY-sy)>8)){clearTimeout(t);t=null;}
+    });
+    ['pointerup','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>{clearTimeout(t);t=null;}));
+  });
+}
+
+/* ruler tape: scroll-snap detents under a fixed centre line; keyboard + type fallback */
+const TICKW=12;
+function rulerHTML(id,min,max,step,val,unit,majorEvery,dec){
+  let ticks='<div class="rpad"></div>';
+  const n=Math.round((max-min)/step);
+  for(let k=0;k<=n;k++){
+    const v=min+k*step;
+    const major=Math.abs(v/majorEvery-Math.round(v/majorEvery))<1e-6;
+    ticks+='<div class="rtick'+(major?' major':'')+'">'+(major?'<b>'+(Math.round(v*10)/10)+'</b>':'')+'<i></i></div>';
+  }
+  ticks+='<div class="rpad"></div>';
+  return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+dec+'" data-val="'+val+'">'
+    +'<div class="rval"><span class="rv">'+val.toFixed(dec)+'</span><span> '+unit+'</span></div>'
+    +'<button class="rkbd" data-action="rulerkbd" data-r="'+id+'" aria-label="Type the value instead">type</button>'
+    +'<div class="rtrack" data-lp tabindex="0" role="slider" aria-label="'+esc(unit)+' value" aria-valuemin="'+min+'" aria-valuemax="'+max+'" aria-valuenow="'+val+'">'+ticks+'</div>'
+    +'<div class="rline" aria-hidden="true"></div></div>';
+}
+function initRulers(){
+  document.querySelectorAll('.ruler').forEach(r=>{
+    if(r._init)return;r._init=1;
+    const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step,dec=+r.dataset.dec,val=+r.dataset.val;
+    const idx=Math.round((val-min)/step);
+    requestAnimationFrame(()=>{tr.scrollLeft=idx*TICKW;});
+    let raf=null,lastIdx=idx;
+    tr.addEventListener('scroll',()=>{
+      if(raf)return;
+      raf=requestAnimationFrame(()=>{
+        raf=null;
+        const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
+        const v=min+k*step;
+        r.querySelector('.rv').textContent=v.toFixed(dec);
+        tr.setAttribute('aria-valuenow',v.toFixed(dec));
+        if(k!==lastIdx){lastIdx=k;haptic();}
+      });
+    });
+    tr.addEventListener('keydown',e=>{
+      let d=0;
+      if(e.key==='ArrowLeft')d=-1;else if(e.key==='ArrowRight')d=1;
+      else if(e.key==='ArrowDown')d=-Math.round(1/step);else if(e.key==='ArrowUp')d=Math.round(1/step);
+      if(d){e.preventDefault();tr.scrollLeft+=d*TICKW;}
+    });
+  });
+}
+function rulerToKeyboard(id){
+  const r=document.getElementById(id);if(!r||r.querySelector('input'))return;
+  const cur=readRuler(id);
+  r.querySelector('.rtrack').style.display='none';
+  r.querySelector('.rline').style.display='none';
+  const inp=document.createElement('input');
+  inp.type='number';inp.inputMode='decimal';inp.step=r.dataset.step;inp.min=r.dataset.min;inp.max=r.dataset.max;
+  inp.value=cur.toFixed(+r.dataset.dec);
+  inp.setAttribute('aria-label','Value');
+  r.appendChild(inp);inp.focus();inp.select();
+}
+function readRuler(id){
+  const r=document.getElementById(id);if(!r)return null;
+  const kb=r.querySelector('input');
+  if(kb)return parseFloat(kb.value);
+  const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step;
+  const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
+  return Math.round((min+k*step)*100)/100;
+}
 
 /* ---------------- 3. State (persistent, source-tagged) ---------------- */
 /* Phase 2–4 hook: register future importers (Apple Health, Strava, Oura) in
@@ -687,7 +865,7 @@ applyTheme(); // before first render — no theme flash
 /* ---------------- 5. UI state ---------------- */
 let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{}};
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',nutTypes:{},nutQ:'',scroll:{},wtOpen:false};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
@@ -920,16 +1098,25 @@ function wFuel(){
 function wWeight(){
   const lw=latestWeight(),tw=trendWeight(),pw=planWtAt(todayIdx);
   const dlt=tw?tw.lb-pw:(lw?lw.lb-planWtAt(clamp(isoToIdx(lw.date),0,RACE_IDX)):null);
+  const todayEntry=S.weights.find(x=>x.date===todayISO());
+  let body;
+  if(ui.wtOpen){ // expands in place to the ruler — no tab switch, no sheet
+    const start=Math.round((todayEntry?todayEntry.lb:(lw?lw.lb:pw))*10)/10;
+    body='<div style="margin-top:4px">'+rulerHTML('wtr',Math.max(120,Math.round(start)-15),Math.min(280,Math.round(start)+15),0.1,start,'lb',1,1)+'</div>'
+      +'<div class="loggrid" style="margin-top:12px">'
+      +'<button class="btn2" data-action="wtcancel">Cancel</button>'
+      +'<button class="btn" data-action="wtsave">Save</button></div>';
+  }else{
+    body='<button class="btn" style="width:100%;margin-top:12px" data-action="wtopen">'+(todayEntry?'Edit today’s weigh-in':'Log weight')+'</button>';
+  }
   return '<section class="card"><div class="spread"><h2>Weight</h2>'
-    +(dlt!=null?'<span class="chip c-'+deltaClass(dlt)+'">'+(tw?'trend ':'')+(dlt>0?'+':'')+fmtLb(dlt)+' lb vs plan</span>':'<span class="chip neutral">no log yet</span>')+'</div>'
+    +(dlt!=null?'<span class="chip c-'+deltaClass(dlt)+'" id="wverdict">'+(tw?'trend ':'')+(dlt>0?'+':'')+fmtLb(dlt)+' lb vs plan</span>':'<span class="chip neutral">no log yet</span>')+'</div>'
     +'<div class="row" style="gap:18px;margin-top:4px">'
     +'<div><span class="mini">Plan today</span><div class="big num">'+fmtLb(pw)+'</div></div>'
     +(tw?'<div><span class="mini">7-day trend</span><div class="big num">'+fmtLb(tw.lb)+'</div></div>':'')
     +(lw?'<div><span class="mini">Latest · '+isoShort(lw.date)+'</span><div class="big num">'+fmtLb(lw.lb)+'</div></div>':'')
     +'</div>'
-    +'<div class="loggrid" style="margin-top:12px"><div><label class="f" for="twt">Today’s weight (lb)</label><input type="number" inputmode="decimal" step="0.1" min="120" max="280" id="twt" aria-describedby="twt-err" placeholder="'+fmtLb(pw)+'"></div>'
-    +'<div style="display:flex;align-items:flex-end"><button class="btn" style="width:100%" data-action="savetodayweight">Log weight</button></div></div>'
-    +'<p class="err" id="twt-err" role="alert" hidden>Enter a weight between 120 and 280 lb.</p>'
+    +body
     +'</section>';
 }
 
@@ -1233,8 +1420,9 @@ function vWeight(){
     +'</div>'
     +'<section class="card"><h2>Trend vs plan</h2><div class="svgwrap">'+weightChart()+'</div></section>'
     +'<section class="card"><h2>Log a weight</h2>'
-    +'<div class="loggrid"><div><label class="f" for="wdate">Date</label><input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27"></div>'
-    +'<div><label class="f" for="wlb">Weight (lb)</label><input type="number" inputmode="decimal" step="0.1" min="120" max="280" id="wlb" aria-describedby="wlb-err" placeholder="e.g. 208.4"></div></div>'
+    +'<div><label class="f" for="wdate">Date</label><input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27"></div>'
+    +(function(){const st=Math.round((lw?lw.lb:planWtAt(clamp(rawT,0,RACE_IDX)))*10)/10;
+      return rulerHTML('wtr2',Math.max(120,Math.round(st)-15),Math.min(280,Math.round(st)+15),0.1,st,'lb',1,1);})()
     +'<p class="err" id="wlb-err" role="alert" hidden>Pick a date and a weight between 120 and 280 lb.</p>'
     +'<button class="btn" style="width:100%;margin-top:10px" data-action="addweight">Log weight</button>'
     +(list?'<ul class="weights" style="list-style:none;margin:14px 0 0;padding:0">'+list+'</ul>':'<p class="note center" style="margin:14px 0 0">Log your first weigh-in above. The trend vs plan builds from here.</p>')
@@ -1301,6 +1489,7 @@ function render(anim){ // anim=true only on navigation — entrances must not re
   view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
   if(anim&&view.firstElementChild)view.firstElementChild.classList.add('fade');
   fieldDirty=false; // any full render supersedes a pending field re-render
+  bindSwipes();bindLongPress();initRulers();
   window.scrollTo(0,ui.scroll[ui.tab]||0);
 }
 function rerenderKeepScroll(){
@@ -1380,16 +1569,29 @@ document.addEventListener('click',ev=>{
       r.classList.add('hl');
     }
   }
-  else if(a==='savetodayweight'){
-    const v=parseFloat(document.getElementById('twt').value);
-    if(v>=120&&v<=280){logWeight(todayISO(),Math.round(v*10)/10);rerenderKeepScroll();}
-    else showFieldErr('twt');
+  else if(a==='wtopen'){ui.wtOpen=true;rerenderKeepScroll();}
+  else if(a==='wtcancel'){ui.wtOpen=false;rerenderKeepScroll();}
+  else if(a==='wtsave'){
+    const v=readRuler('wtr');
+    if(v>=120&&v<=280){
+      const prev=S.weights.slice();
+      logWeight(todayISO(),Math.round(v*10)/10);
+      ui.wtOpen=false;rerenderKeepScroll();
+      const ch=document.getElementById('wverdict');if(ch)ch.classList.add('pop');
+      snack('Logged '+fmtLb(v)+' lb',()=>{S.weights=prev;save();rerenderKeepScroll();});
+    }
   }
   else if(a==='addweight'){
-    const d=document.getElementById('wdate').value,v=parseFloat(document.getElementById('wlb').value);
-    if(d&&v>=120&&v<=280){logWeight(d,Math.round(v*10)/10);rerenderKeepScroll();}
+    const d=document.getElementById('wdate').value,v=readRuler('wtr2');
+    if(d&&v>=120&&v<=280){
+      const prev=S.weights.slice();
+      logWeight(d,Math.round(v*10)/10);rerenderKeepScroll();
+      snack('Logged '+fmtLb(v)+' lb · '+isoShort(d),()=>{S.weights=prev;save();rerenderKeepScroll();});
+    }
     else showFieldErr('wlb');
   }
+  else if(a==='snackundo'){const f=snackUndoFn;hideSnack();if(f)f();}
+  else if(a==='rulerkbd'){rulerToKeyboard(el.dataset.r);}
   else if(a==='delweight'){
     if(confirm('Delete this weigh-in?')){S.weights.splice(Number(el.dataset.idx),1);save();rerenderKeepScroll();}
   }
@@ -1507,6 +1709,11 @@ document.addEventListener('input',ev=>{
       if(b)b.innerHTML=nutTableBody();
     },120);
   }
+});
+
+document.addEventListener('longpress',ev=>{
+  const tr=ev.target.closest('.rtrack'); // long-press the tape = flip to keyboard entry
+  if(tr){const r=tr.closest('.ruler');if(r)rulerToKeyboard(r.id);}
 });
 
 document.addEventListener('keydown',ev=>{
