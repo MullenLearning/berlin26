@@ -197,6 +197,72 @@ html[data-skin="fitbit"] .skinseg button.on{background:var(--accent);color:#fff}
 .flist .lrow .lt{flex:1;font-weight:600;color:var(--ink);font-size:15px}
 .flist .lrow .lv{color:var(--txt2);font-size:15px;font-variant-numeric:tabular-nums}
 .fchev{color:var(--bord)}
+
+/* ======================================================================
+   SKIN: APPLE HEALTH — light-locked grouped-list dashboard. Big SF Pro
+   large title, white rounded cards on #F2F2F7, hairline rows + grey chevrons,
+   the three concentric Activity rings, rounded pill-cap bar charts.
+   ====================================================================== */
+html[data-skin="apple"]{
+  color-scheme:light;
+  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA;
+  --ink:#000000; --txt2:rgba(60,60,67,.6); --sub:rgba(60,60,67,.3);
+  --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
+  --accent:#007AFF; --accent-ink:#fff; --chevron:#C7C7CC; --signal:#FF9500;
+  --track:#E5E5EA; --shadow:0 1px 2px rgba(0,0,0,.04);
+  --move-a:#FF0436; --move-b:#FA114F; --ex-a:#A2FF00; --ex-b:#66E300; --st-a:#00B9C8; --st-b:#1AEBFF;
+  --c-activity:#FA114F; --c-heart:#FF2D55; --c-sleep:#5E5CE6; --c-nutrition:#34C759; --c-energy:#FF9500; --c-body:#AF52DE; --c-mind:#5AC8FA;
+  --rec:#5AC8FA; --rec-bg:#e1f4fd; --easy:#34C759; --easy-bg:#e3f9e9; --long:#FF9500; --long-bg:#fff0db; --hard:#FF3B30; --hard-bg:#ffe5e3; --rest:#8E8E93; --rest-bg:#eceef2; --blue:#007AFF; --blue-bg:#e4eeff;
+  --statusbar:#F2F2F7;
+  --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
+  font-family:var(--disp);
+}
+html[data-skin="apple"] .card{border-radius:13px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;padding:16px;margin-top:0}
+html[data-skin="apple"] h1{font-weight:700;letter-spacing:.37px;text-transform:none}
+html[data-skin="apple"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
+html[data-skin="apple"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
+html[data-skin="apple"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
+html[data-skin="apple"] #tabbar button{color:#8E8E93}
+html[data-skin="apple"] #tabbar button.sel{color:var(--accent)}
+html[data-skin="apple"] #tabbar button.sel::after{display:none}
+html[data-skin="apple"] #tabbar svg{width:26px;height:26px}
+html[data-skin="apple"] .skinseg{background:#fff;border:1px solid var(--line)}
+html[data-skin="apple"] .skinseg button.on{background:var(--accent);color:#fff}
+/* Apple components */
+.aNav{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 2px 0}
+.aTitle{font-size:34px;font-weight:700;letter-spacing:.37px;color:#000;line-height:1.1}
+.aSub{font-size:15px;color:var(--txt2);margin:2px 2px 6px}
+.aAvatar{width:34px;height:34px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--txt2);font-size:16px;border:none;cursor:pointer;flex:none;margin-top:6px}
+.aSec{font-size:22px;font-weight:700;color:#000;margin:24px 2px 9px;display:flex;justify-content:space-between;align-items:baseline}
+.aSec .lnk{font-size:17px;font-weight:400;color:var(--accent);cursor:pointer}
+.aActivity{background:#000 !important;color:#fff;border-radius:13px;padding:18px;display:flex;align-items:center;gap:16px}
+.aAct-stats{flex:1;min-width:0}
+.aAct-row{display:flex;align-items:baseline;gap:7px;margin:3px 0}
+.aAct-row .lab{font-size:13px;font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.aAct-row .val{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;margin-left:auto}
+.aAct-row .vu{font-size:12px;color:rgba(255,255,255,.55);font-weight:600}
+.aGroup{background:#fff;border-radius:13px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+.aGroup+.aGroup,.card+.aGroup,.aGroup+.card{margin-top:10px}
+.aRow{display:flex;align-items:center;gap:12px;width:100%;padding:11px 16px;background:none;border:none;text-align:left;cursor:pointer;min-height:48px;position:relative}
+.aRow::after{content:"";position:absolute;left:52px;right:0;bottom:0;height:.5px;background:var(--line)}
+.aRow:last-child::after{display:none}
+.aGlyph{width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex:none}
+.aName{flex:1;font-size:17px;font-weight:400;color:#000}
+.aVal{font-size:17px;font-weight:400;color:var(--txt2);font-variant-numeric:tabular-nums;text-align:right}
+.aUnit{font-size:15px;color:var(--sub)}
+.aChev{color:var(--chevron);display:flex;align-items:center;flex:none;margin-left:-2px}
+.aHi{font-size:17px;font-weight:600;color:#000;display:flex;align-items:center;gap:8px}
+.aHi svg,.aSearch svg{width:19px;height:19px;flex:none}
+.aHiSub{font-size:13px;color:var(--txt2);margin-top:2px}
+.aBig{font-size:28px;font-weight:700;color:#000;font-variant-numeric:tabular-nums}
+.aBars{display:flex;align-items:flex-end;gap:7px;height:84px;margin-top:14px}
+.aBars .b{flex:1;max-width:16px;margin:0 auto;border-radius:99px;min-height:3px}
+.aBarLabels{display:flex;gap:7px;margin-top:6px}
+.aBarLabels span{flex:1;text-align:center;font-size:11px;color:var(--txt2)}
+.aSearch{display:flex;align-items:center;gap:8px;background:var(--raised);border-radius:10px;padding:9px 12px;color:var(--sub);font-size:17px;margin:4px 2px 8px}
+.aSeg{display:inline-flex;background:var(--raised);border-radius:9px;padding:2px;gap:2px;width:100%}
+.aSeg button{flex:1;border:none;background:none;color:#000;font-size:13px;font-weight:500;padding:6px 4px;border-radius:7px;cursor:pointer}
+.aSeg button.on{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12)}
 /* opaque strip behind the iOS status bar (height 0 in regular browsers) */
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--statusbar);z-index:60}
 *{box-sizing:border-box}
@@ -2518,11 +2584,17 @@ function scheduledSoFar(w,todayPos){
 /* ---------------- Theme ---------------- */
 const mqLight=matchMedia('(prefers-color-scheme: light)');
 function applyTheme(){
-  const t=S.theme||'dark';
-  const light=t==='light'||(t==='auto'&&mqLight.matches);
+  /* Each skin locks its canonical appearance: WHOOP is OLED-dark, Fitbit and
+     Apple Health are light-first. (No skin → honour the S.theme toggle.) */
+  const sk=(typeof currentSkin==='function')?currentSkin():'whoop';
+  let light;
+  if(sk==='whoop')light=false;
+  else if(sk==='fitbit'||sk==='apple')light=true;
+  else {const t=S.theme||'dark';light=t==='light'||(t==='auto'&&mqLight.matches);}
   document.documentElement.dataset.theme=light?'light':'dark';
+  const bar={whoop:'#0A0A0A',fitbit:'#F4F6F8',apple:'#F2F2F7'}[sk]||(light?'#f1f3f6':'#0a0d15');
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m)m.setAttribute('content',light?'#f1f3f6':'#0a0d15');
+  if(m)m.setAttribute('content',bar);
 }
 mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme();});
 
@@ -2626,7 +2698,22 @@ const FITBIT={
   ],
   screens:{today:()=>fitToday(),coach:()=>fitCoach(),you:()=>fitYou()},
 };
-const SKIN_REG={whoop:WHOOP,fitbit:FITBIT,apple:WHOOP};
+/* APPLE HEALTH: light-locked, 3 bottom tabs (large-title nav), no FAB. */
+const API={
+  summary:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 16.5s-3.6-2.2-3.6-4.7c0-1.2 1-2 2-2 .9 0 1.3.5 1.6 1 .3-.5.7-1 1.6-1 1 0 2 .8 2 2 0 2.5-3.6 4.7-3.6 4.7Z" fill="currentColor" stroke="none"/></svg>',
+  plan:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>',
+  browse:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
+};
+const APPLE={
+  defaultTab:'summary',
+  tabs:[
+    {id:'summary',label:'Summary',icon:API.summary},
+    {id:'plan',label:'Plan',icon:API.plan},
+    {id:'browse',label:'Browse',icon:API.browse},
+  ],
+  screens:{summary:()=>appleSummary(),plan:()=>applePlan(),browse:()=>appleBrowse()},
+};
+const SKIN_REG={whoop:WHOOP,fitbit:FITBIT,apple:APPLE};
 
 applySkin();
 applyTheme(); // before first render — no theme/skin flash
@@ -4536,6 +4623,152 @@ function fitYou(){
     +'</div>';
 }
 
+/* ======================================================================
+   APPLE HEALTH skin — Summary / Plan / Browse, grouped lists, Activity rings.
+   ====================================================================== */
+const APL={
+  run:FIC.run,heart:FIC.heart,flame:FIC.flame,scale:FIC.scale,chev:FIC.chev,
+  bed:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6h18v6"/><path d="M3 20v-2M21 20v-2"/><path d="M5 12V9.5A2.5 2.5 0 0 1 7.5 7h9A2.5 2.5 0 0 1 19 9.5V12"/><path d="M8.5 12v-.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v.5"/></svg>',
+  fork:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a2 2 0 0 0 4 0V3M8 9v12M16.5 3C15 3 14 5.2 14 8s1 4 2.5 4 2.5-1.2 2.5-4-1-5-2.5-5Z"/><path d="M16.5 12v9"/></svg>',
+  search:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>',
+};
+function appleZoneGlyph(zone){
+  if(zone==='Rest')return {g:APL.bed,c:'var(--rest)'};
+  return {g:APL.run,c:'var(--'+(ZONECLR[zone]||'rest')+')'};
+}
+function appleRings(move,exercise,stand,size){
+  size=size||150;const cx=size/2,cy=size/2,stroke=Math.round(size*0.092);
+  const rs=[[move,'#FF0436','#FA114F'],[exercise,'#A2FF00','#66E300'],[stand,'#00B9C8','#1AEBFF']];
+  let r=(size-stroke)/2-2,defs='',tracks='',arcs='';
+  rs.forEach((rg,i)=>{const C=2*Math.PI*r,p=clamp(rg[0]==null?0:rg[0],0,100)/100,fill=C*p,gid='ar'+i+'_'+(++_wgrad);
+    defs+='<linearGradient id="'+gid+'" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0" stop-color="'+rg[2]+'"/><stop offset="1" stop-color="'+rg[1]+'"/></linearGradient>';
+    tracks+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+rg[2]+'" stroke-opacity="0.2" stroke-width="'+stroke+'"/>';
+    arcs+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="url(#'+gid+')" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')"/>';
+    r-=stroke+4;});
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="width:'+size+'px;height:'+size+'px;flex:none"><defs>'+defs+'</defs>'+tracks+'<g style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.35))">'+arcs+'</g></svg>';
+}
+function appleBars(vals,labels,color){
+  const mx=Math.max.apply(null,vals.concat([0.0001]));let bars='';
+  vals.forEach((v,i)=>{const h=mx>0?clamp(v/mx*100,3,100):3,last=i===vals.length-1;
+    bars+='<div class="b" style="height:'+h+'%;background:'+color+';opacity:'+(last?1:.5)+'"></div>';});
+  let labs='';(labels||[]).forEach(l=>labs+='<span>'+l+'</span>');
+  return '<div class="aBars">'+bars+'</div>'+(labels?'<div class="aBarLabels">'+labs+'</div>':'');
+}
+function appleRow(glyph,color,name,value,unit,action){
+  return '<button class="aRow" '+(action||'')+'>'
+    +'<span class="aGlyph" style="color:'+color+'">'+glyph+'</span>'
+    +'<span class="aName">'+name+'</span>'
+    +'<span class="aVal">'+value+(unit?' <span class="aUnit">'+unit+'</span>':'')+'</span>'
+    +'<span class="aChev">'+APL.chev+'</span></button>';
+}
+function appleNav(title,sub){
+  return '<div style="margin-bottom:10px">'+skinSwitcher()+'</div>'
+    +'<div class="aNav"><div><div class="aTitle">'+title+'</div>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
+    +'<button class="aAvatar" data-action="editwidgets" aria-label="Profile">L</button></div>';
+}
+function appleSummary(){
+  const e=eff(todayIdx),w=Math.floor(todayIdx/7),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx);
+  const lt=sessLog(e.id),doneKm=(lt&&lt.status&&lt.km)?Number(lt.km):0;
+  const movePct=e.km>0?doneKm/e.km*100:0, exPct=effWeekTarget(w)>0?weekActualKm(w)/effWeekTarget(w)*100:0, standPct=rd.pct||0;
+  const H=healthRef().d[todayISO()]||{};
+  // favorites rows
+  let fav='';
+  fav+=appleRow(APL.bed,'var(--c-sleep)','Sleep',sl.real?fmtSleep(sl.total):'No Data','','data-action="applecat" data-c="sleep"');
+  fav+=appleRow(APL.heart,'var(--c-heart)','Heart Rate Variability',H.hrv!=null?H.hrv:'—','ms','data-action="applecat" data-c="recovery"');
+  fav+=appleRow(APL.heart,'var(--c-heart)','Resting Heart Rate',H.rhr!=null?H.rhr:'—','BPM','data-action="applecat" data-c="heart"');
+  fav+=appleRow(APL.flame,'var(--c-energy)','Active Energy',fmtKcal(ea.kcal),'/ '+fmtKcal(e.kcal)+' kcal','data-action="applecat" data-c="nutrition"');
+  const lw=latestWeight();
+  fav+=appleRow(APL.scale,'var(--c-body)','Weight',lw?fmtLb(lw.lb):'—','lb','data-action="applecat" data-c="body"');
+  // highlights — last 7 logged runs
+  const r7=[],l7=[];for(let i=clamp(rawT,0,RACE_IDX);i>=0&&r7.length<7;i--){const ee=eff(i),ll=sessLog(ee.id);if(ll&&ll.status&&ll.km>0){r7.unshift(Number(ll.km));l7.unshift(['M','T','W','T','F','S','S'][i%7]);}}
+  const wk=[],wl=[];for(let j=0;j<=Math.floor(clamp(rawT,0,RACE_IDX)/7)&&j<16;j++){wk.push(weekActualKm(j));wl.push(j+1);}
+  const f=berlinForecast(),days=RACE_IDX-rawT;
+  return '<div>'+appleNav('Summary',longDate(todayIdx))
+    +'<section class="card aActivity">'+appleRings(movePct,exPct,standPct)
+      +'<div class="aAct-stats">'
+      +'<div class="aAct-row"><span class="lab" style="color:#FA114F">Run</span><span class="val">'+fmtKm(doneKm)+'<span class="vu">/'+fmtKm(e.km)+' KM</span></span></div>'
+      +'<div class="aAct-row"><span class="lab" style="color:#A2FF00">Week</span><span class="val">'+fmtKm(weekActualKm(w))+'<span class="vu">/'+fmtKm(effWeekTarget(w))+' KM</span></span></div>'
+      +'<div class="aAct-row"><span class="lab" style="color:#1AEBFF">Recovery</span><span class="val">'+(rd.pct!=null?rd.pct:'—')+'<span class="vu">%</span></span></div>'
+      +'</div></section>'
+    +'<div class="aSec">Favorites <span class="lnk" data-action="editwidgets">Edit</span></div><div class="aGroup">'+fav+'</div>'
+    +'<div class="aSec">Highlights</div>'
+    +(r7.length?'<section class="card"><div class="aHi">'+APL.run+'&nbsp;Recent runs</div><div class="aHiSub">Last '+r7.length+' logged runs · distance</div>'+appleBars(r7,l7,'var(--move-b)')+'</section>':'')
+    +(wk.length>1?'<section class="card" style="margin-top:10px"><div class="aHi">'+APL.run+'&nbsp;Weekly distance</div><div class="aHiSub">Kilometres per week, this block</div>'+appleBars(wk,wl.map(String),'var(--accent)')+'</section>':'')
+    +'<section class="card" style="margin-top:10px"><div class="aHi">🏁&nbsp;Berlin Race-Day Forecast</div><div class="aHiSub">'+(days>0?days+' days to go':'Race day')+' · evolving prediction</div>'
+      +'<div style="margin-top:10px"><span class="aBig" style="font-size:34px">'+fmtFinishT(f.secs)+'</span><span class="aUnit" style="font-size:15px"> projected finish</span></div>'
+      +'<div class="aHiSub" style="margin-top:4px">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div>'
+      +'<p style="margin:10px 0 0;font-size:15px;color:#000;line-height:1.4">'+esc(forecastMover(f))+'</p></section>'
+    +'<div class="aGroup" style="margin-top:24px"><button class="aRow" data-action="tab" data-tab="browse"><span class="aName" style="color:var(--accent)">Show All Health Data</span><span class="aChev">'+APL.chev+'</span></button></div>'
+    +'</div>';
+}
+function applePlan(){
+  let h='<div>'+appleNav('Plan','16-week block · Berlin 2026');
+  const cw=Math.floor(clamp(rawT,0,RACE_IDX)/7);
+  for(let j=0;j<16;j++){
+    const wk=WEEKS[j];
+    h+='<div class="aSec" style="font-size:20px">Week '+(j+1)+' — '+esc(wk.phase)+(j===cw?' <span class="lnk" style="font-size:13px;color:var(--txt2)">this week</span>':'')+'</div><div class="aGroup">';
+    for(let d=0;d<7;d++){const i=j*7+d,ee=eff(i),zg=appleZoneGlyph(ee.zone),isRest=ee.zone==='Rest'&&ee.km<=0;
+      h+=appleRow(zg.g,zg.c,shortDate(i)+' · '+esc(isRest?'Rest':ee.zone),isRest?'Rest':fmtKm(ee.km),isRest?'':'km','data-action="appleday" data-i="'+i+'"');}
+    h+='</div>';
+  }
+  return h+'</div>';
+}
+function appleBrowse(){
+  const cats=[
+    ['running','Running',APL.run,'var(--c-activity)'],
+    ['sleep','Sleep',APL.bed,'var(--c-sleep)'],
+    ['recovery','Recovery & Readiness',APL.heart,'var(--c-heart)'],
+    ['nutrition','Nutrition',APL.fork,'var(--c-nutrition)'],
+    ['body','Body & Weight',APL.scale,'var(--c-body)'],
+    ['heart','Heart',APL.heart,'var(--c-heart)'],
+  ];
+  let rows='';cats.forEach(c=>rows+=appleRow(c[2],c[3],c[1],'','','data-action="applecat" data-c="'+c[0]+'"'));
+  return '<div>'+appleNav('Browse','')
+    +'<div class="aSearch">'+APL.search+' Search</div>'
+    +'<div class="aSec" style="font-size:20px;margin-top:6px">Health Categories</div><div class="aGroup">'+rows+'</div>'
+    +'</div>';
+}
+function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
+function appleDaySheet(i){
+  const e=eff(i),isRest=e.zone==='Rest'&&e.km<=0,l=sessLog(e.id);
+  openSheet('<div class="aTitle" style="font-size:26px;margin:0 2px">'+esc(headline(e))+'</div>'
+    +'<div class="aSub" style="margin:2px 2px 12px">'+longDate(i)+' · Week '+(e.w+1)+' '+esc(e.wk.phase)+'</div>'
+    +(isRest?'<p style="font-size:15px;color:#000;line-height:1.4">Rest day — recovery is the session. Easy mobility only.</p>'
+      :'<div class="aGroup">'+appleRow(appleZoneGlyph(e.zone).g,appleZoneGlyph(e.zone).c,'Distance',fmtKm(e.km),'km')
+        +(paceLine(e)?appleRow(APL.run,'var(--accent)','Target pace',esc(paceLine(e).replace(/<[^>]+>/g,'')),''):'')
+        +appleRow(APL.flame,'var(--c-energy)','Fuel',fmtKcal(e.kcal),'kcal')
+        +appleRow(APL.fork,'var(--c-nutrition)','Carbs',e.carbs,'g')+'</div>'
+      +'<p style="font-size:14px;color:var(--txt2);margin:10px 2px;line-height:1.4">'+esc(e.text)+'</p>'
+      +'<button class="fcta" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px;font-size:16px;font-weight:600;cursor:pointer" data-action="logsheet" data-i="'+i+'">'+(l&&l.status?'Edit run':'Log run')+'</button>')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:600;border:none;margin-top:10px">Done</button>');
+}
+function appleCatSheet(cat){
+  const titles={running:'Running',sleep:'Sleep',recovery:'Recovery & Readiness',nutrition:'Nutrition',body:'Body & Weight',heart:'Heart'};
+  let body='';
+  if(cat==='running'){
+    const r=[],lab=[];for(let i=clamp(rawT,0,RACE_IDX);i>=0&&r.length<10;i--){const ee=eff(i),ll=sessLog(ee.id);if(ll&&ll.status&&ll.km>0){r.unshift(Number(ll.km));lab.unshift(shortDate(i).slice(4,6));}}
+    body=(r.length?'<section class="card"><div class="aHi">Distance · recent runs</div>'+appleBars(r,lab,'var(--move-b)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">No runs logged yet.</p></section>');
+  }else if(cat==='sleep'){
+    const sl=whoopSleepData();
+    body=sl.real?'<section class="card"><div class="aHi">Last night · '+fmtSleep(sl.total)+'</div><div style="margin-top:10px">'+fitStages(sl)+'</div></section>'
+      :'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura (in Browse → device sync) to see sleep stages.</p></section>';
+  }else if(cat==='recovery'){
+    const rd=whoopRecovery();body='<section class="card"><div class="aHi">Readiness</div><div style="margin-top:8px"><span class="aBig">'+(rd.pct!=null?rd.pct:'—')+'</span><span class="aUnit"> / 100</span></div><p style="margin:8px 0 0;font-size:14px;color:var(--txt2);line-height:1.4">'+(rd.real?'From your Oura ring vs your 7-day baseline.':'Estimated from training load — connect Oura for a measured score.')+'</p></section>';
+  }else if(cat==='nutrition'){
+    const bal=[],lab=[];for(let k=6;k>=0;k--){const idx=rawT-k;if(idx<0||idx>RACE_IDX)continue;const b=dayBurn(idx);if(b.burned!=null){bal.push(Math.max(0,b.burned-eaten(idx).kcal));lab.push(['M','T','W','T','F','S','S'][idx%7]);}}
+    body=(bal.length?'<section class="card"><div class="aHi">Daily deficit · last 7 days</div>'+appleBars(bal,lab,'var(--c-nutrition)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura for energy-balance tracking.</p></section>');
+  }else if(cat==='body'){
+    body='<section class="card" style="padding:10px"><div class="svgwrap" style="padding:8px">'+weightChart()+'</div></section>';
+  }else if(cat==='heart'){
+    const H=healthRef().d[todayISO()]||{};
+    body='<div class="aGroup">'+appleRow(APL.heart,'var(--c-heart)','Resting Heart Rate',H.rhr!=null?H.rhr:'—','BPM')+appleRow(APL.heart,'var(--c-heart)','HRV',H.hrv!=null?H.hrv:'—','ms')+'</div>'+(H.rhr==null?'<p style="margin:12px 2px;font-size:14px;color:var(--txt2)">Connect Oura to populate heart data.</p>':'');
+  }
+  openSheet('<div class="aTitle" style="font-size:28px;margin:0 2px 12px">'+titles[cat]+'</div>'
+    +appleSeg(['D','W','M','6M','Y'])
+    +'<div style="margin-top:14px">'+body+'</div>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:600;border:none;margin-top:12px">Done</button>');
+}
+
 /* ---------------- 10. Router & events ---------------- */
 
 const view=document.getElementById('view');
@@ -4632,6 +4865,8 @@ document.addEventListener('click',ev=>{
   else if(a==='wsleep'){whoopSleepSheet();}
   else if(a==='wrecov'){whoopRecovSheet();}
   else if(a==='wstrain'){whoopStrainSheet();}
+  else if(a==='appleday'){appleDaySheet(Number(el.dataset.i));}
+  else if(a==='applecat'){appleCatSheet(el.dataset.c);}
   else if(a==='status'){
     const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
     if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
