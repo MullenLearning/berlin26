@@ -2678,12 +2678,42 @@ function wWeight(){
     +'</section>';
 }
 
+function goalWeightVal(){return (S.plan&&S.plan.goalWeight!=null)?S.plan.goalWeight:189;}
+function planSummary(){
+  let totalKm=0,peakKm=0,peakW=0;
+  for(let w=0;w<16;w++){const t=effWeekTarget(w);totalKm+=t;if(t>peakKm){peakKm=t;peakW=w;}}
+  const gw=goalWeightVal();
+  return {totalKm:totalKm,peakKm:peakKm,peakW:peakW,goalWt:gw,toLose:210-gw,
+    phase:WEEKS[clamp(currentWeekIdx(),0,15)].phase,daysToGo:RACE_IDX-todayIdx};
+}
+function miniBars(){ // the 16-week mileage shape (ramp → peak → taper), current week lit
+  const W=320,H=44,T=2,B=2,ih=H-T-B,cw=currentWeekIdx(),bw=W/16;
+  const max=Math.max.apply(null,Array.from({length:16},(_,w)=>effWeekTarget(w)))||1;
+  let g='';
+  for(let w=0;w<16;w++){const t=effWeekTarget(w),h=Math.max(2,ih*t/max),x=w*bw;
+    g+='<rect x="'+(x+bw*0.2).toFixed(1)+'" y="'+(T+ih-h).toFixed(1)+'" width="'+(bw*0.6).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1" fill="var(--accent)" opacity="'+(w===cw?1:(w<cw?0.32:0.62))+'"/>';
+  }
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:4px" role="img" aria-label="Weekly mileage across the block">'+g+'</svg>';
+}
+function miniGlide(){ // the weight plan, 210 → goal, current week marked
+  const W=320,H=40,T=5,B=5,ih=H-T-B,cw=currentWeekIdx(),g1=goalWeightVal();
+  const span=(210-g1)||1,Y=w=>T+ih*((210-wtWeekAt(w))/span);
+  let d='';for(let w=0;w<16;w++)d+=(w?'L':'M')+((w/15)*W).toFixed(1)+' '+Y(w).toFixed(1);
+  const cx=(cw/15)*W;
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:4px" role="img" aria-label="Weight glide across the block">'
+    +'<path d="'+d+'" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>'
+    +'<circle cx="'+cx.toFixed(1)+'" cy="'+Y(cw).toFixed(1)+'" r="2.8" fill="var(--accent)"/></svg>';
+}
 function wRace(){
-  const days2race=RACE_IDX-todayIdx;
-  return '<section class="card" data-action="plancenter" role="button" tabindex="0" aria-label="Open Plan Center to adjust goals, mileage and paces" style="cursor:pointer">'
-    +'<div class="spread"><h2>Berlin</h2><span class="chip neutral">'+goalLabel()+(planChanged()?' · edited':'')+'</span></div>'
-    +'<div class="row" style="gap:18px;align-items:baseline"><span class="hero num">'+days2race+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep</span></div>'
-    +'<p class="mini" style="margin:8px 2px 0;color:var(--sub)">Tap to adjust the plan — goals · mileage · paces</p>'
+  const ps=planSummary();
+  return '<section class="card" data-action="plancenter" role="button" tabindex="0" aria-label="Plan summary — tap to adjust goals, mileage and paces" style="cursor:pointer">'
+    +'<div class="spread"><h2>Berlin · the plan</h2><span class="chip neutral">'+goalLabel()+(planChanged()?' · edited':'')+'</span></div>'
+    +'<div class="row" style="gap:14px;align-items:baseline;margin-top:2px"><span class="hero num">'+ps.daysToGo+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep · '+ps.phase+'</span></div>'
+    +'<div class="spread" style="margin-top:14px;align-items:baseline"><span class="mini" style="font-weight:700;color:var(--ink)">Running</span><span class="mini">peak '+fmtKm(ps.peakKm)+' km · '+fmtKm(ps.totalKm)+' km total</span></div>'
+    +miniBars()
+    +'<div class="spread" style="margin-top:12px;align-items:baseline"><span class="mini" style="font-weight:700;color:var(--ink)">Nutrition</span><span class="mini">210 → '+fmtLb(ps.goalWt)+' lb · −'+fmtLb(ps.toLose)+' lb to lose</span></div>'
+    +miniGlide()
+    +'<p class="mini" style="margin:10px 2px 0;color:var(--sub)">Tap to adjust</p>'
     +'</section>';
 }
 
