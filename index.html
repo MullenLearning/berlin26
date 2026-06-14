@@ -2116,6 +2116,51 @@ function cutPaying(){
   return {weeks:weeks,verdict:verdict,cls:cls,lost:lost,raceSecs:Math.round(lost*27)};
 }
 
+/* The Berlin forecast — one evolving race-day prediction. Anchored to the goal,
+   adjusted by three MEASURED trends: aerobic efficiency (pace at heart rate),
+   ballast (projected race weight vs the plan glide), and consistency (mileage
+   banked). Projected to race day, damped and capped. The confidence band narrows
+   as aerobic runs accrue. Honest: too little data → 'firming up', no false precision. */
+function berlinForecast(through){
+  const t=clamp(through==null?rawT:through,0,RACE_IDX),goalT=goalSec();
+  const samp=[]; // steady aerobic runs only — economy reads cleanest there
+  for(let i=0;i<=t;i++){
+    const e=eff(i),l=sessLog(e.id);
+    if(l&&l.status==='done'&&l.km>3&&(e.zone==='Easy'||e.zone==='Long'||e.zone==='Recovery')){
+      const b=beatsPerKm(l);if(b&&b>200&&b<2200)samp.push({i:i,b:b});
+    }
+  }
+  if(samp.length<4||t/7<1.5)
+    return {state:'early',n:samp.length,secs:goalT,band:Math.max(150,900-samp.length*150),goalT:goalT};
+  const seg=Math.max(2,Math.round(samp.length/3));
+  const base=samp.slice(0,seg).reduce((s,x)=>s+x.b,0)/seg;
+  const cur=samp.slice(-seg).reduce((s,x)=>s+x.b,0)/seg;
+  const spanWk=Math.max(1,(samp[samp.length-1].i-samp[0].i)/7);
+  const impSoFar=(base-cur)/base;                 // + = more aerobically efficient now
+  // project the trend to race day, damped; economy gains only PARTLY become race-time gains
+  const projImp=clamp(impSoFar+(impSoFar/spanWk)*((RACE_IDX-t)/7)*0.35,-0.06,0.08);
+  const fitnessSec=clamp(Math.round(-projImp*goalT*0.4),-240,240); // ≤ ±4 min
+  const twn=trendWeight();
+  const ballastSec=twn?clamp(Math.round((twn.lb-planWtAt(t))*27),-180,180):0; // ~27 s/lb off the glide, ≤ ±3 min
+  let plan=0,act=0,wNow=Math.floor(t/7);
+  for(let w=0;w<wNow;w++){plan+=effWeekTarget(w);act+=weekActualKm(w);}
+  const consistSec=plan>0?clamp(Math.round(clamp(0.97-act/plan,-0.02,0.10)*goalT*0.6),-90,180):0; // mostly penalises missed mileage
+  const secs=clamp(goalT+fitnessSec+ballastSec+consistSec,9000,18000);
+  return {state:'live',n:samp.length,secs:secs,band:clamp(Math.round(330*(7/(samp.length+3))),50,360),
+    goalT:goalT,fitnessSec:fitnessSec,ballastSec:ballastSec,consistSec:consistSec,
+    eco:{base:Math.round(base),cur:Math.round(cur),imp:impSoFar}};
+}
+function fmtFinishT(s){s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+':'+p2(m)+':'+p2(x);}
+function forecastMover(f){
+  if(f.state==='early')return 'Firming up — a couple more weeks of easy runs and it sharpens.';
+  const it=[['fit',f.fitnessSec],['bal',f.ballastSec],['con',f.consistSec]].sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));
+  const k=it[0][0],v=it[0][1],faster=v<0;
+  if(Math.abs(v)<3)return 'Holding right on the goal.';
+  if(k==='fit')return faster?'Your aerobic engine is getting cheaper — that’s where the time is coming from.':'Aerobic economy hasn’t moved yet — the time is hiding in your easy runs.';
+  if(k==='bal')return faster?'Running lighter than the glide — the cut is buying you time.':'Carrying weight over the glide is costing time — the cut is the lever.';
+  return faster?'Banking the mileage — consistency is paying off.':'Missed mileage is costing time — string the weeks together.';
+}
+
 /* ---------------- 4. Derived data ---------------- */
 
 /* ---- week rebalance engine ----
@@ -2974,8 +3019,41 @@ function wHrvTrend(){
     +'</section>';
 }
 
+function wForecast(){
+  const f=berlinForecast();
+  const fmtBand=s=>{const m=Math.round(s/60);return m>=1?'± '+m+' min':'± '+Math.round(s)+' s';};
+  if(f.state==='early')
+    return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast" style="cursor:pointer">'
+      +'<div class="spread"><h2>Berlin forecast</h2><span class="chip neutral">firming up</span></div>'
+      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:2px"><span class="hero num">'+fmtFinishT(f.secs)+'</span><span class="sub" style="font-weight:600">goal · '+fmtBand(f.band)+'</span></div>'
+      +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+' ('+f.n+' run'+(f.n===1?'':'s')+' in)</p></section>';
+  const prev=berlinForecast(rawT-1),d=f.secs-(prev?prev.secs:f.secs);
+  const deltaChip=Math.abs(d)<2?'<span class="chip neutral">no change today</span>'
+    :d<0?'<span class="chip c-easy">▲ '+Math.abs(d)+'s faster</span>':'<span class="chip c-hard">▼ '+d+'s slower</span>';
+  const vsGoal=Math.round(f.secs-f.goalT);
+  return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast, tap for the trends behind it" style="cursor:pointer">'
+    +'<div class="spread"><h2>Berlin forecast</h2>'+deltaChip+'</div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:2px"><span class="hero num">'+fmtFinishT(f.secs)+'</span>'
+    +'<span class="sub" style="font-weight:600">'+fmtBand(f.band)+' · '+(vsGoal<=0?Math.abs(vsGoal)+'s under goal':vsGoal+'s over goal')+'</span></div>'
+    +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+'</p>'
+    +'<p class="mini" style="margin:8px 2px 0;color:var(--sub)">Tap for the three trends driving it</p></section>';
+}
+function openForecastSheet(){
+  const f=berlinForecast(),close='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>';
+  if(f.state==='early'){openSheet('<h2 style="margin:0">Berlin forecast</h2><p class="note" style="margin:8px 0 0">Too early for a confident number — '+f.n+' aerobic run'+(f.n===1?'':'s')+' logged. Once ~2 weeks of easy/long runs are in, a prediction firms up here and tightens every week as the evidence builds.</p>'+close);return;}
+  const row=(label,sec,desc)=>'<div class="sheetrow" style="cursor:default;flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:0"><b>'+label+'</b><div class="mini" style="margin-top:2px">'+desc+'</div></div>'
+    +'<span class="chip '+(sec<-2?'c-easy':sec>2?'c-hard':'neutral')+'">'+(sec<0?'−':sec>0?'+':'')+Math.abs(sec)+'s</span></div>';
+  openSheet('<div class="spread"><h2 style="margin:0">Berlin forecast</h2><span class="chip neutral">'+fmtFinishT(f.secs)+' ± '+Math.max(1,Math.round(f.band/60))+'m</span></div>'
+    +'<p class="note" style="margin:6px 0 10px">Goal '+fmtFinishT(f.goalT)+', adjusted by three measured trends and projected to race day. It moves as runs, weigh-ins and recovery land — an estimate, never a promise.</p>'
+    +row('Aerobic fitness',f.fitnessSec,'Pace at the same heart rate — '+(f.eco.imp>0.005?Math.round(f.eco.imp*100)+'% more efficient than your block start':f.eco.imp<-0.005?Math.round(-f.eco.imp*100)+'% off your start':'flat so far')+'.')
+    +row('Ballast',f.ballastSec,'Projected race weight vs the plan’s glide (~27 s per lb).')
+    +row('Consistency',f.consistSec,'Planned vs actual mileage banked so far.')
+    +'<p class="mini" style="margin:10px 2px 0">Negative = time gained on Berlin. Log easy runs to sharpen the fitness read.</p>'
+    +close);
+}
 const WIDGET_DEFS=[
   {id:'morning',label:'Morning check-in (auto)',render:wMorning},
+  {id:'forecast',label:'Berlin forecast',render:wForecast},
   {id:'recov',label:'Recovery (Oura)',render:wRecovery},
   {id:'session',label:'Today’s session',render:wSession},
   {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
@@ -4083,6 +4161,7 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='planopen'){openPlanSheet();}
   else if(a==='plancenter'){openPlanCenter();}
+  else if(a==='forecastopen'){openForecastSheet();}
   else if(a==='pcedit'){ui.pcOpen=el.dataset.sk;ui.pcVal=PC_SECTIONS[el.dataset.sk].cur();pcRefresh();}
   else if(a==='pccancel'){ui.pcOpen=null;ui.pcVal=null;pcRefresh();}
   else if(a==='pcstep'){
