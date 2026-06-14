@@ -485,6 +485,7 @@ const DOWL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunda
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MONL=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const p2=n=>String(n).padStart(2,'0');
+const HHMM=/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/; // real clock time, with 24:00 as a midnight sentinel
 function dAt(i){return new Date(START_UTC+i*MS);}
 function isoAt(i){const d=dAt(i);return d.getUTCFullYear()+'-'+p2(d.getUTCMonth()+1)+'-'+p2(d.getUTCDate());}
 function shortDate(i){const d=dAt(i);return DOW[i%7]+' '+d.getUTCDate()+' '+MON[d.getUTCMonth()];}
@@ -853,7 +854,7 @@ function sanitizePayload(data){
       // Strava-import extras (v2): all optional, all bounded
       if(typeof r.secs==='number'&&r.secs>0&&r.secs<86400)o.secs=Math.round(r.secs);
       if(typeof r.elap==='number'&&r.elap>0&&r.elap<86400)o.elap=Math.round(r.elap);
-      if(typeof r.start==='string'&&/^\d{2}:\d{2}$/.test(r.start))o.start=r.start;
+      if(typeof r.start==='string'&&HHMM.test(r.start))o.start=r.start;
       if(typeof r.hrA==='number'&&r.hrA>=30&&r.hrA<=250)o.hrA=Math.round(r.hrA);
       if(typeof r.hrM==='number'&&r.hrM>=30&&r.hrM<=250)o.hrM=Math.round(r.hrM);
       if(typeof r.cad==='number'&&r.cad>0&&r.cad<=200)o.cad=Math.round(r.cad*10)/10;
@@ -914,7 +915,7 @@ function sanitizePayload(data){
       for(const f in F){const v=num(r[f],F[f][0],F[f][1]);if(v!=null)o[f]=v;}
       const tmp=num(r.tmp,-3,3,2);if(tmp!=null)o.tmp=tmp;
       const spo2=num(r.spo2,70,100,1);if(spo2!=null)o.spo2=spo2;
-      if(typeof r.bin==='string'&&/^\d{2}:\d{2}$/.test(r.bin))o.bin=r.bin;
+      if(typeof r.bin==='string'&&HHMM.test(r.bin))o.bin=r.bin;
       if(['normal','stressful','restored'].indexOf(r.str)>=0)o.str=r.str;
       if(Object.keys(o).length)out.health.d[k]=o;
     }
@@ -1035,7 +1036,7 @@ function stravaProposals(acts){
     d.hrA=d.hrT?Math.round(d.hrW/d.hrT):null;
     d.hrM=d.hrM?Math.round(d.hrM):null;
     d.cad=d.cadT?Math.round(d.cadW/d.cadT*10)/10:null;
-    d.act=d.best&&d.best.act;d.start=d.best&&/^\d{2}:\d{2}$/.test(d.best.start)?d.best.start:null;d.poly=d.best&&d.best.poly;
+    d.act=d.best&&d.best.act;d.start=(d.best&&HHMM.test(d.best.start))?d.best.start:null;d.poly=d.best&&d.best.poly;
     const l=sessLog(eff(d.i).id);
     if(l&&l.status==='done'&&l.km===d.km&&(l.pace||null)===(d.pace||null)){
       // identical result already on the books. Imports accepted before the rich-card
@@ -1238,17 +1239,27 @@ function decodePoly(str){ // Google encoded polyline → [[lat,lng],...]
   }
   return pts;
 }
-function routeSVG(poly,big,paint){ // the route as a line — optionally painted by a stream (Where It Hurt)
+/* shared projection bbox across one-or-more polylines, so overlaid routes register */
+function routeFrame(polys){
+  let latSum=0,n=0,minX=1e18,maxX=-1e18,minY=1e18,maxY=-1e18;
+  const all=[];
+  polys.forEach(poly=>{try{const pts=decodePoly(poly);if(pts.length>=2){all.push(pts);pts.forEach(p=>{latSum+=p[0];n++;});}}catch(e){}});
+  if(!n)return null;
+  const kx=Math.cos((latSum/n)*Math.PI/180);
+  all.forEach(pts=>pts.forEach(p=>{const x=p[1]*kx,y=-p[0];if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}));
+  return {kx:kx,minX:minX,maxX:maxX,minY:minY,maxY:maxY};
+}
+function routeSVG(poly,big,paint,frame){ // the route as a line — optionally painted by a stream (Where It Hurt), optionally in a shared frame
   if(!poly)return '';
   try{
     let pts=decodePoly(poly);
     if(pts.length<2)return '';
     const step=Math.max(1,Math.ceil(pts.length/300));
     if(step>1)pts=pts.filter((_,ix)=>ix%step===0||ix===pts.length-1);
-    const kx=Math.cos((pts.reduce((s,p)=>s+p[0],0)/pts.length)*Math.PI/180); // equirectangular: shrink lng by cos(lat)
+    const kx=frame?frame.kx:Math.cos((pts.reduce((s,p)=>s+p[0],0)/pts.length)*Math.PI/180); // equirectangular: shrink lng by cos(lat)
     const xs=pts.map(p=>p[1]*kx),ys=pts.map(p=>-p[0]);
-    const minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs);
-    const minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys);
+    const minX=frame?frame.minX:Math.min.apply(null,xs),maxX=frame?frame.maxX:Math.max.apply(null,xs);
+    const minY=frame?frame.minY:Math.min.apply(null,ys),maxY=frame?frame.maxY:Math.max.apply(null,ys);
     const W=big?320:104,H=big?180:84,pad=6;
     const sc=Math.min((W-2*pad)/((maxX-minX)||1e-9),(H-2*pad)/((maxY-minY)||1e-9));
     const ox=(W-(maxX-minX)*sc)/2-minX*sc,oy=(H-(maxY-minY)*sc)/2-minY*sc;
@@ -1258,7 +1269,8 @@ function routeSVG(poly,big,paint){ // the route as a line — optionally painted
     if(s){ // heat the path: cool accent → amber → red by percentile of the stream
       const vals=s.filter(v=>v>0).slice().sort((a,b)=>a-b);
       const q1=vals[Math.floor(vals.length*0.45)]||0,q2=vals[Math.floor(vals.length*0.8)]||1e9;
-      const col=v=>v<=0?'var(--accent)':v<q1?'var(--accent)':v<q2?'var(--long)':'var(--hard)';
+      const flat=!(q2>q1); // a near-constant stream has no real spread — read it cool, don't fake a heat gradient
+      const col=v=>(v<=0||flat)?'var(--accent)':v<q1?'var(--accent)':v<q2?'var(--long)':'var(--hard)';
       let d='',cur=null;
       for(let k=1;k<pts.length;k++){
         const v=s[Math.min(s.length-1,Math.round((k/(pts.length-1))*(s.length-1)))];
@@ -1567,6 +1579,7 @@ function beatsPerKm(l){
 
 /* did last night bank yesterday's work? judged against 7-day baselines */
 function absorption(i){
+  if(i<0||i>RACE_IDX)return null; // out of block → nothing to absorb (and eff(-1) would throw)
   const e=eff(i),l=sessLog(e.id);
   if(!l||l.status!=='done')return null;
   if(trimpOf(l,e)<15)return null; // nothing meaningful to absorb
@@ -1587,7 +1600,7 @@ function absorption(i){
 const _sigCache={};
 function routeSig(poly){
   if(!poly)return null;
-  const key=poly.length+poly.slice(0,16);
+  const key=poly; // full string — lossless memo key (capped at 12000 chars on store)
   if(_sigCache[key]!==undefined)return _sigCache[key];
   let out=null;
   try{
@@ -1658,7 +1671,9 @@ function loopReveal(i){
   const first=g.runs[0],cur=g.runs[idx];
   const dPace=Math.round(first.l.secs/first.l.km-cur.l.secs/cur.l.km); // s/km, +=faster now
   const dHr=(first.l.hrA&&cur.l.hrA)?Math.round(first.l.hrA-cur.l.hrA):null; // +=lower now
-  const w1=weightAt(first.i),w2=weightAt(cur.i);
+  // a weight is only "at" a run if logged within a week of it — else don't attribute the delta
+  const nearW=idx=>{let b=null,bd=1e9;S.weights.forEach(w=>{const d=Math.abs(isoToIdx(w.date)-idx);if(d<bd){bd=d;b=w;}});return bd<=7?b.lb:null;};
+  const w1=nearW(first.i),w2=nearW(cur.i);
   const dW=(w1&&w2)?Math.round((w1-w2)*10)/10:null;
   return {g:g,visit:idx+1,n:g.runs.length,first:first.i,dPace:dPace,dHr:dHr,dW:dW,
     better:dPace>=3||(dHr!=null&&dHr>=3)};
@@ -1677,7 +1692,9 @@ function loopRevealLine(i){
 }
 /* two route shapes overlaid in one box — first run as a hairline ghost under the latest */
 function loopGhostSVG(g){
-  const a=routeSVG(g.runs[0].l.poly,false),b=routeSVG(g.runs[g.runs.length-1].l.poly,false);
+  const p0=g.runs[0].l.poly,p1=g.runs[g.runs.length-1].l.poly;
+  const fr=routeFrame([p0,p1]); // one shared frame so the ghost lines up with the latest run
+  const a=routeSVG(p0,false,null,fr),b=routeSVG(p1,false,null,fr);
   if(!b)return '';
   return '<div style="position:relative;width:104px;flex:none">'
     +'<div style="position:absolute;inset:0;opacity:0.28">'+a+'</div>'
@@ -1750,7 +1767,7 @@ function openDrawerSheet(){
       +'<div class="mini" style="padding:2px 0 5px;text-align:center">'+fmtKm(r.l.km)+'k</div></button>';
   });
   openSheet('<div class="spread"><h2 style="margin:0">The drawer</h2><span class="chip neutral">'+runs.length+' · true scale</span></div>'
-    +'<p class="note" style="margin:6px 0 10px">One scale throughout: a 6 km loop stays small, a 32 km run fills its cell. Tap any to open it.</p>'
+    +'<p class="note" style="margin:6px 0 10px">One scale throughout: a tight park loop stays small, a route that sprawls across the city fills its cell. Tap any to open it.</p>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+cells+'</div>'+close);
 }
 
@@ -1790,11 +1807,11 @@ function openBoardSheet(){
   for(let w=0;w<nW;w++)g+='<circle cx="'+cx+'" cy="'+cy+'" r="'+ringR(w).toFixed(1)+'" fill="none" stroke="var(--line-soft)" stroke-width="0.5" opacity="0.5"/>';
   days.forEach(d=>{
     const r=ringR(d.w);
-    if(d.bin&&/^\d{2}:\d{2}$/.test(d.bin)){
+    if(d.bin&&HHMM.test(d.bin)){
       const bm=(+d.bin.slice(0,2))*60+(+d.bin.slice(3)),dur=d.slp?Math.min(660,d.slp/60):0;
       if(dur>30)g+=arc(bm,dur,r,'var(--accent)',3,0.5);
     }
-    if(d.start&&/^\d{2}:\d{2}$/.test(d.start)){
+    if(d.start&&HHMM.test(d.start)){
       const sm=(+d.start.slice(0,2))*60+(+d.start.slice(3)),o=P(sm,r);
       g+='<circle cx="'+o[0]+'" cy="'+o[1]+'" r="2.6" fill="var(--accent)"/>';
     }
@@ -1824,7 +1841,7 @@ function ghostBlock(i){
   const d=ghostPathData(l.poly,320,180,16);
   if(!d)return '';
   return '<h2 style="margin:16px 0 6px">Ghost run</h2>'
-    +'<svg id="ghostsvg" viewBox="0 0 320 180" style="width:100%;height:auto;display:block;border:1px solid var(--line-soft);border-radius:12px;background:var(--bg)">'
+    +'<svg id="ghostsvg" aria-hidden="true" viewBox="0 0 320 180" style="width:100%;height:auto;display:block;border:1px solid var(--line-soft);border-radius:12px;background:var(--bg)">'
     +'<path id="ghostroute" d="'+d+'" fill="none" stroke="var(--bord)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>'
     +'<circle id="ghostplan" r="4" fill="none" stroke="var(--sub)" stroke-width="1.5" opacity="0.85"/>'
     +'<circle id="ghostyou" r="4.5" fill="var(--accent)"/></svg>'
@@ -1846,11 +1863,11 @@ function mountGhost(i,autoplay){
   const fracAt=p=>{const x=p*(v.length-1),k=Math.floor(x),f=x-k,lo=cum[k]||0,hi=cum[k+1]!=null?cum[k+1]:lo;return (lo+f*(hi-lo))/cmax;};
   const hr=l.hrS||[],hv=hr.filter(x=>x>30).slice().sort((a,b)=>a-b);
   const q1=hv.length?hv[Math.floor(hv.length*0.45)]:0,q2=hv.length?hv[Math.floor(hv.length*0.8)]:1e9;
-  const hcol=p=>{if(!hr.length)return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--accent)':x<q2?'var(--long)':'var(--hard)';};
+  const hcol=p=>{if(!hr.length||!(q2>q1))return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--accent)':x<q2?'var(--long)':'var(--hard)';};
   const planSecs=(ZONE_MID_PACE[eff(i).zone]||360)*l.km,R=(l.secs&&planSecs)?l.secs/planSecs:1;
   const setAt=(el,frac)=>{const pt=path.getPointAtLength(Math.max(0,Math.min(1,frac))*total);el.setAttribute('cx',pt.x);el.setAttribute('cy',pt.y);};
   const draw=p=>{setAt(you,fracAt(p));you.setAttribute('fill',hcol(p));setAt(plan,Math.min(1,p*R));};
-  if(REDUCE.matches&&!autoplay){draw(1);return;}
+  if(REDUCE.matches){draw(1);return;} // reduced motion: rest at the finish however invoked
   const DUR=9000;let start=null;
   const frame=now=>{
     if(!document.getElementById('ghostsvg')){stopGhost();return;} // sheet closed mid-run
@@ -1925,8 +1942,8 @@ function patternScan(){
       const eff2=(mn-my)/mn;
       if(eff2>=0.03&&(!best||eff2>best.eff))
         best={eff:eff2,text:'Runs after '+ts.label+' average '+Math.round(eff2*100)+'% fewer beats per km ('+yes.length+' vs '+no.length+' runs). The next test writes itself.'};
-    }else if(!progress||yes.length>progress.n){
-      progress={n:yes.length,text:'learning your patterns — '+ts.label+': '+yes.length+' of 5 runs banked'};
+    }else if(!progress||n>progress.n){ // track the test closest to graduating; cap the shown numerator
+      progress={n:n,text:'learning your patterns — '+ts.label+': '+Math.min(yes.length,5)+' of 5 runs banked'};
     }
   });
   return best||progress;
@@ -3827,7 +3844,7 @@ document.addEventListener('click',ev=>{
     const key=Number(el.dataset.key),cur=(S.loops||{})[key]||'';
     const name=prompt('Name this loop (e.g. “Canal loop”):',cur);
     if(name!=null){
-      if(!S.loops)S.loops={};
+      if(!S.loops||typeof S.loops!=='object')S.loops={};
       const t=name.trim().slice(0,40);
       if(t)S.loops[key]=t;else delete S.loops[key];
       save();rerenderKeepScroll();
@@ -3993,7 +4010,7 @@ document.addEventListener('keydown',ev=>{
   if(ev.key==='Escape'&&document.getElementById('wrap')){closeWrapped();return;}
   if(ev.key==='Escape'&&!document.getElementById('sheet').hidden){closeSheet();return;}
   if(ev.key==='Enter'||ev.key===' '){
-    const t=ev.target.closest&&ev.target.closest('tr[data-action]');
+    const t=ev.target.closest&&ev.target.closest('tr[data-action],[role="button"][data-action]');
     if(t){ev.preventDefault();t.click();}
   }
 });
