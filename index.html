@@ -2339,7 +2339,7 @@ let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
 const morningPending=S.lastOpen!==todayISO(); // first open of the day
 if(morningPending){S.lastOpen=todayISO();save();}
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcAdv:false,morning:morningPending};
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcVal:null,pcAdv:false,morning:morningPending};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
@@ -2726,6 +2726,46 @@ const PC_SECTIONS={
   weight:{label:'Goal race weight',hint:'re-draws the glide and scales future calorie targets to match', step:5, min:1500, max:2100, key:'goalWeight', def:1890, cur:()=>Math.round((S.plan.goalWeight!=null?S.plan.goalWeight:189)*10), fmt:v=>fmtLb(v/10)+' lb', store:v=>v/10},
   vol:   {label:'Training volume', hint:'scales future weekly targets; past + current weeks stay', step:5, min:70, max:120, key:'volPct', def:100, cur:()=>Math.round((S.plan.volPct||1)*100),               fmt:v=>v+'% of plan', store:v=>v/100},
 };
+/* run fn with the open section's PENDING (unsaved) value applied to S.plan, then restore */
+function pcWithPending(fn){
+  const saved=S.plan;
+  if(ui.pcOpen&&ui.pcVal!=null&&PC_SECTIONS[ui.pcOpen]){const c=PC_SECTIONS[ui.pcOpen],o=Object.assign({},saved);o[c.key]=c.store(ui.pcVal);S.plan=o;}
+  try{return fn();}finally{S.plan=saved;}
+}
+/* the live preview: how the current (incl. pending) plan looks vs the original */
+function pcPreviewBlock(){
+  return pcWithPending(()=>{
+    const cw=currentWeekIdx();
+    // running — 16-week mileage bars (accent = plan now; faint tick = original where changed)
+    const W=300,H=48,T=3,B=3,ih=H-T-B,bw=W/16;
+    let max=1,nTot=0,bTot=0,nPk=0,bPk=0;const nv=[],bv=[];
+    for(let w=0;w<16;w++){const a=effWeekTarget(w),b=WEEKS[w].target;nv.push(a);bv.push(b);max=Math.max(max,a,b);nTot+=a;bTot+=b;nPk=Math.max(nPk,a);bPk=Math.max(bPk,b);}
+    let bars='';
+    for(let w=0;w<16;w++){const x=w*bw+bw*0.2,wid=bw*0.6,ny=T+ih-ih*nv[w]/max,by=T+ih-ih*bv[w]/max;
+      bars+='<rect x="'+x.toFixed(1)+'" y="'+ny.toFixed(1)+'" width="'+wid.toFixed(1)+'" height="'+(T+ih-ny).toFixed(1)+'" rx="1" fill="var(--accent)" opacity="'+(w===cw?1:(w<cw?0.4:0.82))+'"/>';
+      if(Math.abs(nv[w]-bv[w])>0.2)bars+='<line x1="'+x.toFixed(1)+'" y1="'+by.toFixed(1)+'" x2="'+(x+wid).toFixed(1)+'" y2="'+by.toFixed(1)+'" stroke="var(--sub)" stroke-width="0.9" opacity="0.85"/>';
+    }
+    const pkTxt=Math.round(nPk)!==Math.round(bPk)?fmtKm(bPk)+'→'+fmtKm(nPk):fmtKm(nPk);
+    const totTxt=Math.round(nTot)!==Math.round(bTot)?fmtKm(bTot)+'→'+fmtKm(nTot):fmtKm(nTot);
+    // nutrition — weight glide (accent = now; dashed = original) + the calorie consequence
+    const gW=300,gH=32,gT=4,gB=4,gih=gH-gT-gB,g1=goalWeightVal();
+    const lo=Math.min(189,g1)-1,span=(210-lo)||1,Y=v=>gT+gih*((210-v)/span);
+    let nd='',bd='';for(let w=0;w<16;w++){const xx=(w/15)*gW;nd+=(w?'L':'M')+xx.toFixed(1)+' '+Y(wtWeekAt(w)).toFixed(1);bd+=(w?'L':'M')+xx.toFixed(1)+' '+Y(WT[w]).toFixed(1);}
+    const goalChanged=S.plan.goalWeight!=null;
+    let kDelta=0,nf=0;
+    for(let i=(cw+1)*7;i<N_DAYS;i++){const w=Math.floor(i/7);if(w>15)break;const op=orderOf(w)[i%7];kDelta+=NUTW[w][op][1]-eff(i).kcal;nf++;}
+    const avgK=nf?Math.round(kDelta/nf):0;
+    const kNote=Math.abs(avgK)>=10?'future days ≈ '+fmtKcal(Math.abs(avgK))+' kcal/day '+(avgK>0?'lower':'higher'):'calories on plan';
+    let raceLine='';
+    if(ui.pcOpen==='race'){const d=zoneMid('Easy')-362;raceLine='<p class="mini" style="margin:5px 2px 0">Every zone '+(d>=0?'+':'')+d+' s/km · finish '+fmtFinish(goalSec())+'</p>';}
+    return '<div class="spread" style="align-items:baseline"><span class="mini" style="font-weight:700;color:var(--ink)">Running</span><span class="mini">peak '+pkTxt+' km · '+totTxt+' km</span></div>'
+      +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:3px" role="img" aria-label="Mileage preview">'+bars+'</svg>'+raceLine
+      +'<div class="spread" style="align-items:baseline;margin-top:8px"><span class="mini" style="font-weight:700;color:var(--ink)">Nutrition</span><span class="mini">210 → '+fmtLb(g1)+' lb · '+kNote+'</span></div>'
+      +'<svg viewBox="0 0 '+gW+' '+gH+'" style="width:100%;height:auto;display:block;margin-top:3px" role="img" aria-label="Weight glide preview">'
+      +(goalChanged?'<path d="'+bd+'" fill="none" stroke="var(--sub)" stroke-width="1" stroke-dasharray="2 2" opacity="0.6"/>':'')
+      +'<path d="'+nd+'" fill="none" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/></svg>';
+  });
+}
 function pcRow(sk){
   const c=PC_SECTIONS[sk],edited=S.plan[c.key]!=null,open=ui.pcOpen===sk;
   let h='<div class="sheetrow" style="cursor:'+(open?'default':'pointer')+';flex-wrap:wrap" '+(open?'':'data-action="pcedit" data-sk="'+sk+'"')+'>'
@@ -2733,7 +2773,7 @@ function pcRow(sk){
     +(edited?'<button class="btn3" data-action="pcreset" data-sk="'+sk+'" style="flex:none;color:var(--sub)">reset</button>':'<span class="mini" style="color:var(--sub)">edit ›</span>')
     +'</div>';
   if(open){
-    const v=c.cur();
+    const v=(ui.pcVal!=null?ui.pcVal:c.cur());
     h+='<div style="padding:4px 0 10px"><div class="stepper" style="justify-content:center"><button data-action="pcstep" data-d="-1" aria-label="less">−</button>'
       +'<div class="stepval" style="min-width:170px;text-align:center"><b id="pcval" data-v="'+v+'">'+c.fmt(v)+'</b></div>'
       +'<button data-action="pcstep" data-d="1" aria-label="more">+</button></div>'
@@ -2755,6 +2795,7 @@ function planCenterContent(){
   return '<div class="spread"><h2 style="margin:0">Adjust your plan</h2>'
     +(planChanged()?'<button class="btn3" data-action="pcresetall" style="color:var(--hard)">Reset all ('+planChangeCount()+')</button>':'')+'</div>'
     +'<p class="note" style="margin:6px 0 8px">Tune the targets — the plan’s shape (ramp, down-weeks, taper) and original always stay underneath. Everything resets.</p>'
+    +'<div id="pcpreview" style="background:var(--bg);border-radius:12px;padding:10px;margin:0 0 12px">'+pcPreviewBlock()+'</div>'
     +pcRow('race')+pcRow('weight')+pcRow('vol')
     +'<button class="btn3" data-action="pcadvanced" aria-expanded="'+(ui.pcAdv?'true':'false')+'" style="margin-top:10px;color:var(--sub)">'+(ui.pcAdv?'Hide fine-tuning':'Fine-tune paces & heat ›')+'</button>'
     +(ui.pcAdv?'<div style="margin-top:6px"><p class="mini" style="margin:0 2px 6px">Nudge individual zone paces (on top of the race goal).</p>'+paceRows
@@ -4038,20 +4079,21 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='planopen'){openPlanSheet();}
   else if(a==='plancenter'){openPlanCenter();}
-  else if(a==='pcedit'){ui.pcOpen=el.dataset.sk;pcRefresh();}
-  else if(a==='pccancel'){ui.pcOpen=null;pcRefresh();}
+  else if(a==='pcedit'){ui.pcOpen=el.dataset.sk;ui.pcVal=PC_SECTIONS[el.dataset.sk].cur();pcRefresh();}
+  else if(a==='pccancel'){ui.pcOpen=null;ui.pcVal=null;pcRefresh();}
   else if(a==='pcstep'){
-    const el2=document.getElementById('pcval');if(!el2||ui.pcOpen==null)return;
-    const c=PC_SECTIONS[ui.pcOpen],v=clamp((+el2.dataset.v)+Number(el.dataset.d)*c.step,c.min,c.max);
-    el2.dataset.v=v;el2.textContent=c.fmt(v);haptic();
+    const c=PC_SECTIONS[ui.pcOpen];if(!c)return;
+    ui.pcVal=clamp((ui.pcVal!=null?ui.pcVal:c.cur())+Number(el.dataset.d)*c.step,c.min,c.max);
+    const rd=document.getElementById('pcval');if(rd){rd.textContent=c.fmt(ui.pcVal);rd.dataset.v=ui.pcVal;}
+    const pv=document.getElementById('pcpreview');if(pv)pv.innerHTML=pcPreviewBlock(); // live: watch the plan reshape
+    haptic();
   }
   else if(a==='pcsave'){
-    const sk=el.dataset.sk,c=PC_SECTIONS[sk],el2=document.getElementById('pcval');
-    if(!el2)return;
+    const sk=el.dataset.sk,c=PC_SECTIONS[sk];if(ui.pcVal==null)return;
     if(!S.plan||typeof S.plan!=='object')S.plan={};
-    const prev=S.plan[c.key],stored=c.store(+el2.dataset.v);
+    const prev=S.plan[c.key],stored=c.store(ui.pcVal);
     if(stored===c.store(c.def))delete S.plan[c.key];else S.plan[c.key]=stored;
-    ui.pcOpen=null;save();pcRefresh();rerenderKeepScroll();
+    ui.pcOpen=null;ui.pcVal=null;save();pcRefresh();rerenderKeepScroll();
     snack(planKnockOn(sk),()=>{if(prev==null)delete S.plan[c.key];else S.plan[c.key]=prev;save();pcRefresh();rerenderKeepScroll();});
   }
   else if(a==='pcreset'){
