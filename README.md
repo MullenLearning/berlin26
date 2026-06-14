@@ -198,6 +198,41 @@ actual burn/deficit row on the day card, and a cumulative **Deficit banked** cha
 tracks them elsewhere — and that table moved off the tab into a **Full plan**
 sheet (week filter + jump-to-today intact).
 
+## The derived-intelligence layer (creative build, 13–14 Jun)
+
+Once Strava and Oura were both feeding the app, the data earned presentation beyond
+1:1 readouts. These features cross and re-present what's already stored — no new data,
+no new accounts — and several are honest about small samples (they stay silent until
+the data earns the claim).
+
+- **The Locked City** — tap the course-progress line: it expands into the real Berlin
+  course as a ribbon, landmarks unlocking only once a single long run has covered their
+  distance. The final 10 km can't unlock in training — race day is the only key. The
+  **wall** (glycogen model from burn rate + practiced g/hr) shows as a red × that
+  practiced fuelling drags toward the finish.
+- **The Morning Line** — the app's first words each day: one composed sentence ranking
+  overnight facts by newsworthiness, connective (*and/but/so*) chosen by whether they
+  agree. Form spoken, not plotted.
+- **Absorbed** — a session is "banked" only when the night after it shows recovery
+  (deep sleep, HRV rebound, RHR vs baseline); yesterday's card and the week header show
+  work-done vs work-absorbed — the honest overtraining signal.
+- **Is the Cut Paying?** — weekly verdict crowning *The cut*: is the deficit buying
+  speed (fewer beats/km) or eating recovery (falling HRV)?
+- **Where It Hurt** — run routes painted by HR or pace stream (toggle in the run sheet),
+  so the road itself shows where the effort lived.
+- **Breakpoint** — the km a long run's stride cracked (cadence/efficiency decay),
+  marching later across the block as durability builds.
+- **Loops** — repeated routes are auto-detected (route-signature match), named once, and
+  every repeat opens a "same road, smaller engine" comparison to the first visit; a
+  **Known roads** shelf on Training holds them with a first-vs-latest ghost overlay.
+- **The drawer** — every route pinned at one true shared scale, a 6 km loop small and a
+  32 km run filling its cell; the block as a growing collection of shapes.
+- **Departure board** — a 24-hour dial, one ring per week: sleep arcs and run-start
+  dots, so timing discipline reads as geometry.
+- **Ghost run** — in the run sheet, a dot replays the run along its route (HR-tinted)
+  against a ghost moving at the plan's target pace; you watch yourself beat the plan or
+  get reeled in. Auto-plays once, reduced-motion safe.
+
 ## Phase 2–4 (future data sources)
 
 Phase 1 is manual-only by design. The code is structured for later importers:

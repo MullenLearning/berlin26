@@ -778,7 +778,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},health:{d:{}},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -923,6 +923,15 @@ function sanitizePayload(data){
     const btS=Number(data.health.btS),btE=Number(data.health.btE);
     if(Number.isInteger(btS)&&Math.abs(btS)<=43200)out.health.btS=btS;
     if(Number.isInteger(btE)&&Math.abs(btE)<=43200)out.health.btE=btE;
+  }
+  // loop names (keyed by the first run's day index → user-given name)
+  out.loops={};
+  if(data&&data.loops&&typeof data.loops==='object'){
+    for(const k in data.loops){
+      const i=Number(k);
+      if(Number.isInteger(i)&&i>=0&&i<=RACE_IDX&&typeof data.loops[k]==='string'&&data.loops[k])
+        out.loops[i]=data.loops[k].slice(0,40);
+    }
   }
   return out;
 }
@@ -1356,15 +1365,17 @@ function runSheetContent(i){
     +chips
     +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
     +(l.poly?'<div style="margin-top:12px">'+routeSVG(l.poly,true,stream?{s:stream}:null)+'</div>'+toggle+paintNote:'')
+    +loopRevealLine(i)
     +bp
     +((l.vS||l.hrS)?'<div style="margin-top:12px">'+runChart(l,true)+'</div>':'')
+    +ghostBlock(i)
     +splits
     +qaRow('logsheet',i,'Edit manually')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>';
 }
 function openRunSheet(i){
   ui.runSheetI=i;
-  openSheet(runSheetContent(i),document.getElementById('day-'+i));
+  openSheet(runSheetContent(i),document.getElementById('day-'+i),()=>mountGhost(i,false));
 }
 
 /* ---------------- 3c. Oura ----------------
@@ -1626,6 +1637,229 @@ function loopGroups(){
   });
   groups.forEach(g=>{g.key=g.runs[0].i;g.name=(S.loops||{})[g.key]||null;});
   return groups;
+}
+/* nearest logged weight to a day index, within three weeks */
+function weightAt(i){
+  let best=null,bd=1e9;
+  S.weights.forEach(w=>{const d=Math.abs(isoToIdx(w.date)-i);if(d<bd){bd=d;best=w;}});
+  return (best&&bd<=21)?best.lb:null;
+}
+/* the loop group containing run i (if it's a repeat of an earlier route) */
+function loopOf(i){
+  const groups=loopGroups();
+  const g=groups.find(g2=>g2.runs.some(r=>r.i===i));
+  return (g&&g.runs.length>=2)?g:null;
+}
+/* "same road, smaller engine" — current visit vs the first, only when truly better */
+function loopReveal(i){
+  const g=loopOf(i);if(!g)return null;
+  const idx=g.runs.findIndex(r=>r.i===i);
+  if(idx<=0)return null; // the first visit has nothing to beat
+  const first=g.runs[0],cur=g.runs[idx];
+  const dPace=Math.round(first.l.secs/first.l.km-cur.l.secs/cur.l.km); // s/km, +=faster now
+  const dHr=(first.l.hrA&&cur.l.hrA)?Math.round(first.l.hrA-cur.l.hrA):null; // +=lower now
+  const w1=weightAt(first.i),w2=weightAt(cur.i);
+  const dW=(w1&&w2)?Math.round((w1-w2)*10)/10:null;
+  return {g:g,visit:idx+1,n:g.runs.length,first:first.i,dPace:dPace,dHr:dHr,dW:dW,
+    better:dPace>=3||(dHr!=null&&dHr>=3)};
+}
+function loopRevealLine(i){
+  const r=loopReveal(i);if(!r)return '';
+  const name=r.g.name?esc(r.g.name):'this loop';
+  const bits=[];
+  if(r.dPace>=3)bits.push(r.dPace+' s/km faster');
+  else if(r.dPace<=-3)bits.push(Math.abs(r.dPace)+' s/km slower');
+  if(r.dHr!=null&&Math.abs(r.dHr)>=2)bits.push(Math.abs(r.dHr)+' bpm '+(r.dHr>0?'lower':'higher'));
+  if(r.dW!=null&&Math.abs(r.dW)>=0.3)bits.push(fmtLb(Math.abs(r.dW))+' lb '+(r.dW>0?'lighter':'heavier'));
+  const lead=r.better?'Same road, smaller engine':'Same road';
+  return '<p class="note" style="margin:10px 0 0"><b>'+name+'</b> · visit '+r.visit+'. '+lead
+    +(bits.length?': '+bits.join(', ')+' than your first.':'.')+'</p>';
+}
+/* two route shapes overlaid in one box — first run as a hairline ghost under the latest */
+function loopGhostSVG(g){
+  const a=routeSVG(g.runs[0].l.poly,false),b=routeSVG(g.runs[g.runs.length-1].l.poly,false);
+  if(!b)return '';
+  return '<div style="position:relative;width:104px;flex:none">'
+    +'<div style="position:absolute;inset:0;opacity:0.28">'+a+'</div>'
+    +'<div style="position:relative">'+b+'</div></div>';
+}
+function loopShelf(){
+  const groups=loopGroups().filter(g=>g.runs.length>=2).sort((a,b)=>b.runs.length-a.runs.length);
+  if(!groups.length)return '';
+  let rows='';
+  groups.slice(0,6).forEach(g=>{
+    const latest=g.runs[g.runs.length-1],first=g.runs[0];
+    const dPace=Math.round(first.l.secs/first.l.km-latest.l.secs/latest.l.km);
+    const trend=dPace>=3?'<span class="chip c-easy">'+dPace+' s/km faster</span>'
+      :dPace<=-3?'<span class="chip c-long">'+Math.abs(dPace)+' s/km slower</span>'
+      :'<span class="chip neutral">holding pace</span>';
+    rows+='<div class="looprow" data-action="runsheet" data-i="'+latest.i+'" tabindex="0" role="button" '
+      +'style="display:flex;gap:12px;align-items:center;width:100%;padding:10px 0;border-top:1px solid var(--line-soft);cursor:pointer">'
+      +loopGhostSVG(g)
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:700">'+(g.name?esc(g.name):'Unnamed loop')+'</div>'
+      +'<div class="mini" style="margin-top:2px">'+g.runs.length+' runs · '+fmtKm(latest.l.km)+' km · '+esc(latest.l.pace||'')+' /km</div>'
+      +'<div class="row" style="margin-top:6px">'+trend+'</div></div>'
+      +'<button class="btn3" data-action="loopname" data-key="'+g.key+'" style="flex:none" aria-label="Name this loop">'+(g.name?'Rename':'Name')+'</button>'
+      +'</div>';
+  });
+  return '<section class="card"><h2>Known roads</h2>'
+    +'<p class="note" style="margin:6px 0 0">Routes you’ve run more than once — your only controlled experiments. The faint line is the first visit; the bright one is the latest.</p>'
+    +rows+'</section>';
+}
+
+/* ---- The Specimen Drawer: every route at one true scale ---- */
+function runsWithRoutes(){
+  const out=[];
+  for(let i=0;i<=clamp(rawT,0,RACE_IDX);i++){
+    const e=eff(i),l=sessLog(e.id);
+    if(l&&l.status==='done'&&l.poly&&l.source==='strava')out.push({i:i,e:e,l:l});
+  }
+  return out;
+}
+function runMeters(poly){ // route points in local metres + centroid + max dimension
+  try{
+    const pts=decodePoly(poly);if(pts.length<2)return null;
+    const kx=Math.cos(pts[0][0]*Math.PI/180)*111320,ky=110540;
+    let xy=pts.map(p=>[p[1]*kx,-p[0]*ky]);
+    const step=Math.max(1,Math.ceil(xy.length/160));if(step>1)xy=xy.filter((_,k)=>k%step===0||k===xy.length-1);
+    let a=1e18,b=-1e18,c=1e18,d=-1e18;
+    xy.forEach(p=>{a=Math.min(a,p[0]);b=Math.max(b,p[0]);c=Math.min(c,p[1]);d=Math.max(d,p[1]);});
+    return {xy:xy,cx:(a+b)/2,cy:(c+d)/2,dim:Math.max(b-a,d-c)||1};
+  }catch(e){return null;}
+}
+function specimenCard(){
+  const runs=runsWithRoutes();
+  if(runs.length<2)return '';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">The drawer</h2><span class="chip neutral">'+runs.length+' runs</span></div>'
+    +'<p class="note" style="margin:8px 0 0">Every route you’ve run, pinned at one shared scale — the block as a growing collection of shapes.</p>'
+    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="draweropen" aria-haspopup="dialog">Open the drawer</button></section>';
+}
+function openDrawerSheet(){
+  const runs=runsWithRoutes().map(r=>{r.m=runMeters(r.l.poly);return r;}).filter(r=>r.m);
+  const close='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>';
+  if(!runs.length){openSheet('<h2 style="margin:0">The drawer</h2><p class="note" style="margin:8px 0 0">No imported routes yet.</p>'+close);return;}
+  const gmax=Math.max.apply(null,runs.map(r=>r.m.dim))||1;
+  const cell=92,pad=10,gsc=(cell-2*pad)/gmax;
+  let cells='';
+  runs.forEach(r=>{
+    const d=r.m.xy.map((p,k)=>(k?'L':'M')+(cell/2+(p[0]-r.m.cx)*gsc).toFixed(1)+' '+(cell/2+(p[1]-r.m.cy)*gsc).toFixed(1)).join('');
+    cells+='<button data-action="runsheet" data-i="'+r.i+'" aria-label="'+shortDate(r.i)+', '+fmtKm(r.l.km)+' km" '
+      +'style="background:none;border:1px solid var(--line-soft);border-radius:10px;padding:4px 0 0;cursor:pointer">'
+      +'<svg viewBox="0 0 '+cell+' '+cell+'" style="width:100%;height:auto;display:block"><path d="'+d+'" fill="none" stroke="var(--'+DAYTYPE[r.e.type].c+')" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>'
+      +'<div class="mini" style="padding:2px 0 5px;text-align:center">'+fmtKm(r.l.km)+'k</div></button>';
+  });
+  openSheet('<div class="spread"><h2 style="margin:0">The drawer</h2><span class="chip neutral">'+runs.length+' · true scale</span></div>'
+    +'<p class="note" style="margin:6px 0 10px">One scale throughout: a 6 km loop stays small, a 32 km run fills its cell. Tap any to open it.</p>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'+cells+'</div>'+close);
+}
+
+/* ---- The Departure Board: nights + run-starts on a 24h dial, one ring per week ---- */
+function boardDays(){
+  const out=[];
+  for(let i=0;i<=clamp(rawT,0,RACE_IDX);i++){
+    const h=healthRef().d[isoAt(i)],l=sessLog(eff(i).id);
+    const start=(l&&l.status==='done'&&l.start)?l.start:null;
+    const bin=(h&&h.bin)?h.bin:null;
+    if(bin||start)out.push({i:i,w:Math.floor(i/7),bin:bin,slp:h&&h.slp,start:start});
+  }
+  return out;
+}
+function boardCard(){
+  if(!ouraConnected())return '';
+  const d=boardDays().filter(x=>x.bin);
+  if(d.length<3)return '';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Sleep &amp; start times</h2><span class="chip neutral">'+d.length+' nights</span></div>'
+    +'<p class="note" style="margin:8px 0 0">Your nights and run-starts on one 24-hour dial — discipline shows as alignment.</p>'
+    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="boardopen" aria-haspopup="dialog">Open the departure board</button></section>';
+}
+function openBoardSheet(){
+  const days=boardDays(),W=320,cx=W/2,cy=W/2,rMax=W/2-18,rMin=46;
+  const nW=Math.floor(clamp(rawT,0,RACE_IDX)/7)+1;
+  const ringR=w=>nW<=1?(rMin+rMax)/2:rMin+(rMax-rMin)*w/(nW-1);
+  const TAU=2*Math.PI,ang=t=>(t/1440)*TAU-Math.PI/2;
+  const P=(t,r)=>[(cx+r*Math.cos(ang(t))).toFixed(1),(cy+r*Math.sin(ang(t))).toFixed(1)];
+  const arc=(t0,dur,r,stroke,wdt,op)=>{
+    const a0=ang(t0),a1=ang(t0+dur),large=dur>720?1:0;
+    return '<path d="M'+(cx+r*Math.cos(a0)).toFixed(1)+' '+(cy+r*Math.sin(a0)).toFixed(1)
+      +' A'+r+' '+r+' 0 '+large+' 1 '+(cx+r*Math.cos(a1)).toFixed(1)+' '+(cy+r*Math.sin(a1)).toFixed(1)
+      +'" fill="none" stroke="'+stroke+'" stroke-width="'+wdt+'" stroke-linecap="round" opacity="'+op+'"/>';
+  };
+  let g='';
+  [[0,'12a'],[360,'6a'],[720,'12p'],[1080,'6p']].forEach(t=>{const o=P(t[0],rMax+10);g+='<text x="'+o[0]+'" y="'+o[1]+'" text-anchor="middle" dominant-baseline="middle" style="font-size:8px;fill:var(--sub)">'+t[1]+'</text>';});
+  for(let w=0;w<nW;w++)g+='<circle cx="'+cx+'" cy="'+cy+'" r="'+ringR(w).toFixed(1)+'" fill="none" stroke="var(--line-soft)" stroke-width="0.5" opacity="0.5"/>';
+  days.forEach(d=>{
+    const r=ringR(d.w);
+    if(d.bin&&/^\d{2}:\d{2}$/.test(d.bin)){
+      const bm=(+d.bin.slice(0,2))*60+(+d.bin.slice(3)),dur=d.slp?Math.min(660,d.slp/60):0;
+      if(dur>30)g+=arc(bm,dur,r,'var(--accent)',3,0.5);
+    }
+    if(d.start&&/^\d{2}:\d{2}$/.test(d.start)){
+      const sm=(+d.start.slice(0,2))*60+(+d.start.slice(3)),o=P(sm,r);
+      g+='<circle cx="'+o[0]+'" cy="'+o[1]+'" r="2.6" fill="var(--accent)"/>';
+    }
+  });
+  openSheet('<div class="spread"><h2 style="margin:0">Departure board</h2><span class="chip neutral">'+nW+' week'+(nW===1?'':'s')+'</span></div>'
+    +'<p class="note" style="margin:6px 0 10px">Each ring is a week, oldest at the centre. Blue arcs are sleep; dots are run starts. Aligned arcs and clean spokes mean steady timing.</p>'
+    +'<svg viewBox="0 0 '+W+' '+W+'" style="width:100%;height:auto;display:block" role="img" aria-label="24-hour dial of sleep and run-start times across the block">'+g+'</svg>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>');
+}
+
+/* ---- Ghost Light: replay the run vs the plan's pace along the route ---- */
+function ghostPathData(poly,W,H,pad){
+  try{
+    const pts=decodePoly(poly);if(pts.length<2)return '';
+    const kx=Math.cos(pts[0][0]*Math.PI/180);
+    const xs=pts.map(p=>p[1]*kx),ys=pts.map(p=>-p[0]);
+    const minX=Math.min.apply(null,xs),maxX=Math.max.apply(null,xs),minY=Math.min.apply(null,ys),maxY=Math.max.apply(null,ys);
+    const sc=Math.min((W-2*pad)/((maxX-minX)||1e-9),(H-2*pad)/((maxY-minY)||1e-9));
+    const ox=(W-(maxX-minX)*sc)/2-minX*sc,oy=(H-(maxY-minY)*sc)/2-minY*sc;
+    let d='';for(let k=0;k<pts.length;k++)d+=(k?'L':'M')+(xs[k]*sc+ox).toFixed(1)+' '+(ys[k]*sc+oy).toFixed(1);
+    return d;
+  }catch(e){return '';}
+}
+function ghostBlock(i){
+  const l=sessLog(eff(i).id);
+  if(!l||!l.poly||!l.vS||l.vS.length<4)return '';
+  const d=ghostPathData(l.poly,320,180,16);
+  if(!d)return '';
+  return '<h2 style="margin:16px 0 6px">Ghost run</h2>'
+    +'<svg id="ghostsvg" viewBox="0 0 320 180" style="width:100%;height:auto;display:block;border:1px solid var(--line-soft);border-radius:12px;background:var(--bg)">'
+    +'<path id="ghostroute" d="'+d+'" fill="none" stroke="var(--bord)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>'
+    +'<circle id="ghostplan" r="4" fill="none" stroke="var(--sub)" stroke-width="1.5" opacity="0.85"/>'
+    +'<circle id="ghostyou" r="4.5" fill="var(--accent)"/></svg>'
+    +'<div class="row" style="margin-top:6px;align-items:center"><button class="btn3" data-action="ghostplay" data-i="'+i+'">▷ Replay</button>'
+    +'<span class="mini" style="color:var(--sub)">you (blue) vs the plan’s pace (grey ghost)</span></div>';
+}
+let _ghostRaf=null;
+function stopGhost(){if(_ghostRaf){cancelAnimationFrame(_ghostRaf);_ghostRaf=null;}}
+function mountGhost(i,autoplay){
+  stopGhost();
+  const l=sessLog(eff(i).id);
+  if(!l||!l.poly||!l.vS||l.vS.length<4)return;
+  const path=document.getElementById('ghostroute'),you=document.getElementById('ghostyou'),plan=document.getElementById('ghostplan');
+  if(!path||!you||!plan)return;
+  let total=0;try{total=path.getTotalLength();}catch(e){return;}
+  if(!total)return;
+  const v=l.vS,cum=[0];for(let k=1;k<v.length;k++)cum.push(cum[k-1]+Math.max(0,+v[k]||0));
+  const cmax=cum[cum.length-1]||1;
+  const fracAt=p=>{const x=p*(v.length-1),k=Math.floor(x),f=x-k,lo=cum[k]||0,hi=cum[k+1]!=null?cum[k+1]:lo;return (lo+f*(hi-lo))/cmax;};
+  const hr=l.hrS||[],hv=hr.filter(x=>x>30).slice().sort((a,b)=>a-b);
+  const q1=hv.length?hv[Math.floor(hv.length*0.45)]:0,q2=hv.length?hv[Math.floor(hv.length*0.8)]:1e9;
+  const hcol=p=>{if(!hr.length)return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--accent)':x<q2?'var(--long)':'var(--hard)';};
+  const planSecs=(ZONE_MID_PACE[eff(i).zone]||360)*l.km,R=(l.secs&&planSecs)?l.secs/planSecs:1;
+  const setAt=(el,frac)=>{const pt=path.getPointAtLength(Math.max(0,Math.min(1,frac))*total);el.setAttribute('cx',pt.x);el.setAttribute('cy',pt.y);};
+  const draw=p=>{setAt(you,fracAt(p));you.setAttribute('fill',hcol(p));setAt(plan,Math.min(1,p*R));};
+  if(REDUCE.matches&&!autoplay){draw(1);return;}
+  const DUR=9000;let start=null;
+  const frame=now=>{
+    if(!document.getElementById('ghostsvg')){stopGhost();return;} // sheet closed mid-run
+    if(start==null)start=now;
+    let p=(now-start)/DUR;if(p>1)p=1;
+    draw(p);
+    if(p<1)_ghostRaf=requestAnimationFrame(frame);
+  };
+  draw(0);_ghostRaf=requestAnimationFrame(frame);
 }
 
 /* glycogen wall: where the tank empties at race effort, given practiced fuelling */
@@ -2849,6 +3083,7 @@ function vToday(){
     /* the blue line: position along the 112-day course to Berlin — taps open the city */
     +'<button class="course" data-action="cityopen" aria-label="Day '+(todayIdx+1)+' of 112 — open the Berlin course" style="display:block;width:100%;border:none;padding:0;cursor:pointer"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></button></div>'
     +(morningLine()?'<p class="note" style="margin:10px 2px 0">'+morningLine()+'</p>':'')
+    +(function(){const pd=patternScan();return (pd&&pd.eff)?'<p class="note" style="margin:8px 2px 0;color:var(--txt2)"><b>Noticed:</b> '+esc(pd.text)+'</p>':'';})()
     +note
     +widgets
     +'</div>';
@@ -2965,6 +3200,9 @@ function vTrain(){
     +days
     +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:520px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
+    +loopShelf()
+    +specimenCard()
+    +boardCard()
     +stravaCard()
     +ouraCard()
     +'</div>';
@@ -3580,7 +3818,20 @@ document.addEventListener('click',ev=>{
   else if(a==='paintmode'){
     ui.paintMode=el.dataset.v;
     const panel=document.querySelector('#sheet .panel');
-    if(panel&&ui.runSheetI!=null)panel.innerHTML=runSheetContent(ui.runSheetI);
+    if(panel&&ui.runSheetI!=null){panel.innerHTML=runSheetContent(ui.runSheetI);mountGhost(ui.runSheetI,false);}
+  }
+  else if(a==='ghostplay'){mountGhost(Number(el.dataset.i),true);}
+  else if(a==='draweropen'){openDrawerSheet();}
+  else if(a==='boardopen'){openBoardSheet();}
+  else if(a==='loopname'){
+    const key=Number(el.dataset.key),cur=(S.loops||{})[key]||'';
+    const name=prompt('Name this loop (e.g. “Canal loop”):',cur);
+    if(name!=null){
+      if(!S.loops)S.loops={};
+      const t=name.trim().slice(0,40);
+      if(t)S.loops[key]=t;else delete S.loops[key];
+      save();rerenderKeepScroll();
+    }
   }
   else if(a==='missed'){
     const i2=Number(el.dataset.i),e2=eff(i2);
