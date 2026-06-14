@@ -2323,7 +2323,7 @@ let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
 const morningPending=S.lastOpen!==todayISO(); // first open of the day
 if(morningPending){S.lastOpen=todayISO();save();}
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,morning:morningPending};
+const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcAdv:false,morning:morningPending};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
@@ -2664,10 +2664,61 @@ function wWeight(){
 
 function wRace(){
   const days2race=RACE_IDX-todayIdx;
-  return '<section class="card"><div class="spread"><h2>Berlin</h2><span class="chip neutral">'+goalLabel()+'</span></div>'
+  return '<section class="card" data-action="plancenter" role="button" tabindex="0" aria-label="Open Plan Center to adjust goals, mileage and paces" style="cursor:pointer">'
+    +'<div class="spread"><h2>Berlin</h2><span class="chip neutral">'+goalLabel()+(planChanged()?' · edited':'')+'</span></div>'
     +'<div class="row" style="gap:18px;align-items:baseline"><span class="hero num">'+days2race+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep</span></div>'
+    +'<p class="mini" style="margin:8px 2px 0;color:var(--sub)">Tap to adjust the plan — goals · mileage · paces</p>'
     +'</section>';
 }
+
+/* ---- the Plan Center: edit the plan's targets (not its shape) on one screen ---- */
+function fmtFinish(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+':'+p2(m)+':'+p2(x);}
+function planChanged(){const p=S.plan||{};return p.raceSecs!=null||p.goalWeight!=null||p.volPct!=null||(p.volWeek&&Object.keys(p.volWeek).length>0)||(p.paceShift&&Object.keys(p.paceShift).length>0)||p.heatOn===false||!!p.home;}
+function planChangeCount(){const p=S.plan||{};let n=0;if(p.raceSecs!=null)n++;if(p.goalWeight!=null)n++;if(p.volPct!=null)n++;if(p.volWeek)n+=Object.keys(p.volWeek).length;if(p.paceShift)n+=Object.keys(p.paceShift).length;return n;}
+const PC_SECTIONS={
+  race:  {label:'Race goal',     hint:'shifts every zone pace and the race-pack splits', step:30, min:10800, max:18000, key:'raceSecs', def:12540, cur:()=>goalSec(),                                  fmt:s=>fmtFinish(s)+' · '+fmtPace(Math.round(s/42.195))+'/km', store:v=>v},
+  weight:{label:'Goal race weight',hint:'re-draws the weight glide and the race-weight date', step:5, min:1500, max:2100, key:'goalWeight', def:1890, cur:()=>Math.round((S.plan.goalWeight!=null?S.plan.goalWeight:189)*10), fmt:v=>fmtLb(v/10)+' lb', store:v=>v/10},
+  vol:   {label:'Training volume', hint:'scales future weekly targets; past + current weeks stay', step:5, min:70, max:120, key:'volPct', def:100, cur:()=>Math.round((S.plan.volPct||1)*100),               fmt:v=>v+'% of plan', store:v=>v/100},
+};
+function pcRow(sk){
+  const c=PC_SECTIONS[sk],edited=S.plan[c.key]!=null,open=ui.pcOpen===sk;
+  let h='<div class="sheetrow" style="cursor:'+(open?'default':'pointer')+';flex-wrap:wrap" '+(open?'':'data-action="pcedit" data-sk="'+sk+'"')+'>'
+    +'<div style="flex:1"><div style="font-weight:700">'+c.label+'</div><div class="mini" style="margin-top:2px">'+c.fmt(c.cur())+(edited?' · edited':'')+'</div></div>'
+    +(edited?'<button class="btn3" data-action="pcreset" data-sk="'+sk+'" style="flex:none;color:var(--sub)">reset</button>':'<span class="mini" style="color:var(--sub)">edit ›</span>')
+    +'</div>';
+  if(open){
+    const v=c.cur();
+    h+='<div style="padding:4px 0 10px"><div class="stepper" style="justify-content:center"><button data-action="pcstep" data-d="-1" aria-label="less">−</button>'
+      +'<div class="stepval" style="min-width:170px;text-align:center"><b id="pcval" data-v="'+v+'">'+c.fmt(v)+'</b></div>'
+      +'<button data-action="pcstep" data-d="1" aria-label="more">+</button></div>'
+      +'<p class="mini" style="margin:6px 2px 0;text-align:center">'+c.hint+'</p>'
+      +'<div class="loggrid" style="margin-top:10px"><button class="btn2" data-action="pccancel">Cancel</button><button class="btn" data-action="pcsave" data-sk="'+sk+'">Save</button></div></div>';
+  }
+  return h;
+}
+function planCenterContent(){
+  let paceRows='';
+  ['Recovery','Easy','Long','Marathon','Threshold','Interval'].forEach(z=>{
+    const sh=(S.plan.paceShift&&S.plan.paceShift[z])||0;
+    paceRows+='<div class="sheetrow" style="cursor:default"><span style="flex:1">'+z+' <span class="mini">'+zoneRange(z)+'</span></span>'
+      +'<div class="stepper" style="transform:scale(.82)"><button data-action="pcpace" data-z="'+z+'" data-d="-1" aria-label="'+z+' slower">−</button>'
+      +'<div class="stepval" style="min-width:60px"><b>'+(sh>0?'+':'')+sh+'s</b></div>'
+      +'<button data-action="pcpace" data-z="'+z+'" data-d="1" aria-label="'+z+' faster">+</button></div></div>';
+  });
+  const heatOn=!(S.plan.heatOn===false);
+  return '<div class="spread"><h2 style="margin:0">Adjust your plan</h2>'
+    +(planChanged()?'<button class="btn3" data-action="pcresetall" style="color:var(--hard)">Reset all ('+planChangeCount()+')</button>':'')+'</div>'
+    +'<p class="note" style="margin:6px 0 8px">Tune the targets — the plan’s shape (ramp, down-weeks, taper) and original always stay underneath. Everything resets.</p>'
+    +pcRow('race')+pcRow('weight')+pcRow('vol')
+    +'<button class="btn3" data-action="pcadvanced" aria-expanded="'+(ui.pcAdv?'true':'false')+'" style="margin-top:10px;color:var(--sub)">'+(ui.pcAdv?'Hide fine-tuning':'Fine-tune paces & heat ›')+'</button>'
+    +(ui.pcAdv?'<div style="margin-top:6px"><p class="mini" style="margin:0 2px 6px">Nudge individual zone paces (on top of the race goal).</p>'+paceRows
+      +'<div class="sheetrow" style="cursor:default"><span style="flex:1;font-weight:600">Heat-adjust paces<div class="mini">slow targets on hot days (uses your last run’s location)</div></span>'
+      +'<button class="switch" role="switch" aria-checked="'+heatOn+'" aria-pressed="'+heatOn+'" data-action="pcheat" style="flex:none"></button></div></div>':'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:6px">Done</button>';
+}
+function openPlanCenter(){ui.pcOpen=null;openSheet(planCenterContent(),document.querySelector('[data-action="plancenter"]'));}
+function pcRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=planCenterContent();}
+function planKnockOn(sk){return sk==='race'?'Zone paces and race splits updated':sk==='weight'?'Weight glide and race-weight date updated':'Future weekly targets scaled';}
 
 function wTrend(){
   if(S.weights.length<2)return '<section class="card"><h2>Weight trend</h2><p class="note" style="margin:0">Log a few weigh-ins and the trend chart appears here.</p></section>';
@@ -3275,7 +3326,7 @@ function vTrain(){
   }
 
   return '<div><h1>Training</h1>'
-    +'<div class="sub">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)</div>'
+    +'<button class="sub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0;text-align:left;cursor:pointer;color:var(--sub);font:inherit">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -3940,6 +3991,42 @@ document.addEventListener('click',ev=>{
     }
   }
   else if(a==='planopen'){openPlanSheet();}
+  else if(a==='plancenter'){openPlanCenter();}
+  else if(a==='pcedit'){ui.pcOpen=el.dataset.sk;pcRefresh();}
+  else if(a==='pccancel'){ui.pcOpen=null;pcRefresh();}
+  else if(a==='pcstep'){
+    const el2=document.getElementById('pcval');if(!el2||ui.pcOpen==null)return;
+    const c=PC_SECTIONS[ui.pcOpen],v=clamp((+el2.dataset.v)+Number(el.dataset.d)*c.step,c.min,c.max);
+    el2.dataset.v=v;el2.textContent=c.fmt(v);haptic();
+  }
+  else if(a==='pcsave'){
+    const sk=el.dataset.sk,c=PC_SECTIONS[sk],el2=document.getElementById('pcval');
+    if(!el2)return;
+    if(!S.plan||typeof S.plan!=='object')S.plan={};
+    const prev=S.plan[c.key],stored=c.store(+el2.dataset.v);
+    if(stored===c.store(c.def))delete S.plan[c.key];else S.plan[c.key]=stored;
+    ui.pcOpen=null;save();pcRefresh();rerenderKeepScroll();
+    snack(planKnockOn(sk),()=>{if(prev==null)delete S.plan[c.key];else S.plan[c.key]=prev;save();pcRefresh();rerenderKeepScroll();});
+  }
+  else if(a==='pcreset'){
+    const c=PC_SECTIONS[el.dataset.sk],prev=S.plan[c.key];
+    delete S.plan[c.key];save();pcRefresh();rerenderKeepScroll();
+    snack(c.label+' reset to original',()=>{if(prev!=null)S.plan[c.key]=prev;save();pcRefresh();rerenderKeepScroll();});
+  }
+  else if(a==='pcpace'){
+    const z=el.dataset.z;if(!S.plan.paceShift)S.plan.paceShift={};
+    const v=clamp((S.plan.paceShift[z]||0)-Number(el.dataset.d)*2,-60,60); // +button = faster = fewer s/km
+    if(v===0)delete S.plan.paceShift[z];else S.plan.paceShift[z]=v;
+    save();pcRefresh();rerenderKeepScroll();
+  }
+  else if(a==='pcheat'){if(S.plan.heatOn===false)delete S.plan.heatOn;else S.plan.heatOn=false;save();pcRefresh();rerenderKeepScroll();}
+  else if(a==='pcadvanced'){ui.pcAdv=!ui.pcAdv;pcRefresh();}
+  else if(a==='pcresetall'){
+    if(confirm('Reset all plan edits back to the original plan?')){
+      const prev=S.plan;S.plan={};save();pcRefresh();rerenderKeepScroll();
+      snack('Plan reset to original',()=>{S.plan=prev;save();pcRefresh();rerenderKeepScroll();});
+    }
+  }
   else if(a==='wtopen'){ui.wtOpen=true;rerenderKeepScroll();}
   else if(a==='wtcancel'){ui.wtOpen=false;rerenderKeepScroll();}
   else if(a==='ateopen'){ui.ateOpen=Number(el.dataset.i);rerenderKeepScroll();}
