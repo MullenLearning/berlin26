@@ -51,6 +51,69 @@ html[data-theme="light"]{
   /* installed app's status bar is frozen translucent w/ white clock — keep it on blue */
   --statusbar:#0f4fa8;
 }
+
+/* ======================================================================
+   SKIN: WHOOP — dark OLED, ring-led "performance instrument". Hue = meaning;
+   edges by hairline borders, never shadow; ALL-CAPS labels + tabular heroes.
+   ====================================================================== */
+html[data-skin="whoop"]{
+  color-scheme:dark;
+  --bg:#0A0A0A; --card:#16171C; --raised:#1F2128; --inset:#0A0A0A;
+  --ink:#FFFFFF; --txt2:#7BA1BB; --sub:#6c7480;
+  --line:#252525; --line-soft:#1c1d22; --bord:#33363f; --grid:#23252b; --tick:#33363f;
+  --accent:#00F19F; --accent-ink:#06231a; --signal:#FFDE00;
+  --track:#2A2A2A; --shadow:none;
+  --rec-green:#16EC06; --rec-yellow:#FFDE00; --rec-red:#FF0026;
+  --strain:#0093E7; --strain-2:#4FB8FF; --sleep:#7BA1BB; --rec-blue:#67AEE6;
+  --sleep-deep:#5A778A; --sleep-light:#7BA1BB; --sleep-rem:#67AEE6; --sleep-awake:#FFDE00;
+  --disp:'Barlow','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  --statusbar:#0A0A0A;
+  /* semantic chips, tuned for OLED legibility */
+  --rec:#67AEE6; --rec-bg:#0e2230; --easy:#16EC06; --easy-bg:#0c2a12;
+  --long:#FFDE00; --long-bg:#2e2806; --hard:#FF5A6E; --hard-bg:#2e1014;
+  --rest:#7BA1BB; --rest-bg:#1a1d24; --blue:#0093E7; --blue-bg:#0b2030;
+  font-family:var(--disp);
+}
+html[data-skin="whoop"] .card{box-shadow:none;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+html[data-skin="whoop"] h1{font-family:var(--disp);font-weight:700;letter-spacing:-.4px;text-transform:none}
+html[data-skin="whoop"] h2{color:var(--txt2);letter-spacing:.12em;font-size:12px}
+html[data-skin="whoop"] #tabbar{background:color-mix(in srgb,#16171C 94%,transparent);border-top:1px solid var(--line)}
+html[data-skin="whoop"] #tabbar .tlbl{text-transform:uppercase;letter-spacing:.09em;font-size:10px}
+html[data-skin="whoop"] #tabbar button{font-weight:700;gap:4px}
+html[data-skin="whoop"] #tabbar button.sel::after{background:var(--accent)}
+html[data-skin="whoop"] .skinseg{background:#16171C;border-color:var(--line)}
+/* WHOOP signature components */
+.wcaps{text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:700;color:var(--txt2);font-family:var(--disp)}
+.wtitle{font-size:26px;font-weight:700;color:#fff;letter-spacing:-.4px;font-family:var(--disp)}
+.whero{font-weight:800;color:#fff;line-height:.98;font-variant-numeric:tabular-nums;letter-spacing:-.02em;font-family:var(--disp)}
+.wdials{display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;justify-items:center;gap:6px;margin:4px 0 2px}
+.wring{position:relative;display:inline-flex;align-items:center;justify-content:center;line-height:0}
+.wring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1}
+.wdial .wcaps{font-size:10px;letter-spacing:.1em;margin-top:7px;text-align:center}
+.wdial{display:flex;flex-direction:column;align-items:center}
+.wstrip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;border-top:1px solid var(--line);padding-top:13px}
+.wstrip>div{text-align:center;padding:0 2px}
+.wstrip>div+div{border-left:1px solid var(--line)}
+.wstrip b{display:block;font-size:19px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.wstrip i{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--txt2);margin-top:4px;font-style:normal}
+.wbar{height:10px;border-radius:99px;background:var(--track);position:relative;overflow:visible}
+.wbar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--strain),var(--strain-2));transition:width .7s var(--ease-out)}
+.wbar .wtick{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px;background:#fff;opacity:.85}
+.wdot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;flex:none}
+.wcta{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:99px;padding:13px 20px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:13px;font-family:var(--disp);cursor:pointer;width:100%}
+.wcta.ghost{background:transparent;border:1.5px solid var(--accent);color:var(--accent)}
+.whyp{display:flex;height:34px;border-radius:6px;overflow:hidden;background:var(--track)}
+.whyp>span{display:block;height:100%}
+.wlegend{display:flex;flex-wrap:wrap;gap:12px;margin-top:9px}
+.wlegend span{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em}
+.wheat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.wheat .hd{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);text-align:center;padding-bottom:2px}
+.wheat .cell{aspect-ratio:1;border-radius:5px;background:var(--track);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+.wbars{display:flex;align-items:flex-end;gap:4px;height:90px}
+.wbars .b{flex:1;border-radius:3px 3px 0 0;background:var(--strain);min-height:2px}
+.wcoach{display:flex;gap:11px;align-items:flex-start}
+.wzbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--track)}
+.wzbar>span{display:block;height:100%}
 /* opaque strip behind the iOS status bar (height 0 in regular browsers) */
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--statusbar);z-index:60}
 *{box-sizing:border-box}
@@ -283,7 +346,8 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .skinseg{display:flex;gap:3px;background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:3px}
 .skinseg button{flex:1;border:none;background:none;color:var(--txt2);font-size:12px;font-weight:700;padding:7px 4px;border-radius:999px;letter-spacing:.01em;cursor:pointer;transition:background .18s var(--ease-out),color .18s var(--ease-out)}
 .skinseg button.on{background:var(--accent);color:var(--accent-ink)}
-.tabfab{position:absolute;left:50%;bottom:calc(100% - 22px);transform:translateX(-50%);width:52px;height:52px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer}
+#tabbar .inner{position:relative}
+.tabfab{position:absolute;left:50%;bottom:calc(100% - 26px);transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(0,0,0,.5);cursor:pointer;z-index:2}
 .tabfab svg{width:26px;height:26px}
 @media (prefers-reduced-motion: reduce){
   .fade,.hl,.pop,.deck .card{animation:none}
@@ -2412,8 +2476,15 @@ function renderTabBar(skin){
     skin.tabs.forEach(t=>{
       h+='<button data-action="tab" data-tab="'+t.id+'" id="tb-'+t.id+'">'+t.icon+'<span class="tlbl">'+esc(t.label)+'</span></button>';
     });
-    if(skin.fab)h+='<button class="tabfab" data-action="'+(skin.fab.action||'fab')+'" aria-label="'+esc(skin.fab.label||'Add')+'">'+skin.fab.icon+'</button>';
     inner.innerHTML=h;
+    // FAB is a direct child of the bar (not the grid) so it centers on the bar, not a cell
+    const oldFab=nav.querySelector('.tabfab');if(oldFab)oldFab.remove();
+    if(skin.fab){
+      const fab=document.createElement('button');
+      fab.className='tabfab';fab.dataset.action=skin.fab.action||'fab';
+      fab.setAttribute('aria-label',skin.fab.label||'Add');fab.innerHTML=skin.fab.icon;
+      nav.appendChild(fab);
+    }
     nav._sig=sig;
   }
   skin.tabs.forEach(t=>{
@@ -2438,17 +2509,24 @@ const TAB_ICONS={
   nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
   wt:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>',
 };
-/* WHOOP currently wraps the original four screens; its full visual pass (own nav,
-   dials, recovery ring) lands in stage 3. Fitbit/Apple point here until built. */
+/* WHOOP: dark OLED, 4 bottom tabs + center FAB; the screen fns live near render(). */
+const WI={
+  overview:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
+  coaching:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1Z"/></svg>',
+  community:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M16.5 5.5a3.2 3.2 0 0 1 0 6"/><path d="M20.5 19.5a5.5 5.5 0 0 0-3.6-5.2"/></svg>',
+  stats:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M12 20V5M19 20v-9"/><path d="M3 20h18"/></svg>',
+  plus:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+};
 const WHOOP={
-  defaultTab:'today',
+  defaultTab:'overview',
+  fab:{icon:WI.plus,action:'wfab',label:'Quick log'},
   tabs:[
-    {id:'today',label:'Today',icon:TAB_ICONS.today},
-    {id:'train',label:'Training',icon:TAB_ICONS.train},
-    {id:'nut',label:'Nutrition',icon:TAB_ICONS.nut},
-    {id:'wt',label:'Weight',icon:TAB_ICONS.wt},
+    {id:'overview',label:'Overview',icon:WI.overview},
+    {id:'coaching',label:'Coaching',icon:WI.coaching},
+    {id:'community',label:'Community',icon:WI.community},
+    {id:'stats',label:'Stats',icon:WI.stats},
   ],
-  screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut(),wt:()=>vWeight()},
+  screens:{overview:()=>whoopOverview(),coaching:()=>whoopCoaching(),community:()=>whoopCommunity(),stats:()=>whoopStats()},
 };
 const SKIN_REG={whoop:WHOOP,fitbit:WHOOP,apple:WHOOP};
 
@@ -3995,6 +4073,224 @@ function closeSheet(){
   sheetOpener=null;
 }
 
+/* ======================================================================
+   WHOOP skin — screens + signature components. Reuses the engine selectors
+   (eff/berlinForecast/ouraBase/formNow/trimpOf/weightChart/dayCard/runVisual).
+   ====================================================================== */
+let _wgrad=0;
+function whoopBand(pct){return pct==null?'var(--track)':pct>=67?'var(--rec-green)':pct>=34?'var(--rec-yellow)':'var(--rec-red)';}
+/* Open-top traffic-light donut. Hue encodes the score unless opts.color forces one. */
+function whoopRing(pct,opts){
+  opts=opts||{};
+  const size=opts.size||108,stroke=opts.stroke||(opts.hero?12:7);
+  const r=(size-stroke)/2-1,cx=size/2,cy=size/2,C=2*Math.PI*r;
+  const gap=opts.gap!=null?opts.gap:14,span=(360-gap)/360,arc=C*span;
+  const has=pct!=null&&isFinite(pct),p=has?clamp(pct,0,100)/100:0,fill=arc*p;
+  const rot=-90+gap/2;
+  let c1,c2;
+  if(opts.color){c1=c2=opts.color;}
+  else if(!has){c1=c2='var(--track)';}
+  else if(pct>=67){c1='#FFDE00';c2='#16EC06';}
+  else if(pct>=34){c1='#FF0026';c2='#FFDE00';}
+  else {c1=c2='#FF0026';}
+  const id='wg'+(++_wgrad);
+  return '<div class="wring" style="width:'+size+'px;height:'+size+'px">'
+    +'<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate('+rot+'deg)">'
+    +'<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient></defs>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+arc.toFixed(1)+' '+(C-arc).toFixed(1)+'"/>'
+    +(has?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="url(#'+id+')" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'"/>':'')
+    +'</svg><div class="wring-c">'+(opts.center||'')+'</div></div>';
+}
+/* Map a session to WHOOP's 0–21 strain scale (easy~8 tempo~14 long~17 race~20). */
+function whoopStrainOf(e,km){
+  if(!e||e.zone==='Rest'||(km!=null?km:e.km)<=0)return 0.6;
+  const base={Recovery:5,Easy:8,Long:13,Marathon:18,Threshold:13,Interval:14}[e.zone]||8;
+  return clamp(base+clamp(((km!=null?km:e.km)-6)*0.35,0,7.5),1,21);
+}
+function whoopRecovery(){
+  const h=(healthRef().d[todayISO()])||{};
+  if(h.rs!=null)return {pct:h.rs,real:true};
+  const f=formNow();
+  if(f)return {pct:clamp(Math.round(66+f.tsb*1.2),18,97),real:false};
+  return {pct:null,real:false};
+}
+function whoopSleepData(iso){
+  const h=(healthRef().d[iso||todayISO()])||{};
+  if(h.slp==null)return {real:false};
+  const total=h.slp,deep=h.deep||0,rem=h.rem||0,light=Math.max(0,total-deep-rem-(h.awk||0)),awake=h.awk||Math.round(total*0.06);
+  return {real:true,total:total,deep:deep,rem:rem,light:light,awake:awake,score:h.ss!=null?h.ss:null,eff:h.eff};
+}
+function fmtSleepShort(s){const h=Math.floor(s/3600),m=Math.round(s%3600/60);return h+'h'+(m<10?'0':'')+m;}
+function whoopHypnogram(d){
+  const segs=[['Awake',d.awake,'var(--sleep-awake)'],['REM',d.rem,'var(--sleep-rem)'],['Light',d.light,'var(--sleep-light)'],['Deep',d.deep,'var(--sleep-deep)']];
+  const tot=segs.reduce((s,x)=>s+x[1],0)||1;
+  let bar='',leg='';
+  segs.forEach(s=>{bar+='<span style="width:'+(s[1]/tot*100).toFixed(1)+'%;background:'+s[2]+'"></span>';
+    leg+='<span><i class="wdot" style="background:'+s[2]+'"></i>'+s[0]+' '+Math.round(s[1]/60)+'m</span>';});
+  return '<div class="whyp">'+bar+'</div><div class="wlegend">'+leg+'</div>';
+}
+function whoopDials(){
+  const rec=whoopRecovery(),e=eff(todayIdx),strain=whoopStrainOf(e),sl=whoopSleepData();
+  const sleepPct=sl.real?(sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100)):null;
+  const sleepCenter='<div class="whero" style="font-size:17px;color:var(--sleep)">'+(sl.real?fmtSleepShort(sl.total):'—')+'</div>';
+  const recCenter='<div class="whero" style="font-size:38px">'+(rec.pct!=null?rec.pct:'—')+(rec.pct!=null?'<span style="font-size:15px;font-weight:700;vertical-align:6px">%</span>':'')+'</div>';
+  const strainCenter='<div class="whero" style="font-size:24px;color:#fff">'+strain.toFixed(1)+'</div>';
+  return '<div class="wdials">'
+    +'<button class="wdial" data-action="wsleep" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(sleepPct,{size:92,stroke:6,color:'var(--sleep)',center:sleepCenter})+'<span class="wcaps">Sleep</span></button>'
+    +'<button class="wdial" data-action="wrecov" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(rec.pct,{size:124,stroke:9,center:recCenter})+'<span class="wcaps">Recovery</span></button>'
+    +'<button class="wdial" data-action="wstrain" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(strain/21*100,{size:92,stroke:6,color:'var(--strain)',center:strainCenter})+'<span class="wcaps">Strain</span></button>'
+    +'</div>';
+}
+function whoopHeader(title){
+  return '<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
+    +'<div class="spread" style="align-items:flex-end;margin:2px 2px 12px"><div class="wtitle">'+title+'</div>'
+    +'<span class="wcaps" style="font-size:11px">'+shortDate(todayIdx).toUpperCase()+'</span></div>';
+}
+function whoopOverview(){
+  const e=eff(todayIdx),rec=whoopRecovery(),isRest=e.zone==='Rest'&&e.km<=0;
+  const band=whoopBand(rec.pct);
+  const verdict=rec.pct==null?'Connect Oura for a recovery-led read on today.'
+    :isRest?'Rest day — let recovery climb. Easy mobility only.'
+    :rec.pct>=67?'Green — recovered. Hit '+esc(headline(e))+' as planned.'
+    :rec.pct>=34?'Yellow — hold something back. Keep '+esc(headline(e))+' controlled.'
+    :'Red — back off. Swap for easy or rest; the session keeps.';
+  // coaching insights
+  const ins=[];const ml=morningLine();if(ml)ins.push({raw:ml});
+  const ps=patternScan();if(ps&&ps.eff)ins.push({txt:ps.text});
+  const flags=ouraConnected()?ouraFlags(todayISO()):[];
+  if(flags.length>=2)ins.push({txt:'Overnight signals off: '+flags.join(', ')+' vs your week — favour rest.'});
+  const w=Math.floor(todayIdx/7),tgt=effWeekTarget(w),act=weekActualKm(w);
+  return '<div>'+whoopHeader('Overview')
+    +'<section class="card" style="padding:18px 12px 14px">'+whoopDials()
+      +(rec.real?'':'<p class="wcaps" style="font-size:10px;text-align:center;color:var(--sub);margin-top:12px;letter-spacing:.08em">Recovery estimated from training load · connect Oura for live readiness</p>')+'</section>'
+    +'<section class="card">'
+      +'<div class="spread"><span class="wcaps">Today · '+DOW[todayIdx%7].toUpperCase()+'</span><span class="wcaps" style="color:var(--accent)">Strain '+whoopStrainOf(e).toFixed(1)+'</span></div>'
+      +'<div class="wtitle" style="font-size:22px;margin:9px 0 2px">'+(isRest?'REST DAY':esc(headline(e)).toUpperCase())+'</div>'
+      +(paceLine(e)?'<div class="wcaps" style="color:var(--txt2);font-size:12px;letter-spacing:.03em;text-transform:none">'+paceLine(e)+'</div>':'')
+      +'<div class="wcoach" style="margin-top:13px"><span class="wdot" style="background:'+band+';margin-top:4px"></span><p style="margin:0;color:#F5F5F7;font-size:14px;line-height:1.45">'+verdict+'</p></div>'
+      +(isRest?'':'<button class="wcta" style="margin-top:15px" data-action="logsheet" data-i="'+todayIdx+'">'+(sessLog(e.id)&&sessLog(e.id).status?'Edit run':'Start run')+'</button>')
+      +'</section>'
+    +(ins.length?'<section class="card"><span class="wcaps">Coach</span>'+ins.map(x=>'<p style="margin:9px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+(x.raw?x.raw:esc(x.txt))+'</p>').join('')+'</section>':'')
+    +'<section class="card"><div class="spread"><span class="wcaps">Weekly Plan · W'+(w+1)+'</span><span class="wcaps" style="color:var(--txt2)">'+esc(WEEKS[w].phase)+'</span></div>'
+      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="whero" style="font-size:34px">'+fmtKm(act)+'</span><span class="wcaps" style="font-size:12px">/ '+fmtKm(tgt)+' KM</span></div>'
+      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(tgt?act/tgt*100:0,0,100)+'%;background:linear-gradient(90deg,var(--rec-yellow),var(--rec-green))"></i></div>'
+      +'<button class="wcta ghost" style="margin-top:14px" data-action="tab" data-tab="coaching">View training</button></section>'
+    +'</div>';
+}
+/* Coaching = the training plan, recovery-led. */
+function whoopCoaching(){
+  const w=ui.week!=null?ui.week:Math.floor(todayIdx/7);
+  const rec=whoopRecovery(),e=eff(todayIdx),band=whoopBand(rec.pct);
+  const reco=rec.pct==null?'Connect Oura and the plan adapts to your readiness each morning.'
+    :rec.pct>=67?'Recovery is green — you’re cleared for the hard work in the plan this week.'
+    :rec.pct>=34?'Recovery is amber — keep easy days easy and don’t chase paces on quality days.'
+    :'Recovery is red — move today’s quality session and bank an easy day instead.';
+  let strip='';for(let d=0;d<7;d++){const ee=eff(w*7+d),s=whoopStrainOf(ee);
+    strip+='<div class="cell" style="background:color-mix(in srgb,var(--'+(ZONECLR[ee.zone]||'rest')+') '+(ee.zone==='Rest'?14:Math.round(28+s*2.6))+'%,var(--card))" title="'+esc(headline(ee))+'">'+(ee.km>0?Math.round(s):'·')+'</div>';}
+  let heads='';['M','T','W','T','F','S','S'].forEach(d=>heads+='<div class="hd">'+d+'</div>');
+  let chips='<div class="weekchips">';for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';chips+='</div>';
+  let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
+  return '<div>'+whoopHeader('Coaching')
+    +'<section class="card"><div class="wcoach"><span class="wdot" style="background:'+band+';margin-top:4px"></span><div><span class="wcaps">Today’s guidance</span><p style="margin:6px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+reco+'</p></div></div></section>'
+    +'<section class="card"><div class="spread"><span class="wcaps">Week '+(w+1)+' · strain map</span><span class="wcaps" style="color:var(--txt2)">'+esc(WEEKS[w].phase)+'</span></div>'
+      +'<div class="wheat" style="margin-top:10px">'+heads+strip+'</div></section>'
+    +chips+days
+    +'</div>';
+}
+/* Community = the activity feed (Strava runs) + season stats. */
+function whoopRunTile(i,e,l){
+  const strip=[['Pace',l.pace?l.pace:'—'],['Avg HR',l.hrA?Math.round(l.hrA):'—'],['Elev',l.elev?Math.round(l.elev)+'m':'—'],['Time',l.secs?fmtDur(l.secs):'—']];
+  return '<section class="card">'
+    +'<div class="spread"><span class="wcaps">'+shortDate(i).toUpperCase()+'</span><span class="chip c-'+(ZONECLR[e.zone]||'rest')+'">'+e.zone+'</span></div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:6px"><span class="whero" style="font-size:44px">'+fmtKm(l.km)+'</span><span class="wcaps" style="font-size:13px">KM</span></div>'
+    +'<div class="wstrip">'+strip.map(s=>'<div><b>'+s[1]+'</b><i>'+s[0]+'</i></div>').join('')+'</div>'
+    +runVisual(l,i)
+    +'</section>';
+}
+function whoopCommunity(){
+  const runs=[];const top=clamp(rawT,0,RACE_IDX);
+  for(let i=top;i>=0&&runs.length<24;i--){const e=eff(i),l=sessLog(e.id);if(l&&(l.status==='done'||l.status==='partial')&&l.km>0)runs.push([i,e,l]);}
+  let totKm=0;runs.forEach(r=>totKm+=Number(r[2].km)||0);
+  const stat=(v,l)=>'<div><b>'+v+'</b><i>'+l+'</i></div>';
+  let body='';
+  if(!stravaConnected()&&!runs.length)body=stravaCard();
+  else if(!runs.length)body='<section class="card"><span class="wcaps">No runs yet</span><p style="margin:8px 0 0;font-size:14px;color:#F5F5F7;line-height:1.45">Runs imported from Strava land here as they happen.</p></section>';
+  else body=runs.map(r=>whoopRunTile(r[0],r[1],r[2])).join('');
+  return '<div>'+whoopHeader('Community')
+    +'<section class="card"><span class="wcaps">This season</span><div class="wstrip" style="border-top:none;padding-top:10px">'
+      +stat(doneCount(),'Sessions')+stat(streak(),'Streak')+stat(fmtKm(totKm),'KM run')+stat((RACE_IDX-rawT>0?RACE_IDX-rawT:0),'To Berlin')+'</div></section>'
+    +body+'</div>';
+}
+/* Stats = trends, forecast, recovery history. */
+function whoopStats(){
+  const f=berlinForecast(),finish=fmtFinishT(f.secs),days=RACE_IDX-rawT;
+  // weekly volume bars
+  let mx=1;for(let j=0;j<16;j++)mx=Math.max(mx,effWeekTarget(j));
+  let bars='';for(let j=0;j<16;j++){const cur=j===Math.floor(clamp(rawT,0,RACE_IDX)/7);
+    bars+='<div class="b" title="W'+(j+1)+' '+fmtKm(effWeekTarget(j))+'km" style="height:'+Math.round(effWeekTarget(j)/mx*100)+'%;background:'+(cur?'var(--accent)':'var(--strain)')+';opacity:'+(cur?1:.7)+'"></div>';}
+  // recovery heat-grid, last 28 days
+  let heat='';const H=healthRef().d;
+  for(let k=27;k>=0;k--){const idx=rawT-k;if(idx<0||idx>RACE_IDX){heat+='<div class="cell" style="background:transparent"></div>';continue;}
+    const rs=(H[isoAt(idx)]||{}).rs;
+    heat+='<div class="cell" style="background:'+(rs!=null?'color-mix(in srgb,'+whoopBand(rs)+' 70%,var(--card))':'var(--track)')+';color:'+(rs!=null&&rs>=34&&rs<67?'#0A0A0A':'#fff')+'">'+(rs!=null?rs:'')+'</div>';}
+  const eaten0=eaten(todayIdx),b=dayBurn(todayIdx);
+  let energy='';
+  if(b.burned!=null){const def=b.burned-eaten0.kcal;
+    energy='<section class="card"><div class="spread"><span class="wcaps">Energy balance</span><span class="wcaps" style="color:'+(def>=e0Deficit(def)?'var(--rec-green)':'var(--rec-yellow)')+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+'</span></div>'
+      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:9px"><span class="whero" style="font-size:30px">'+fmtKcal(eaten0.kcal)+'</span><span class="wcaps" style="font-size:11px">/ '+fmtKcal(b.burned)+' KCAL BURNED</span></div>'
+      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(eaten0.kcal/b.burned*100,0,100)+'%;background:linear-gradient(90deg,var(--accent),var(--strain-2))"></i></div></section>';}
+  return '<div>'+whoopHeader('Stats')
+    +'<section class="card"><div class="spread"><span class="wcaps">Berlin 2026</span><span class="wcaps" style="color:var(--accent)">'+(days>0?'D−'+days:'RACE DAY')+'</span></div>'
+      +'<div class="row" style="align-items:center;gap:18px;margin-top:8px">'
+      +'<div style="flex:1"><span class="wcaps" style="font-size:11px">Projected finish</span><div class="whero" style="font-size:46px;margin-top:3px">'+finish+'</div>'
+      +'<div class="wcaps" style="font-size:11px;color:var(--txt2);margin-top:5px;text-transform:none;letter-spacing:.02em">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div></div>'
+      +whoopRing(f.state==='early'?null:clamp(100-Math.abs(f.secs-f.goalT)/f.goalT*900,20,99),{size:84,stroke:7,center:'<span class="wcaps" style="font-size:9px">FORM</span>'})
+      +'</div><p style="margin:13px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+esc(forecastMover(f))+'</p></section>'
+    +'<section class="card"><span class="wcaps">Weekly load · 16-week block</span><div class="wbars" style="margin-top:12px">'+bars+'</div></section>'
+    +'<section class="card"><span class="wcaps">Recovery · last 28 days</span><div class="wheat" style="grid-template-columns:repeat(14,1fr);margin-top:10px">'+heat+'</div></section>'
+    +energy
+    +'<section class="card"><span class="wcaps">Weight</span><div class="svgwrap" style="margin-top:8px">'+weightChart()+'</div></section>'
+    +ouraCard()+stravaCard()
+    +'</div>';
+}
+function e0Deficit(){const e=eff(todayIdx);return e.deficit;} // tiny helper for the energy chip threshold
+/* Deep-dive sheets (tap a dial) */
+function whoopRecovSheet(){
+  const rec=whoopRecovery(),h=(healthRef().d[todayISO()])||{},iso=todayISO();
+  const rb=ouraBase('rhr',iso),hb=ouraBase('hrv',iso);
+  const strip=[['HRV',h.hrv!=null?h.hrv:'—'],['Resting HR',h.rhr!=null?h.rhr:'—'],['Resp',h.rr!=null?h.rr.toFixed(1):'—'],['Skin temp',h.tmp!=null?(h.tmp>=0?'+':'')+h.tmp.toFixed(1)+'°':'—']];
+  openSheet('<div style="text-align:center;padding:6px 0 4px">'+whoopRing(rec.pct,{size:204,stroke:14,center:'<span class="wcaps" style="font-size:12px">RECOVERY</span><div class="whero" style="font-size:64px;margin-top:2px">'+(rec.pct!=null?rec.pct:'—')+(rec.pct!=null?'<span style="font-size:22px;font-weight:700;vertical-align:10px">%</span>':'')+'</div>'})+'</div>'
+    +'<div class="wstrip" style="border-top:none">'+strip.map(s=>'<div><b>'+s[1]+'</b><i>'+s[0]+'</i></div>').join('')+'</div>'
+    +'<p style="margin:16px 2px 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+(rec.real?'Readiness from your Oura ring vs your 7-day baseline'+(rb?' (RHR '+(h.rhr-rb>=0?'+':'−')+Math.abs(Math.round(h.rhr-rb)):'')+(rb?')':'')+'.':'Estimated from training load — connect Oura for a measured recovery score.')+'</p>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');
+}
+function whoopStrainSheet(){
+  const e=eff(todayIdx),s=whoopStrainOf(e),tgt=s;const l=sessLog(e.id);
+  openSheet('<div style="text-align:center;padding:4px 0"><span class="wcaps">STRAIN</span><div class="whero" style="font-size:64px;margin-top:2px">'+s.toFixed(1)+'</div><span class="wcaps" style="font-size:11px;color:var(--txt2)">of 21 today</span></div>'
+    +'<div class="wbar" style="margin:14px 4px 0;height:12px"><i style="width:'+(s/21*100)+'%"></i><span class="wtick" style="left:'+(tgt/21*100)+'%"></span></div>'
+    +'<section class="card" style="margin-top:16px"><div class="spread"><span class="wcaps">'+esc(headline(e)).toUpperCase()+'</span><span class="chip c-'+(ZONECLR[e.zone]||'rest')+'">'+e.zone+'</span></div>'
+    +(paceLine(e)?'<div class="wcaps" style="text-transform:none;color:var(--txt2);font-size:12px;margin-top:6px">'+paceLine(e)+'</div>':'')
+    +(l&&l.hrA?'<div class="wstrip" style="margin-top:12px"><div><b>'+Math.round(l.hrA)+'</b><i>Avg HR</i></div><div><b>'+(l.hrM?Math.round(l.hrM):'—')+'</b><i>Max HR</i></div><div><b>'+fmtKm(l.km)+'</b><i>KM</i></div><div><b>'+(l.secs?fmtDur(l.secs):'—')+'</b><i>Time</i></div></div>':'')
+    +'</section>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');
+}
+function whoopSleepSheet(){
+  const sl=whoopSleepData();
+  if(!sl.real){openSheet('<div style="text-align:center;padding:6px 0"><span class="wcaps">SLEEP</span><div class="whero" style="font-size:40px;margin-top:6px;color:var(--sleep)">—</div></div><p style="margin:14px 2px 0;font-size:14px;color:#F5F5F7;line-height:1.45">No sleep recorded for last night. Connect Oura and sync to see your sleep stages here.</p><button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');return;}
+  const perf=sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100);
+  openSheet('<div style="text-align:center;padding:4px 0"><span class="wcaps">SLEEP</span><div class="whero" style="font-size:48px;margin-top:2px;color:var(--sleep)">'+fmtSleep(sl.total)+'</div></div>'
+    +'<div style="text-align:center;margin-top:10px">'+whoopRing(perf,{size:120,stroke:9,color:'var(--sleep)',center:'<div class="whero" style="font-size:30px;color:var(--sleep)">'+perf+'</div><span class="wcaps" style="font-size:9px">PERF</span>'})+'</div>'
+    +'<div style="margin-top:16px">'+whoopHypnogram(sl)+'</div>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>');
+}
+function whoopFabSheet(){
+  openSheet('<h2 style="margin:0 0 2px;letter-spacing:.12em">QUICK LOG</h2>'
+    +'<button class="wcta" style="margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log today’s run</button>'
+    +'<button class="wcta ghost" style="margin-top:10px" data-action="addweight">Log weight</button>'
+    +(stravaConnected()?'<button class="wcta ghost" style="margin-top:10px" data-action="stravasync">Sync Strava</button>':'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:10px">Cancel</button>');
+}
+
 /* ---------------- 10. Router & events ---------------- */
 
 const view=document.getElementById('view');
@@ -4087,6 +4383,10 @@ document.addEventListener('click',ev=>{
   const a=el.dataset.action;
   if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
   else if(a==='setskin'){setSkin(el.dataset.v);}
+  else if(a==='wfab'){haptic(true);whoopFabSheet();}
+  else if(a==='wsleep'){whoopSleepSheet();}
+  else if(a==='wrecov'){whoopRecovSheet();}
+  else if(a==='wstrain'){whoopStrainSheet();}
   else if(a==='status'){
     const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
     if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
