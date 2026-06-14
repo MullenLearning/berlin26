@@ -279,6 +279,12 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 #wrapclose{position:fixed;top:calc(10px + env(safe-area-inset-top));right:14px;z-index:91;background:var(--raised);border:1px solid var(--line);border-radius:99px;padding:9px 16px;font-weight:700;color:var(--ink);min-height:44px}
 #wrapsave{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:91}
 .wdots{font-size:12px;color:var(--sub);text-align:center;padding:10px 0}
+/* Skin switcher — the one always-visible control that flips Whoop / Fitbit / Apple */
+.skinseg{display:flex;gap:3px;background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:3px}
+.skinseg button{flex:1;border:none;background:none;color:var(--txt2);font-size:12px;font-weight:700;padding:7px 4px;border-radius:999px;letter-spacing:.01em;cursor:pointer;transition:background .18s var(--ease-out),color .18s var(--ease-out)}
+.skinseg button.on{background:var(--accent);color:var(--accent-ink)}
+.tabfab{position:absolute;left:50%;bottom:calc(100% - 22px);transform:translateX(-50%);width:52px;height:52px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 6px 18px rgba(0,0,0,.35);cursor:pointer}
+.tabfab svg{width:26px;height:26px}
 @media (prefers-reduced-motion: reduce){
   .fade,.hl,.pop,.deck .card{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
@@ -290,16 +296,7 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 <body>
 <div id="app">
   <main id="view"></main>
-  <nav id="tabbar" aria-label="Sections"><div class="inner">
-    <button data-action="tab" data-tab="today" id="tb-today">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>Today</button>
-    <button data-action="tab" data-tab="train" id="tb-train">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>Training</button>
-    <button data-action="tab" data-tab="nut" id="tb-nut">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>Nutrition</button>
-    <button data-action="tab" data-tab="wt" id="tb-wt">
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>Weight</button>
-  </div></nav>
+  <nav id="tabbar" aria-label="Sections"><div class="inner"></div></nav>
 </div>
 <div id="sheet" hidden></div>
 
@@ -783,7 +780,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'whoop'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -2381,7 +2378,82 @@ function applyTheme(){
   if(m)m.setAttribute('content',light?'#f1f3f6':'#0a0d15');
 }
 mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme();});
-applyTheme(); // before first render — no theme flash
+
+/* ---------------- 4b. Skins (Whoop / Fitbit / Apple Health) ----------------
+   One engine, three switchable front-ends. The active skin is persisted on
+   S.skin and scopes ALL skin CSS via html[data-skin]. Each skin owns its own
+   navigation model + screen set; every skin reuses the same engine selectors
+   above (eff/berlinForecast/stravaSync/ouraSync/nutrition/weight…). */
+const SKINS=['whoop','fitbit','apple'];
+function currentSkin(){return SKINS.indexOf(S.skin)>=0?S.skin:'whoop';}
+function applySkin(){document.documentElement.dataset.skin=currentSkin();}
+function skinReg(){return SKIN_REG[currentSkin()]||SKIN_REG.whoop;}
+function skinTabs(){return skinReg().tabs;}
+function skinDefaultTab(){return skinReg().defaultTab;}
+function skinHasTab(t){return skinTabs().some(x=>x.id===t);}
+function setSkin(v){
+  if(SKINS.indexOf(v)<0||v===currentSkin())return;
+  S.skin=v;save();applySkin();applyTheme();
+  ui.scroll={};                                   // disjoint tab ids → drop stale scroll
+  if(!skinHasTab(ui.tab))ui.tab=skinDefaultTab();
+  haptic(true);
+  render(false);                                  // skip the View Transition on a full skin swap
+}
+/* The nav is rebuilt only when the tab set changes; otherwise we just retag the
+   active button (keeps the original cheap in-place behaviour). A skin may declare
+   a center FAB (skin.fab) which floats over the bar. */
+function renderTabBar(skin){
+  const nav=document.getElementById('tabbar');if(!nav)return;
+  const inner=nav.querySelector('.inner');
+  const sig=currentSkin()+'|'+skin.tabs.map(t=>t.id).join(',')+'|'+(skin.fab?'fab':'');
+  if(nav._sig!==sig){
+    inner.style.gridTemplateColumns='repeat('+skin.tabs.length+',1fr)';
+    let h='';
+    skin.tabs.forEach(t=>{
+      h+='<button data-action="tab" data-tab="'+t.id+'" id="tb-'+t.id+'">'+t.icon+'<span class="tlbl">'+esc(t.label)+'</span></button>';
+    });
+    if(skin.fab)h+='<button class="tabfab" data-action="'+(skin.fab.action||'fab')+'" aria-label="'+esc(skin.fab.label||'Add')+'">'+skin.fab.icon+'</button>';
+    inner.innerHTML=h;
+    nav._sig=sig;
+  }
+  skin.tabs.forEach(t=>{
+    const b=document.getElementById('tb-'+t.id);if(!b)return;
+    const on=ui.tab===t.id;
+    b.classList.toggle('sel',on);
+    if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
+  });
+}
+/* The segmented Whoop/Fitbit/Apple control — lives in each skin's header and in
+   the settings sheet, so the user can flip the whole app's look from anywhere. */
+const SKIN_LABEL={whoop:'Whoop',fitbit:'Fitbit',apple:'Apple'};
+function skinSwitcher(){
+  const cur=currentSkin();
+  return '<div class="skinseg" role="group" aria-label="App style">'+SKINS.map(v=>
+    '<button data-action="setskin" data-v="'+v+'" class="'+(cur===v?'on':'')+'" aria-pressed="'+(cur===v)+'">'+SKIN_LABEL[v]+'</button>').join('')+'</div>';
+}
+/* Tab-bar glyphs (skins may override per tab) */
+const TAB_ICONS={
+  today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>',
+  train:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>',
+  nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
+  wt:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>',
+};
+/* WHOOP currently wraps the original four screens; its full visual pass (own nav,
+   dials, recovery ring) lands in stage 3. Fitbit/Apple point here until built. */
+const WHOOP={
+  defaultTab:'today',
+  tabs:[
+    {id:'today',label:'Today',icon:TAB_ICONS.today},
+    {id:'train',label:'Training',icon:TAB_ICONS.train},
+    {id:'nut',label:'Nutrition',icon:TAB_ICONS.nut},
+    {id:'wt',label:'Weight',icon:TAB_ICONS.wt},
+  ],
+  screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut(),wt:()=>vWeight()},
+};
+const SKIN_REG={whoop:WHOOP,fitbit:WHOOP,apple:WHOOP};
+
+applySkin();
+applyTheme(); // before first render — no theme/skin flash
 
 /* ---------------- 5. UI state ---------------- */
 let rawT=rawTodayIdx();
@@ -3352,6 +3424,8 @@ function openWidgetSheet(){
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="1" aria-label="Move '+esc(d.label)+' down" '+(i===cfg.length-1?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 5 4 5 4-5"/></svg></button>'
       +'</span></div>';
   });
+  const skinRow='<h2 style="margin:18px 0 0">App style</h2>'+skinSwitcher()
+    +'<p class="mini" style="margin:6px 2px 0">Rebuilds the whole app — navigation, layout and look — in Whoop, Fitbit, or Apple Health style.</p>';
   const th=S.theme||'dark';
   const themeRow='<h2 style="margin:18px 0 0">Theme</h2>'
     +'<div class="seg">'+['dark','light','auto'].map(v=>
@@ -3359,6 +3433,7 @@ function openWidgetSheet(){
     +'<p class="mini" style="margin:6px 2px 0">Auto follows your iPhone’s appearance setting.</p>';
   openSheet('<h2 style="margin:0">Edit home screen</h2>'
     +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today.</p>'+rows
+    +skinRow
     +themeRow
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>');
 }
@@ -3397,7 +3472,7 @@ function vToday(){
     widgets+=d.render();
   });
 
-  return '<div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
+  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
     +'<div><h1>'+longDate(todayIdx)+'</h1>'
     +'<div class="sub">Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY')+'</div></div>'
     +'<button class="btn3" data-action="editwidgets" aria-haspopup="dialog" style="margin-top:6px">Edit</button></div>'
@@ -3925,12 +4000,11 @@ function closeSheet(){
 const view=document.getElementById('view');
 function render(anim){ // anim=true only on navigation — entrances must not replay on in-place updates
   const doRender=()=>{
-    ['today','train','nut','wt'].forEach(t=>{
-      const b=document.getElementById('tb-'+t);
-      b.classList.toggle('sel',ui.tab===t);
-      if(ui.tab===t)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
-    });
-    view.innerHTML=ui.tab==='today'?vToday():ui.tab==='train'?vTrain():ui.tab==='nut'?vNut():vWeight();
+    const skin=skinReg();
+    if(!skinHasTab(ui.tab))ui.tab=skin.defaultTab;
+    renderTabBar(skin);
+    const screen=skin.screens[ui.tab]||skin.screens[skin.defaultTab];
+    view.innerHTML=screen();
     if(anim&&!document.startViewTransition&&view.firstElementChild)view.firstElementChild.classList.add('fade');
     fieldDirty=false; // any full render supersedes a pending field re-render
     bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
@@ -4012,6 +4086,7 @@ document.addEventListener('click',ev=>{
   }
   const a=el.dataset.action;
   if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
+  else if(a==='setskin'){setSkin(el.dataset.v);}
   else if(a==='status'){
     const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
     if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
