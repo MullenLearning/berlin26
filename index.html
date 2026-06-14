@@ -691,7 +691,7 @@ function lastPaceFor(zone){ // prefill from the most recent comparable session
 function openLogSheet(i){
   const e=eff(i),l=sessLog(e.id)||{};
   const km0=l.km!=null?l.km:e.km;
-  const pace0=parsePace(l.pace)||lastPaceFor(e.zone)||ZONE_MID_PACE[e.zone]||360;
+  const pace0=parsePace(l.pace)||lastPaceFor(e.zone)||zoneMid(e.zone)||360;
   const status0=l.status||'done';
   const isRest=e.zone==='Rest'&&e.km<=0;
   const isLong=e.zone==='Long'||e.zone==='Marathon';
@@ -744,7 +744,7 @@ function quickLogDone(i){ // swipe right: done at plan distance
 
 /* the payoff frame: one beat of consequence after a log */
 function capturePayoff(e){
-  return {wkA:weekActualKm(e.w),streak:streak(),done:doneCount(),target:e.wk.target};
+  return {wkA:weekActualKm(e.w),streak:streak(),done:doneCount(),target:effWeekTarget(e.w)};
 }
 function payoff(pre,e){
   rerenderKeepScroll();
@@ -779,7 +779,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},locked:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -913,6 +913,19 @@ function sanitizePayload(data){
   out.locked={};
   if(data&&data.locked&&typeof data.locked==='object'){
     for(const k in data.locked){const w=Number(k);if(Number.isInteger(w)&&w>=0&&w<16&&data.locked[k])out.locked[w]=1;}
+  }
+  // living-plan overrides (S.plan) — deltas/factors over the baked plan, never copies. Bounded.
+  out.plan={volWeek:{},paceShift:{}};
+  if(data&&data.plan&&typeof data.plan==='object'){
+    const P=data.plan,o=out.plan,nn=(v,lo,hi)=>{v=+v;return (isFinite(v)&&v>=lo&&v<=hi)?v:null;};
+    let x;
+    if((x=nn(P.raceSecs,10800,18000))!=null)o.raceSecs=Math.round(x);
+    if((x=nn(P.goalWeight,150,210))!=null)o.goalWeight=Math.round(x*10)/10;
+    if((x=nn(P.volPct,0.5,1.3))!=null)o.volPct=Math.round(x*100)/100;
+    if(P.volWeek&&typeof P.volWeek==='object')for(const k in P.volWeek){const w=Number(k),f=nn(P.volWeek[k],0.5,1.3);if(Number.isInteger(w)&&w>=0&&w<16&&f!=null)o.volWeek[w]=Math.round(f*100)/100;}
+    if(P.paceShift&&typeof P.paceShift==='object')for(const z in P.paceShift){const f=nn(P.paceShift[z],-60,60);if(ZONE_MID_PACE[z]!=null&&f!=null)o.paceShift[z]=Math.round(f);}
+    if(P.heatOn===false)o.heatOn=false;
+    if(P.home&&typeof P.home==='object'){const la=nn(P.home.lat,-90,90),lo2=nn(P.home.lon,-180,180);if(la!=null&&lo2!=null)o.home={lat:la,lon:lo2};}
   }
   // ambient Oura measurements (S.health) — every field bounded on the way back in
   out.health={d:{}};
@@ -1878,7 +1891,7 @@ function mountGhost(i,autoplay){
   const hr=l.hrS||[],hv=hr.filter(x=>x>30).slice().sort((a,b)=>a-b);
   const q1=hv.length?hv[Math.floor(hv.length*0.45)]:0,q2=hv.length?hv[Math.floor(hv.length*0.8)]:1e9;
   const hcol=p=>{if(!hr.length||!(q2>q1))return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--accent)':x<q2?'var(--long)':'var(--hard)';};
-  const planSecs=(ZONE_MID_PACE[eff(i).zone]||360)*l.km,R=(l.secs&&planSecs)?l.secs/planSecs:1;
+  const planSecs=(zoneMid(eff(i).zone)||360)*l.km,R=(l.secs&&planSecs)?l.secs/planSecs:1;
   const setAt=(el,frac)=>{const pt=path.getPointAtLength(Math.max(0,Math.min(1,frac))*total);el.setAttribute('cx',pt.x);el.setAttribute('cy',pt.y);};
   const draw=p=>{setAt(you,fracAt(p));you.setAttribute('fill',hcol(p));setAt(plan,Math.min(1,p*R));};
   if(REDUCE.matches){draw(1);return;} // reduced motion: rest at the finish however invoked
@@ -2168,15 +2181,53 @@ function runAdjusted(i,km){
    which travels with it — §2 of the spec: fuelling follows the day type /
    session, not the calendar date), plus any week-rebalance adjustments.
    Protein is always 185 g. Expected plan weight stays attached to the date. */
+/* ---- the living plan: read-seams over the baked constants ----
+   Every seam returns the baked value EXACTLY when S.plan holds no edit, so an
+   empty plan === the original. Edits are deltas/factors in S.plan, never copies. */
+function goalSec(){return (S.plan&&S.plan.raceSecs!=null)?S.plan.raceSecs:12540;} // baked 4:57/km ≈ 3:29
+function goalPaceSec(){return goalSec()/42.195;}
+function goalLabel(){
+  if(!(S.plan&&S.plan.raceSecs!=null))return RACE_GOAL; // untouched → the baked label verbatim
+  const s=goalSec(),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;
+  return h+':'+p2(m)+':'+p2(x)+' · '+fmtPace(Math.round(goalPaceSec()))+'/km';
+}
+function zoneMid(z){ // numeric mid sec/km; null for zones without one (Strides/Rest) — caller falls back
+  const base=ZONE_MID_PACE[z];if(base==null)return null;
+  const shift=(S.plan&&S.plan.paceShift&&S.plan.paceShift[z])||0;
+  if(S.plan&&S.plan.raceSecs!=null)return Math.round(goalPaceSec()+(base-298))+shift; // offset from marathon pace
+  return base+shift; // untouched → baked exactly
+}
+function zoneRange(z){ // the pace RANGE string; baked verbatim when untouched, else recentred on the new mid
+  const base=PACE[z]||'',mid=zoneMid(z);
+  const shifted=!!(S.plan&&(S.plan.raceSecs!=null||(S.plan.paceShift&&S.plan.paceShift[z]!=null)));
+  if(mid==null||!shifted)return base;
+  const m=base.match(/^(\d+:\d\d)[–-](\d+:\d\d)/);
+  if(!m)return fmtPace(mid)+'/km';
+  const lo=parsePace(m[1]),hi=parsePace(m[2]);
+  if(lo==null||hi==null)return fmtPace(mid)+'/km';
+  const half=(hi-lo)/2;
+  return fmtPace(Math.round(mid-half))+'–'+fmtPace(Math.round(mid+half))+'/km';
+}
+function currentWeekIdx(){return Math.floor(clamp(rawTodayIdx(),0,RACE_IDX)/7);}
+function weekFactor(w){ // edits only ever touch FUTURE, unlocked weeks
+  if(w<=currentWeekIdx()||(S.locked&&S.locked[w]))return 1;
+  const p=S.plan||{};
+  return clamp((p.volPct||1)*((p.volWeek&&p.volWeek[w])||1),0.5,1.3);
+}
+function planKmAt(i){return slotAt(i)[1]*weekFactor(Math.floor(i/7));}
+function effWeekTarget(w){return Math.round(WEEKS[w].target*weekFactor(w));}
+function effLong(w){return Math.round(WEEKS[w].long*weekFactor(w)*10)/10;}
+function wtWeekAt(w){return (S.plan&&S.plan.goalWeight!=null)?Math.round(planWtAt(w*7+6)*10)/10:WT[w];}
+
 function eff(i){
   const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
   const wk=WEEKS[w],s=wk.days[op],n=NUTW[w][op];
-  const na=nutAdjusted(i,n),ra=runAdjusted(i,s[1]);
+  const na=nutAdjusted(i,n),ra=runAdjusted(i,planKmAt(i));
   return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,
-    zone:s[0],km:ra.km,planKm:s[1],kmAdj:ra.adj,text:s[2],
+    zone:s[0],km:ra.km,planKm:planKmAt(i),kmAdj:ra.adj,text:s[2],
     type:n[0],kcal:na.kcal,p:185,carbs:na.carbs,fat:n[3],burn:n[4],deficit:na.deficit,
     planKcal:n[1],nutAdj:na.adj,nutEdited:na.edited,
-    planWt:WT[w],id:'w'+(w+1)+'d'+op};
+    planWt:wtWeekAt(w),id:'w'+(w+1)+'d'+op};
 }
 /* the single seam for "what was eaten" — the logged actual if present, else the
    plan target (clearly flagged not-logged so every surface can label it honestly) */
@@ -2203,12 +2254,12 @@ function weekStatus(w){ // w: 0-based
   const rawW=Math.floor(rawTodayIdx()/7);
   if(w===rawW)return ['In progress','p-prog'];
   if(w>rawW)return ['Upcoming','p-up'];
-  const r=weekActualKm(w)/WEEKS[w].target;
+  const r=weekActualKm(w)/effWeekTarget(w);
   if(r>=0.9)return ['Hit','p-hit'];
   if(r>=0.6)return ['Partial','p-partial'];
   return ['Under','p-under'];
 }
-function planWtAt(i){return 210+(189-210)*(i/RACE_IDX);} // linear glide, start → race day
+function planWtAt(i){const g=(S.plan&&S.plan.goalWeight!=null)?S.plan.goalWeight:189;return 210+(g-210)*(i/RACE_IDX);} // linear glide, start → goal weight
 function latestWeight(){return S.weights.length?S.weights[S.weights.length-1]:null;}
 function trendWeight(){ // trailing 7-day mean — smooths the glycogen/water swings of a carb-periodised cut
   const t=clamp(rawTodayIdx(),0,RACE_IDX);
@@ -2305,9 +2356,9 @@ function headline(e){
   return (names[e.zone]||e.zone)+' · '+fmtKm(e.km)+' km';
 }
 function paceLine(e){
-  if(isRace(e))return 'Goal '+RACE_GOAL;
+  if(isRace(e))return 'Goal '+goalLabel();
   if(e.zone==='Rest')return '';
-  return 'Target pace '+(PACE[e.zone]||'');
+  return 'Target pace '+(zoneRange(e.zone)||'');
 }
 function rebalLine(e){
   if(!e.kmAdj)return '';
@@ -2337,7 +2388,7 @@ function volumeChart(){
   const rawW=Math.floor(rawTodayIdx()/7);
   for(let w=0;w<16;w++){
     const x=L+iw*w+(iw-bw)/2;
-    const ph=ih*WEEKS[w].target/max;
+    const ph=ih*effWeekTarget(w)/max;
     const act=weekActualKm(w);
     const ah=ih*Math.min(act,max)/max;
     g+='<rect x="'+x+'" y="'+(T+ih-ph)+'" width="'+bw+'" height="'+ph+'" rx="3" fill="var(--track)"/>';
@@ -2543,7 +2594,7 @@ function wMorning(){ // first open of the day: one interaction, then it folds aw
 
 function wWeek(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
-  const wTarget=e.wk.target,wActual=weekActualKm(e.w),sched=scheduledSoFar(e.w,e.pos-(l.status?0:1));
+  const wTarget=effWeekTarget(e.w),wActual=weekActualKm(e.w),sched=scheduledSoFar(e.w,e.pos-(l.status?0:1));
   const onTrack=wActual>=sched*0.9;
   const pct=Math.min(1,wActual/wTarget);
   return '<section class="card"><div class="spread"><h2>Week '+(e.w+1)+' · '+e.wk.phase+'</h2>'
@@ -2613,7 +2664,7 @@ function wWeight(){
 
 function wRace(){
   const days2race=RACE_IDX-todayIdx;
-  return '<section class="card"><div class="spread"><h2>Berlin</h2><span class="chip neutral">'+RACE_GOAL+'</span></div>'
+  return '<section class="card"><div class="spread"><h2>Berlin</h2><span class="chip neutral">'+goalLabel()+'</span></div>'
     +'<div class="row" style="gap:18px;align-items:baseline"><span class="hero num">'+days2race+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep</span></div>'
     +'</section>';
 }
@@ -2961,7 +3012,7 @@ function bindNutBars(){
 
 /* ---------------- Week wrapped: the block is the story, this is its chapter ---------------- */
 function weekStats(w){
-  const tgt=WEEKS[w].target,act=weekActualKm(w);
+  const tgt=effWeekTarget(w),act=weekActualKm(w);
   let bigKm=0,bigName='',done=0,fuel=null;
   for(let d=0;d<7;d++){
     const e=eff(w*7+d),l=sessLog(e.id);
@@ -3219,16 +3270,16 @@ function vTrain(){
     const k=WEEKS[j],[lbl,cls]=weekStatus(j),act=weekActualKm(j);
     rows+='<tr data-action="selweek" data-w="'+j+'" tabindex="0" style="cursor:pointer'+(j===w?';background:var(--bg)':'')+'">'
       +'<td><b>'+k.n+'</b></td><td>'+k.phase+'</td><td class="num">'+shortDate(j*7).slice(4)+'</td>'
-      +'<td class="num right">'+fmtKm(k.target)+'</td><td class="num right">'+(act>0?fmtKm(act):'–')+'</td>'
-      +'<td class="num right">'+fmtKm(k.long)+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
+      +'<td class="num right">'+fmtKm(effWeekTarget(j))+'</td><td class="num right">'+(act>0?fmtKm(act):'–')+'</td>'
+      +'<td class="num right">'+fmtKm(effLong(j))+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
 
   return '<div><h1>Training</h1>'
-    +'<div class="sub">Goal '+RACE_GOAL+' · peak 85 km (W11)</div>'
+    +'<div class="sub">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)</div>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
-    +'<div class="sub" style="margin-top:4px">w/c '+shortDate(w*7).slice(4)+' · target '+fmtKm(wk.target)+' km · long '+fmtKm(wk.long)+' km</div>'
+    +'<div class="sub" style="margin-top:4px">w/c '+shortDate(w*7).slice(4)+' · target '+fmtKm(effWeekTarget(w))+' km · long '+fmtKm(effLong(w))+' km</div>'
     +(function(){ // work done vs work absorbed — the gap is the honest overtraining signal
       if(!ouraConnected())return '';
       let done=0,abs2=0;
