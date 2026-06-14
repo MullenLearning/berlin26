@@ -2473,7 +2473,7 @@ function wSession(){
     return '<section class="card">'
       +'<div class="row">'+zoneChip(e)+movedChip(e)+'</div>'
       +'<div class="big" style="margin-top:8px">'+headline(e)+'</div>'
-      +'<p class="detail">'+esc(e.text)+'</p>'
+      +(e.text!==headline(e)?'<p class="detail">'+esc(e.text)+'</p>':'')
       +'</section>';
   return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
     +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
@@ -2582,7 +2582,6 @@ function wFuel(){
     +'<button class="btn3" data-action="nutadjust" data-i="'+todayIdx+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
     +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal · −'+fmtKcal(e.deficit)+' deficit</span></div>'
     +(nutAdjChip(e)?'<div class="row" style="margin-top:6px">'+nutAdjChip(e)+'</div>':'')
-    +'<p class="mini" style="margin:12px 2px 0">plan burn ≈'+fmtKcal(e.burn)+' kcal · macros live in the full plan</p>'
     +tomorrow
     +'</section>';
 }
@@ -2614,11 +2613,8 @@ function wWeight(){
 
 function wRace(){
   const days2race=RACE_IDX-todayIdx;
-  let nextLong='';
-  for(let i=todayIdx;i<=RACE_IDX;i++){const e=eff(i);if((e.zone==='Long'||e.zone==='Marathon')&&i>todayIdx){nextLong=headline(e)+' · '+shortDate(i);break;}}
   return '<section class="card"><div class="spread"><h2>Berlin</h2><span class="chip neutral">'+RACE_GOAL+'</span></div>'
     +'<div class="row" style="gap:18px;align-items:baseline"><span class="hero num">'+days2race+'</span><span class="sub" style="font-weight:600">days to go · Sun 27 Sep</span></div>'
-    +(nextLong?'<p class="note" style="margin:10px 0 0">Next key run: '+esc(nextLong)+'</p>':'')
     +'</section>';
 }
 
@@ -3267,17 +3263,17 @@ function vTrain(){
    reads in one of three states: logged · estimate (past/today, not logged) · future. */
 function nutDayCard(i){
   const e=eff(i),t=clamp(rawT,0,RACE_IDX),past=i<=t,ea=eaten(i),b=dayBurn(i),real=ateLogged(i),acc=!!ea.accepted;
-  // ROW1: date + Today + the demoted "edit plan" link (future/today only — you can't re-plan the past)
+  // ROW1: date + the demoted "edit plan" link (future/today only — you can't re-plan the past)
   const planLink=i>=rawT?'<button class="btn3" data-action="nutadjust" data-i="'+i+'" aria-haspopup="dialog" style="padding:4px 8px;color:var(--sub)">Edit plan target</button>':'';
-  let head='<div class="spread"><div class="row"><b>'+longDate(i)+'</b>'+(i===rawT?'<span class="chip c-blue">Today</span>':'')+typeChip(e.type)+'</div>'+planLink+'</div>'
-    +(movedChip(e)||nutAdjChip(e)?'<div class="row" style="margin-top:4px">'+movedChip(e)+nutAdjChip(e)+'</div>':'');
+  let head='<div class="spread"><b>'+longDate(i)+'</b>'+planLink+'</div>'
+    +(movedChip(e)?'<div class="row" style="margin-top:4px">'+movedChip(e)+'</div>':'');
   // ROW2: the hero number — what was eaten (logged) / plan (estimate or locked) / planned (future)
   let hero,logBtn='';
   if(real){
     const over=ea.kcal-e.kcal;
     hero='<div class="row" style="align-items:baseline;gap:6px;margin-top:8px"><span class="hero num">'+fmtKcal(ea.kcal)+'</span>'
       +'<span class="sub" style="font-weight:600">kcal eaten</span><span class="chip c-blue" style="margin-left:auto">Ate</span></div>'
-      +'<p class="mini" style="margin:4px 2px 0">plan was '+fmtKcal(e.kcal)+(Math.abs(over)>=25?' · '+(over>0?'+':'−')+fmtKcal(Math.abs(over))+(over>0?' over':' under'):' · on plan')+'</p>';
+      +'<p class="mini" style="margin:4px 2px 0">plan '+fmtKcal(e.kcal)+(Math.abs(over)>=25?' · '+(over>0?'+':'−')+fmtKcal(Math.abs(over))+(over>0?' over':' under'):' · on plan')+'</p>';
   }else if(past){
     hero='<div class="row" style="align-items:baseline;gap:6px;margin-top:8px"><span class="hero num" style="color:var(--sub)">'+fmtKcal(e.kcal)+'</span>'
       +'<span class="sub" style="font-weight:600">kcal · '+(acc?'locked at plan':'plan estimate')+'</span></div>';
@@ -3301,8 +3297,8 @@ function nutDayCard(i){
     const def=b.burned-ea.kcal,onp=Math.abs(def-e.deficit)<=200;
     const tag=real?'':' est';
     verdict='<div class="row" style="margin-top:10px"><span class="chip neutral">burned '+fmtKcal(b.burned)+'</span>'
-      +'<span class="chip '+(onp?'c-easy':(def>e.deficit?'c-easy':'c-long'))+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+tag+'</span></div>'
-      +'<p class="mini" style="margin:6px 2px 0">plan −'+fmtKcal(e.deficit)+' · '+(Math.abs(def-e.deficit)<25?'right on plan':(def>e.deficit?fmtKcal(def-e.deficit)+' deeper':fmtKcal(e.deficit-def)+' shy'))+'</p>';
+      +'<span class="chip '+(onp?'c-easy':(def>e.deficit?'c-easy':'c-long'))+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+' deficit'+tag+'</span></div>'
+      +'<p class="mini" style="margin:6px 2px 0">plan −'+fmtKcal(e.deficit)+(Math.abs(def-e.deficit)<25?' · on plan':'')+'</p>';
     // the "calories left" coach line, before logging, today/past
     if(!real){
       const eatToPlan=b.burned-e.deficit;
@@ -3378,42 +3374,23 @@ function cutCard(){
     :ratio>=0.9?'<span class="chip c-easy">on track</span>'
     :ratio>=0.6?'<span class="chip c-long">behind</span>'
     :'<span class="chip c-hard">well behind</span>';
-  const wk=weekLedger(Math.floor(t/7));
-  const rwd=raceWeightDate();
-  // the plain lead: where the cut is heading
-  let lead;
-  if(rwd&&rwd.beforeRace<0){ // projection lands after race day — the honest worst case, not "right at the line"
-    const wAfter=Math.max(1,Math.round(-rwd.beforeRace/7));
-    lead='At this pace 189 lb lands <b>'+wAfter+' week'+(wAfter===1?'':'s')+' after Berlin</b> — tighten the cut to make race weight.';
-  }else if(rwd){
-    const wks=Math.round(rwd.beforeRace/7);
-    const tail=rwd.beforeRace<=0?' — right at the line.'
-      :rwd.beforeRace<7?' — '+rwd.beforeRace+' day'+(rwd.beforeRace===1?'':'s')+' before Berlin.'
-      :' — '+wks+' week'+(wks===1?'':'s')+' before Berlin.';
-    lead='On pace to reach 189 lb around <b>'+isoShort(isoAt(clamp(rwd.idx,0,RACE_IDX)))+'</b>'+tail;
-  }else lead='Lose '+(cur!=null?fmtLb(cur-189):'~21')+' lb to race weight. Log more days and a finish date appears here.';
-  // scale reconcile
-  let reconcile='';
+  // the scale is the reality check — show it once, as confirmation or (if it diverges) the tie-breaker
+  let scaleLine='';
   if(scale!=null){
-    const close=Math.abs(scale-lb)<=1.5;
-    reconcile='<p class="note" style="margin:8px 0 0">Banked says '+fmtLb(Math.abs(lb))+' lb, scale says '+fmtLb(Math.abs(scale))+' lb — '
-      +(close?'close, trust the scale.':'a gap; the scale is the tie-breaker.')+'</p>';
+    scaleLine=Math.abs(scale-lb)<=1.5
+      ?'<p class="note" style="margin:8px 0 0">Scale agrees — '+fmtLb(Math.abs(scale))+' lb '+(scale>=0?'down':'up')+' on the trend.</p>'
+      :'<p class="note" style="margin:8px 0 0">Scale says '+fmtLb(Math.abs(scale))+' lb '+(scale>=0?'down':'up')+' — trust the scale over the banked figure.</p>';
   }
+  // honesty: only when there's something to flag (estimates/locked); a fully-logged block needs no caveat
   const hon=cutHonesty();
-  const honTxt=(hon.est===0&&hon.acc===0)
-    ?'Since 8 Jun · every counted day logged — this is real.'
-    :hon.log===0&&hon.acc===0?'Since 8 Jun · '+hon.total+' days counted, all assume plan — log a day to make it real.'
-      :'Since 8 Jun · '+hon.log+' of '+hon.total+' days logged'+(hon.acc?', '+hon.acc+' locked at plan':'')+(hon.est?', '+hon.est+' assume plan':'')+' · scale is the tie-breaker.';
+  const honTxt=(hon.log===0&&hon.acc===0)?'All '+hon.total+' counted days assume plan — log a day to make it real.'
+    :(hon.est>0||hon.acc>0)?hon.log+' of '+hon.total+' days logged'+(hon.acc?', '+hon.acc+' locked at plan':'')+(hon.est?', '+hon.est+' assume plan':'')+'.'
+    :'';
   return '<section class="card"><div class="spread"><h2>The cut</h2>'+chip+'</div>'
     +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+(total>=0?'−':'+')+fmtKcal(Math.abs(total))+'</span>'
     +'<span class="sub" style="font-weight:600">kcal banked ≈ '+(lb>=0?'':'+')+fmtLb(Math.abs(lb))+' lb lost</span></div>'
-    +'<p class="note" style="margin:8px 0 0">'+lead+'</p>'
-    +'<div class="row" style="gap:18px;margin-top:10px">'
-    +'<div><span class="mini">This week</span><div class="big num">'+(wk.banked>=0?'−':'+')+fmtKcal(Math.abs(wk.banked))+'</div></div>'
-    +(scale!=null?'<div><span class="mini">Scale says</span><div class="big num">'+(scale>=0?'−':'+')+fmtLb(Math.abs(scale))+' lb</div></div>':'')
-    +'</div>'
-    +reconcile
-    +'<p class="mini" style="margin:10px 2px 0">'+honTxt+'</p>'
+    +scaleLine
+    +(honTxt?'<p class="mini" style="margin:10px 2px 0">'+honTxt+'</p>':'')
     +'</section>';
 }
 
@@ -3479,12 +3456,12 @@ function weekStrap(w){
   const aheadWord=lg.ahead>=250?'ahead':lg.ahead<=-250?'behind':'on track';
   const chipCls=lg.ahead<=-250?'c-hard':'c-easy';
   const behindRecoverable=lg.ahead<=-250&&lg.futureN&&lg.achievable;
-  const tail=lg.ahead>=250?'eat normally':lg.ahead<=-250?(lg.achievable?'tighten the rest of the week':'this week’s plan is out of reach — reset next week'):'steady as you go';
   const est=lg.estN>0?' ('+lg.estN+' est)':'';
+  // the chip carries ahead/behind; the line states the banked figure (+ on-pace while days remain). No restated advice.
   let s='<div class="spread" style="margin:8px 2px 0;align-items:center"><b>'+(isCur?'This week':'Week '+(w+1))+'</b>'
     +'<span class="chip '+chipCls+'">'+(lg.ahead>=0?'+':'−')+fmtKcal(Math.abs(lg.ahead))+' '+aheadWord+'</span></div>'
-    +'<p class="note" style="margin:4px 2px 0">Week '+(w+1)+': '+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+' banked'+est
-    +(isCur&&lg.futureN?', on pace for −'+fmtKcal(lg.onPace):'')+' — '+tail+'.</p>';
+    +'<p class="note" style="margin:4px 2px 0">'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+' banked'+est
+    +(isCur&&lg.futureN?' · on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
   if(behindRecoverable&&lg.eatTarget!=null&&lg.eatTarget>=800)
     s+='<p class="mini" style="margin:4px 2px 0">Eat ≤'+fmtKcal(lg.eatTarget)+'/day the rest of the week to still land on −'+fmtKcal(lg.weekPlanTot)+'.</p>';
   if(Math.abs(lg.ahead)>500&&lg.futureN&&lg.achievable)
@@ -3500,7 +3477,8 @@ function weekStrap(w){
 function cutPayingCard(){
   if(!ouraConnected())return '';
   const cp=cutPaying();
-  if(!cp.verdict&&!cp.lost)return '';
+  // nothing to say until there's a verdict or a meaningful weight change — don't show an empty "learning" card
+  if(!cp.verdict&&cp.lost<2)return '';
   const word=cp.verdict?cp.verdict.split(' — ')[0]:null;
   const reason=cp.verdict?cp.verdict.split(' — ')[1]:null;
   const todo=word==='paying'?'Hold the cut — it’s working.':word==='costing'?'Ease up: add ~150 kcal on session days.':word==='holding'?'Keep going, recheck next week.':'';
@@ -3519,10 +3497,9 @@ function cutPayingCard(){
   }
   return '<section class="card"><div class="spread"><h2>Is the cut paying?</h2>'
     +(word?'<span class="chip '+cp.cls+'">'+word+'</span>':'<span class="chip neutral">learning</span>')+'</div>'
-    +(reason?'<p class="note" style="margin:8px 0 0;font-weight:600">'+reason.charAt(0).toUpperCase()+reason.slice(1)+'.</p>'
-      :'<p class="mini" style="margin:8px 2px 0">First week-on-week comparison lands once two weeks hold HR runs.</p>')
+    +(reason?'<p class="note" style="margin:8px 0 0;font-weight:600">'+reason.charAt(0).toUpperCase()+reason.slice(1)+'.</p>':'')
     +(todo?'<p class="mini" style="margin:6px 2px 0">'+todo+'</p>':'')
-    +(cp.lost>0.5?'<p class="mini" style="margin:6px 2px 0">Down '+fmtLb(cp.lost)+' lb ≈ '+cp.raceSecs+' s faster at Berlin (estimate).</p>':'')
+    +(cp.lost>=2?'<p class="mini" style="margin:6px 2px 0">Down '+fmtLb(cp.lost)+' lb ≈ '+cp.raceSecs+' s faster at Berlin (estimate).</p>':'')
     +(cp.verdict?'<button class="btn3" data-action="cutweeks" aria-expanded="'+(ui.showCutWeeks?'true':'false')+'" style="margin-top:8px;color:var(--sub)">'+(ui.showCutWeeks?'hide the weekly numbers':'show the weekly numbers ›')+'</button>':'')
     +table
     +'</section>';
@@ -3564,7 +3541,6 @@ function vNut(){
   chips+='</div>';
 
   return '<div><h1>Nutrition</h1>'
-    +'<div class="sub">Carb-periodised cut · 210 → ~189 lb by race day</div>'
     +cutCard()
     +cutPayingCard()
     +'<div style="margin-top:14px">'+chips+'</div>'
@@ -3572,7 +3548,7 @@ function vNut(){
     +strip
     +nutDayCard(i)
     +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
-    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> logged · <span style="color:var(--accent);opacity:0.4">—</span> incl. estimate · <span style="color:var(--sub)">┄</span> plan · gridlines every 5 lb.</p></section>'
+    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
     +'<button class="btn2" style="width:100%;margin-top:14px" data-action="planopen" aria-haspopup="dialog">Full plan &amp; daily-calorie chart</button>'
     +'</div>';
 }
