@@ -114,6 +114,89 @@ html[data-skin="whoop"] .skinseg{background:#16171C;border-color:var(--line)}
 .wcoach{display:flex;gap:11px;align-items:flex-start}
 .wzbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--track)}
 .wzbar>span{display:block;height:100%}
+
+/* ======================================================================
+   SKIN: FITBIT (Google Health era) — light, teal, Material-3 rounded tiles.
+   Per-metric accent lives only on icon/ring/trend; card bodies stay white.
+   ====================================================================== */
+html[data-skin="fitbit"]{
+  color-scheme:light;
+  --bg:#F4F6F8; --card:#FFFFFF; --raised:#EEF1F3; --inset:#EEF1F3;
+  --ink:#1A1C1E; --txt2:#5F6368; --sub:#9AA0A6;
+  --line:#E3E6E8; --line-soft:#EEF1F3; --bord:#C9CDD2; --grid:#E3E6E8; --tick:#C9CDD2;
+  --accent:#00B0B9; --accent-ink:#FFFFFF; --accent-press:#008C95; --accent-tint:#E0F5F6; --navy:#002A3A; --signal:#E8710A;
+  --track:#EEF1F3; --shadow:0 1px 2px rgba(0,0,0,.05);
+  --m-steps:#FF7A3D; --m-azm:#E0218A; --m-hr:#F0354B; --m-sleep:#7B61FF; --m-ready:#34C759; --m-cal:#FFB300;
+  --sleep-awake:#FF8A65; --sleep-rem:#4FC3DC; --sleep-light:#4F8EF7; --sleep-deep:#3A3A8E;
+  --rec:#00B0B9; --rec-bg:#E0F5F6; --easy:#1E8E3E; --easy-bg:#E6F4EA; --long:#E8710A; --long-bg:#FCEFD8;
+  --hard:#D93025; --hard-bg:#FCE8E6; --rest:#5F6368; --rest-bg:#EEF1F3; --blue:#1A73E8; --blue-bg:#E8F0FE;
+  --statusbar:#F4F6F8;
+  --disp:'Google Sans','Product Sans','Roboto Flex',Roboto,'Helvetica Neue',Arial,sans-serif;
+  font-family:var(--disp);
+}
+html[data-skin="fitbit"] .card{border-radius:24px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.05);background:#fff;padding:18px;margin-top:14px}
+html[data-skin="fitbit"] h1{font-family:var(--disp);font-weight:700;text-transform:none;letter-spacing:-.4px}
+html[data-skin="fitbit"] h2{text-transform:none;letter-spacing:0;font-size:17px;font-weight:600;color:var(--ink)}
+html[data-skin="fitbit"] #tabbar{background:#fff;border-top:1px solid var(--line);-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-skin="fitbit"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
+html[data-skin="fitbit"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500}
+html[data-skin="fitbit"] #tabbar button{color:var(--txt2);font-weight:500}
+html[data-skin="fitbit"] #tabbar button.sel{color:var(--accent)}
+html[data-skin="fitbit"] #tabbar button.sel::after{display:none}
+html[data-skin="fitbit"] #tabbar button>svg,html[data-skin="fitbit"] #tabbar button .tlbl{position:relative;z-index:1}
+html[data-skin="fitbit"] #tabbar button.sel::before{content:"";position:absolute;top:3px;left:50%;transform:translateX(-50%);width:58px;height:30px;border-radius:16px;background:var(--accent-tint);z-index:0}
+html[data-skin="fitbit"] .skinseg{background:#fff;border:1px solid var(--line)}
+html[data-skin="fitbit"] .skinseg button{color:var(--txt2)}
+html[data-skin="fitbit"] .skinseg button.on{background:var(--accent);color:#fff}
+/* Fitbit components */
+.fbar{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 12px}
+.fbar h1{margin:0;font-size:27px}
+.fbar .fsub{font-size:13px;color:var(--txt2);margin-top:2px;font-weight:500}
+.favatar{width:40px;height:40px;border-radius:50%;background:var(--accent-tint);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent-press);font-size:16px;border:none;cursor:pointer;flex:none}
+.fchips{display:flex;gap:10px;margin-bottom:2px}
+.fchip{flex:1;min-width:0;background:#fff;border-radius:18px;padding:12px 6px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.fchip .fci{width:22px;height:22px;margin:0 auto 5px;display:flex;align-items:center;justify-content:center}
+.fchip b{display:block;font-size:20px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.fchip span{display:block;font-size:11px;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ftile-h{display:flex;align-items:center;gap:12px}
+.ftile-h h3{margin:0;font-size:17px;font-weight:600;color:var(--ink);flex:1}
+.firing{position:relative;flex:none}
+.firing>div{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.fbig{font-size:44px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.02}
+.funit{font-size:14px;color:var(--txt2);font-weight:500}
+.finsight{font-size:14px;color:var(--txt2);line-height:1.45;margin:13px 0 0}
+.finsight .spk{color:var(--accent);font-weight:700}
+.ftrend{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;border-radius:99px;padding:3px 10px;flex:none}
+.ftrend.up{background:rgba(30,142,62,.12);color:#1E8E3E}
+.ftrend.down{background:rgba(217,48,37,.12);color:#D93025}
+.ftrend.flat{background:var(--raised);color:var(--txt2)}
+.fdonut{position:relative;display:inline-flex}
+.fdonut>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.fstages{display:flex;height:32px;border-radius:8px;overflow:hidden;gap:2px;margin-top:12px}
+.fstages>span{display:block;border-radius:3px}
+.flegend{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
+.flegend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)}
+.flegend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+.fcta{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--accent);color:#fff;border:none;border-radius:99px;padding:13px 22px;font-weight:600;font-size:15px;cursor:pointer;font-family:var(--disp)}
+.fcta.tonal{background:var(--accent-tint);color:var(--accent-press)}
+.fmacro{display:flex;gap:8px;margin-top:12px}
+.fmacro .mb{flex:1}
+.fmacro .mb .bar{height:7px;border-radius:99px;background:var(--track);overflow:hidden}
+.fmacro .mb .bar i{display:block;height:100%;border-radius:99px}
+.fmacro .mb .lbl{font-size:11px;color:var(--txt2);margin-top:5px;text-align:center}
+.fseg{display:inline-flex;background:var(--raised);border-radius:99px;padding:3px;gap:2px}
+.fseg button{border:none;background:none;color:var(--txt2);font-size:13px;font-weight:600;padding:6px 14px;border-radius:99px;cursor:pointer}
+.fseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.fnavy{background:var(--navy);color:#fff;border-radius:24px;padding:20px;margin-top:14px}
+.fnavy h3,.fnavy .fbig{color:#fff}
+.fnavy .funit{color:rgba(255,255,255,.7)}
+.flist{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden;margin-top:14px}
+.flist .lrow{display:flex;align-items:center;gap:13px;padding:15px 18px;border-bottom:1px solid var(--line);width:100%;text-align:left;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer}
+.flist .lrow:last-child{border-bottom:none}
+.flist .lrow .li{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
+.flist .lrow .lt{flex:1;font-weight:600;color:var(--ink);font-size:15px}
+.flist .lrow .lv{color:var(--txt2);font-size:15px;font-variant-numeric:tabular-nums}
+.fchev{color:var(--bord)}
 /* opaque strip behind the iOS status bar (height 0 in regular browsers) */
 body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top);background:var(--statusbar);z-index:60}
 *{box-sizing:border-box}
@@ -2528,7 +2611,22 @@ const WHOOP={
   ],
   screens:{overview:()=>whoopOverview(),coaching:()=>whoopCoaching(),community:()=>whoopCommunity(),stats:()=>whoopStats()},
 };
-const SKIN_REG={whoop:WHOOP,fitbit:WHOOP,apple:WHOOP};
+/* FITBIT: light, 3 bottom tabs, no FAB. */
+const FBI={
+  today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/><circle cx="12" cy="14.5" r="1.6" fill="currentColor" stroke="none"/></svg>',
+  coach:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.8-6.1A7.5 7.5 0 1 1 21 11.5Z"/><path d="m12 8 1 2.4 2.4.9-2.4 1L12 15l-1-2.7-2.4-1 2.4-.9Z" fill="currentColor" stroke="none"/></svg>',
+  you:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
+};
+const FITBIT={
+  defaultTab:'today',
+  tabs:[
+    {id:'today',label:'Today',icon:FBI.today},
+    {id:'coach',label:'Coach',icon:FBI.coach},
+    {id:'you',label:'You',icon:FBI.you},
+  ],
+  screens:{today:()=>fitToday(),coach:()=>fitCoach(),you:()=>fitYou()},
+};
+const SKIN_REG={whoop:WHOOP,fitbit:FITBIT,apple:WHOOP};
 
 applySkin();
 applyTheme(); // before first render — no theme/skin flash
@@ -4289,6 +4387,153 @@ function whoopFabSheet(){
     +'<button class="wcta ghost" style="margin-top:10px" data-action="addweight">Log weight</button>'
     +(stravaConnected()?'<button class="wcta ghost" style="margin-top:10px" data-action="stravasync">Sync Strava</button>':'')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:10px">Cancel</button>');
+}
+
+/* ======================================================================
+   FITBIT (Google Health) skin — light, teal, rounded Material tiles.
+   ====================================================================== */
+const FIC={
+  run:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="5" r="1.7" fill="currentColor" stroke="none"/><path d="M13.5 8.5 11 10l-3 1.5"/><path d="m13.5 8.5 1.7 3.2L18 13"/><path d="m11 10 .8 4-2.3 4"/><path d="m11.8 14 2.7 1 .8 3.5"/></svg>',
+  moon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M21 12.9A8.5 8.5 0 1 1 11.1 3 6.7 6.7 0 0 0 21 12.9Z"/></svg>',
+  ready:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.4 12 2.4 2.4 4.8-5"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3c1.1 3 4.3 4.6 4.3 8.2A4.3 4.3 0 0 1 12 15.5a4.3 4.3 0 0 1-4.3-4.3c0-1.6.9-2.8 1.8-3.9C10.4 6 11.3 4.6 12 3Z" opacity=".25"/><path d="M12 21a5 5 0 0 0 5-5c0-3.8-3.2-5.5-4.3-8.6-.8 1.8-1.9 2.9-2.9 4.1-1 1.2-1.8 2.3-1.8 4.5a5 5 0 0 0 4 5Z"/></svg>',
+  bolt:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M13 2 4.5 13.2c-.3.4 0 1 .5 1H10l-1 7c-.1.7.8 1.1 1.2.5L19 11c.3-.4 0-1-.5-1H13l1-7.5c.1-.7-.6-1.1-1-.5Z"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 20s-7-4.6-9-9.2C1.6 7.3 3.6 4.5 6.6 4.5c1.9 0 3.1 1 4.4 2.6 1.3-1.6 2.5-2.6 4.4-2.6 3 0 5 2.8 3.6 6.3C19 15.4 12 20 12 20Z"/></svg>',
+  scale:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 2-2.2"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 20h6M12 13v3"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
+};
+function fitRing(pct,color,opts){
+  opts=opts||{};
+  const size=opts.size||52,stroke=opts.stroke||6,r=(size-stroke)/2-1,cx=size/2,cy=size/2,C=2*Math.PI*r;
+  const has=pct!=null,p=has?clamp(pct,0,100)/100:0,fill=C*p;
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate(-90deg)">'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+stroke+'"/>'
+    +(has?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'"/>':'')
+    +'</svg>';
+}
+function fitIconRing(icon,pct,color,size){
+  size=size||54;
+  return '<div class="firing" style="width:'+size+'px;height:'+size+'px">'+fitRing(pct,color,{size:size,stroke:5})+'<div style="color:'+color+'">'+icon+'</div></div>';
+}
+function fitDonut(pct,color,center,size){
+  size=size||128;
+  return '<div class="fdonut" style="width:'+size+'px;height:'+size+'px">'+fitRing(pct,color,{size:size,stroke:13})+'<div>'+center+'</div></div>';
+}
+function fitStages(sl){
+  const segs=[['Deep',sl.deep,'var(--sleep-deep)'],['Light',sl.light,'var(--sleep-light)'],['REM',sl.rem,'var(--sleep-rem)'],['Awake',sl.awake,'var(--sleep-awake)']];
+  const tot=segs.reduce((s,x)=>s+x[1],0)||1;let bar='',leg='';
+  segs.forEach(s=>{bar+='<span style="flex:'+Math.max(s[1],tot*0.01)+';background:'+s[2]+'"></span>';
+    leg+='<span><i style="background:'+s[2]+'"></i>'+s[0]+'</span>';});
+  return '<div class="fstages">'+bar+'</div><div class="flegend">'+leg+'</div>';
+}
+function fitFocusChip(icon,color,value,label){
+  return '<div class="fchip"><div class="fci" style="color:'+color+'">'+icon+'</div><b>'+value+'</b><span>'+label+'</span></div>';
+}
+function fitLastRun(){
+  for(let i=clamp(rawT,0,RACE_IDX);i>=0;i--){const e=eff(i),l=sessLog(e.id);if(l&&(l.status==='done'||l.status==='partial')&&l.km>0)return {i:i,e:e,l:l};}
+  return null;
+}
+function fitBar(){
+  const hr=new Date().getHours(),g=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
+  return '<div class="fbar"><div><h1>'+g+'</h1><div class="fsub">'+longDate(todayIdx)+' · '+(RACE_IDX-rawT>0?(RACE_IDX-rawT)+' days to Berlin':'Race day')+'</div></div>'
+    +'<button class="favatar" data-action="editwidgets" aria-label="Profile and settings">L</button></div>';
+}
+function fitToday(){
+  const e=eff(todayIdx),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx);
+  const isRest=e.zone==='Rest'&&e.km<=0;
+  const lr=fitLastRun();
+  const sleepPct=sl.real?(sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100)):null;
+  // focus chips
+  const chips='<div class="fchips">'
+    +fitFocusChip(FIC.run,'var(--accent)',isRest?'Rest':fmtKm(e.km)+'k','Today')
+    +fitFocusChip(FIC.ready,'var(--m-ready)',rd.pct!=null?rd.pct:'—','Readiness')
+    +fitFocusChip(FIC.moon,'var(--m-sleep)',sleepPct!=null?sleepPct:'—','Sleep')
+    +fitFocusChip(FIC.flame,'var(--m-cal)',fmtKcal(e.kcal),'Fuel kcal')
+    +'</div>';
+  // today session tile
+  const fuel='<span class="spk">✦</span> Fuel ~'+fmtKcal(e.kcal)+' kcal · '+e.carbs+'g carbs for '+(isRest?'a rest day':esc(e.zone.toLowerCase())+' effort');
+  const sessionTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.run,isRest?0:whoopStrainOf(e)/21*100,'var(--accent)')
+    +'<h3>'+(isRest?'Rest day':'Today’s session')+'</h3>'
+    +(isRest?'<span class="ftrend flat">recover</span>':'<span class="ftrend up">'+esc(e.zone)+'</span>')+'</div>'
+    +'<div style="margin-top:8px"><span class="fbig">'+(isRest?'Rest':fmtKm(e.km))+'</span>'+(isRest?'':'<span class="funit"> km · '+(paceLine(e)||'easy')+'</span>')+'</div>'
+    +'<p class="finsight">'+fuel+'</p>'
+    +(isRest?'':'<button class="fcta" style="margin-top:14px;width:100%" data-action="logsheet" data-i="'+todayIdx+'">'+(sessLog(e.id)&&sessLog(e.id).status?'Edit run':'Start workout')+'</button>')
+    +'</section>';
+  // readiness tile
+  const rv=rd.pct==null?'Connect Oura for a daily readiness score.':rd.pct>=67?'You’re recovered — good to push today’s plan.':rd.pct>=34?'Moderate — keep easy days easy.':'Low — consider easing or resting today.';
+  const readyTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.ready,rd.pct,'var(--m-ready)')
+    +'<h3>Daily readiness</h3><span class="ftrend '+(rd.pct!=null&&rd.pct>=67?'up':'flat')+'">'+(rd.real?'measured':'estimate')+'</span></div>'
+    +'<div style="margin-top:8px"><span class="fbig">'+(rd.pct!=null?rd.pct:'—')+'</span><span class="funit"> / 100</span></div>'
+    +'<p class="finsight">'+rv+'</p></section>';
+  // sleep tile
+  let sleepTile;
+  if(sl.real){
+    sleepTile='<section class="card"><div class="ftile-h"><h3>Sleep</h3><span class="ftrend flat">last night</span></div>'
+      +'<div style="display:flex;align-items:center;gap:18px;margin-top:10px"><div style="text-align:center">'+fitDonut(sleepPct,'var(--m-sleep)','<div style="font-size:28px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums">'+sleepPct+'</div><div style="font-size:11px;color:var(--txt2)">score</div>',120)+'</div>'
+      +'<div><div class="fbig" style="font-size:34px">'+fmtSleep(sl.total)+'</div><div class="funit" style="margin-top:4px">'+(sl.eff?sl.eff+'% efficient':'')+'</div></div></div>'
+      +fitStages(sl)+'</section>';
+  }else{
+    sleepTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.moon,null,'var(--m-sleep)')+'<h3>Sleep</h3></div>'
+      +'<p class="finsight">Connect Oura and last night’s sleep score and stages appear here.</p></section>';
+  }
+  // last run tile
+  let runTile='';
+  if(lr){const l=lr.l;
+    runTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.run,100,'var(--accent)')+'<h3>Last run · '+shortDate(lr.i).slice(0,3)+' '+shortDate(lr.i).split(' ').slice(1).join(' ')+'</h3><span class="ftrend up">'+lr.e.zone+'</span></div>'
+      +'<div style="margin-top:8px"><span class="fbig">'+fmtKm(l.km)+'</span><span class="funit"> km'+(l.pace?' · '+l.pace+'/km':'')+(l.secs?' · '+fmtDur(l.secs):'')+'</span></div>'
+      +runVisual(l,lr.i)+'</section>';
+  }
+  // active zone minutes (weekly load → minutes)
+  const w=Math.floor(todayIdx/7);let wkMin=0;for(let d=0;d<7;d++){const ll=sessLog('w'+(w+1)+'d'+d);if(ll&&ll.secs)wkMin+=ll.secs/60;}
+  const azmGoal=Math.max(150,Math.round(effWeekTarget(w)*5));
+  const azmTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.bolt,clamp(wkMin/azmGoal*100,0,100),'var(--m-azm)')+'<h3>Active Zone Minutes</h3><span class="ftrend flat">this week</span></div>'
+    +'<div style="margin-top:8px"><span class="fbig">'+Math.round(wkMin)+'</span><span class="funit"> / '+azmGoal+' min</span></div>'
+    +'<p class="finsight">Training load across your runs this week — keep it climbing toward the weekly goal.</p></section>';
+  // nutrition tile
+  const tw=trendWeight(),gw=goalWeightVal();
+  const macG=[['Carbs',e.carbs,'var(--m-cal)'],['Protein',e.p,'var(--accent)'],['Fat',e.fat,'var(--m-sleep)']];
+  const macMax=Math.max.apply(null,macG.map(m=>m[1]))||1;
+  const nutTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.flame,clamp(ea.kcal/e.kcal*100,0,100),'var(--m-cal)')+'<h3>Nutrition</h3><span class="ftrend flat">'+(ateLogged(todayIdx)?'logged':'target')+'</span></div>'
+    +'<div style="margin-top:8px"><span class="fbig">'+fmtKcal(ea.kcal)+'</span><span class="funit"> / '+fmtKcal(e.kcal)+' kcal</span></div>'
+    +'<div class="fmacro">'+macG.map(m=>'<div class="mb"><div class="bar"><i style="width:'+Math.round(m[1]/macMax*100)+'%;background:'+m[2]+'"></i></div><div class="lbl">'+m[0]+' '+m[1]+'g</div></div>').join('')+'</div>'
+    +'<p class="finsight"><span class="spk">✦</span> '+(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Calories follow today’s '+esc(e.zone.toLowerCase())+' load.':'Calories follow today’s session — higher on hard days, lower on easy.')+'</p></section>';
+  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'+fitBar()+chips+sessionTile+readyTile+sleepTile+runTile+azmTile+nutTile+'</div>';
+}
+function fitCoach(){
+  const w=ui.week!=null?ui.week:Math.floor(todayIdx/7),rd=whoopRecovery();
+  const rec=rd.pct==null?'Connect Oura and your plan adapts to readiness each morning.'
+    :rd.pct>=67?'Readiness is high — you’re cleared for this week’s quality sessions.'
+    :rd.pct>=34?'Readiness is moderate — protect your easy days and don’t force paces.'
+    :'Readiness is low — swap today’s hard session for easy and recover.';
+  let chips='<div class="weekchips">';for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';chips+='</div>';
+  let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
+  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
+    +'<div class="fbar"><div><h1>Coach</h1><div class="fsub">Your Berlin 2026 plan</div></div><button class="favatar" data-action="editwidgets" aria-label="Settings">L</button></div>'
+    +'<div class="fnavy"><div class="ftile-h"><h3 style="color:#fff">Coach</h3></div><p style="margin:8px 0 0;color:rgba(255,255,255,.86);font-size:14px;line-height:1.45">'+rec+'</p>'
+      +'<button class="fcta" style="margin-top:14px;background:#fff;color:var(--navy)" data-action="plancenter">Adjust plan</button></div>'
+    +'<div class="card" style="margin-top:14px"><div class="ftile-h"><h3>Week '+(w+1)+' · '+esc(WEEKS[w].phase)+'</h3><span class="ftrend flat">'+fmtKm(effWeekTarget(w))+' km</span></div>'
+      +'<div style="margin-top:6px">'+chips+'</div></div>'
+    +days+'</div>';
+}
+function fitYou(){
+  const f=berlinForecast(),tw=trendWeight(),gw=goalWeightVal();
+  let totKm=0;for(const k in S.sessions){const l=S.sessions[k];if(l&&l.status&&l.km)totKm+=Number(l.km)||0;}
+  const longest=(function(){let m=0;for(const k in S.sessions){const l=S.sessions[k];if(l&&l.status==='done'&&l.km>m)m=l.km;}return m;})();
+  const stat=(v,l)=>'<div style="flex:1;text-align:center"><div class="fbig" style="font-size:30px">'+v+'</div><div class="funit">'+l+'</div></div>';
+  const ach=[];if(longest>=21)ach.push('Half-marathon');if(longest>=30)ach.push('30 km run');if(streak()>=7)ach.push(streak()+'-day streak');if(doneCount()>=20)ach.push(doneCount()+' sessions');
+  const days=RACE_IDX-rawT;
+  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
+    +'<div class="fbar"><div><h1>You</h1><div class="fsub">luke.mullen1</div></div><button class="favatar" style="width:48px;height:48px;font-size:19px" data-action="editwidgets" aria-label="Settings">L</button></div>'
+    +'<div class="card"><div style="display:flex;gap:8px">'+stat(fmtKm(totKm),'Total km')+stat(doneCount(),'Sessions')+stat(streak(),'Streak')+'</div></div>'
+    +'<div class="fnavy"><div class="ftile-h"><h3 style="color:#fff">Berlin race day</h3><span class="ftrend" style="background:rgba(255,255,255,.16);color:#fff">'+(days>0?days+' days':'today')+'</span></div>'
+      +'<div style="display:flex;align-items:center;gap:16px;margin-top:10px"><div style="flex:1"><div class="funit" style="color:rgba(255,255,255,.7)">Projected finish</div><div class="fbig" style="font-size:42px">'+fmtFinishT(f.secs)+'</div><div class="funit" style="color:rgba(255,255,255,.7);margin-top:4px">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div></div>'
+      +'<div style="text-align:center">'+fitDonut(f.state==='early'?12:clamp(100-Math.abs(f.secs-f.goalT)/f.goalT*900,15,99),'#fff','<div style="font-size:11px;color:rgba(255,255,255,.8)">form</div>',86)+'</div></div>'
+      +'<p style="margin:12px 0 0;color:rgba(255,255,255,.86);font-size:14px;line-height:1.45">'+esc(forecastMover(f))+'</p></div>'
+    +(ach.length?'<div class="card"><div class="ftile-h">'+fitIconRing(FIC.trophy,null,'var(--m-cal)')+'<h3>Achievements</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+ach.map(a=>'<span class="ftrend up">'+esc(a)+'</span>').join('')+'</div></div>':'')
+    +'<div class="card" style="padding:8px"><div class="svgwrap" style="padding:10px">'+weightChart()+'</div></div>'
+    +ouraCard()+stravaCard()
+    +'</div>';
 }
 
 /* ---------------- 10. Router & events ---------------- */
