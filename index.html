@@ -2218,10 +2218,26 @@ function planKmAt(i){return slotAt(i)[1]*weekFactor(Math.floor(i/7));}
 function effWeekTarget(w){return Math.round(WEEKS[w].target*weekFactor(w));}
 function effLong(w){return Math.round(WEEKS[w].long*weekFactor(w)*10)/10;}
 function wtWeekAt(w){return (S.plan&&S.plan.goalWeight!=null)?Math.round(planWtAt(w*7+6)*10)/10:WT[w];}
+/* a lower goal weight needs a bigger deficit → fewer calories. Scale FUTURE weeks'
+   deficit by the ratio of new total loss to baked (21 lb); past/current frozen. */
+function deficitFactor(w){
+  if(!(S.plan&&S.plan.goalWeight!=null))return 1;
+  if(w<=currentWeekIdx()||(S.locked&&S.locked[w]))return 1;
+  return clamp((210-S.plan.goalWeight)/(210-189),0.5,1.7);
+}
+/* the (possibly deficit-scaled) baked nutrition row for day i — feeds eff() before
+   the within-week rebalance, so the goal-weight cut never double-counts. */
+function planNutRow(i){
+  const w=Math.floor(i/7),op=orderOf(w)[i%7],n=NUTW[w][op],df=deficitFactor(w);
+  if(df===1)return n;
+  const burn=n[4],newDef=Math.round(n[5]*df),newKcal=Math.max(1600,burn-newDef),realDef=burn-newKcal;
+  const newCarbs=Math.max(0,n[2]+Math.round((newKcal-n[1])/4)); // carbs flex at 4 kcal/g, protein/fat fixed
+  return [n[0],newKcal,newCarbs,n[3],burn,realDef];
+}
 
 function eff(i){
   const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
-  const wk=WEEKS[w],s=wk.days[op],n=NUTW[w][op];
+  const wk=WEEKS[w],s=wk.days[op],n=planNutRow(i);
   const na=nutAdjusted(i,n),ra=runAdjusted(i,planKmAt(i));
   return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,
     zone:s[0],km:ra.km,planKm:planKmAt(i),kmAdj:ra.adj,text:s[2],
@@ -2677,7 +2693,7 @@ function planChanged(){const p=S.plan||{};return p.raceSecs!=null||p.goalWeight!
 function planChangeCount(){const p=S.plan||{};let n=0;if(p.raceSecs!=null)n++;if(p.goalWeight!=null)n++;if(p.volPct!=null)n++;if(p.volWeek)n+=Object.keys(p.volWeek).length;if(p.paceShift)n+=Object.keys(p.paceShift).length;return n;}
 const PC_SECTIONS={
   race:  {label:'Race goal',     hint:'shifts every zone pace and the race-pack splits', step:30, min:10800, max:18000, key:'raceSecs', def:12540, cur:()=>goalSec(),                                  fmt:s=>fmtFinish(s)+' · '+fmtPace(Math.round(s/42.195))+'/km', store:v=>v},
-  weight:{label:'Goal race weight',hint:'re-draws the weight glide and the race-weight date', step:5, min:1500, max:2100, key:'goalWeight', def:1890, cur:()=>Math.round((S.plan.goalWeight!=null?S.plan.goalWeight:189)*10), fmt:v=>fmtLb(v/10)+' lb', store:v=>v/10},
+  weight:{label:'Goal race weight',hint:'re-draws the glide and scales future calorie targets to match', step:5, min:1500, max:2100, key:'goalWeight', def:1890, cur:()=>Math.round((S.plan.goalWeight!=null?S.plan.goalWeight:189)*10), fmt:v=>fmtLb(v/10)+' lb', store:v=>v/10},
   vol:   {label:'Training volume', hint:'scales future weekly targets; past + current weeks stay', step:5, min:70, max:120, key:'volPct', def:100, cur:()=>Math.round((S.plan.volPct||1)*100),               fmt:v=>v+'% of plan', store:v=>v/100},
 };
 function pcRow(sk){
@@ -2718,7 +2734,7 @@ function planCenterContent(){
 }
 function openPlanCenter(){ui.pcOpen=null;openSheet(planCenterContent(),document.querySelector('[data-action="plancenter"]'));}
 function pcRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=planCenterContent();}
-function planKnockOn(sk){return sk==='race'?'Zone paces and race splits updated':sk==='weight'?'Weight glide and race-weight date updated':'Future weekly targets scaled';}
+function planKnockOn(sk){return sk==='race'?'Zone paces and race splits updated':sk==='weight'?'Weight glide + future calorie targets updated':'Future weekly targets scaled';}
 
 function wTrend(){
   if(S.weights.length<2)return '<section class="card"><h2>Weight trend</h2><p class="note" style="margin:0">Log a few weigh-ins and the trend chart appears here.</p></section>';
