@@ -2612,6 +2612,7 @@ function skinDefaultTab(){return skinReg().defaultTab;}
 function skinHasTab(t){return skinTabs().some(x=>x.id===t);}
 function setSkin(v){
   if(SKINS.indexOf(v)<0||v===currentSkin())return;
+  if(typeof closeSheet==='function')closeSheet();   // don't carry a sheet across skins
   S.skin=v;save();applySkin();applyTheme();
   ui.scroll={};                                   // disjoint tab ids → drop stale scroll
   if(!skinHasTab(ui.tab))ui.tab=skinDefaultTab();
