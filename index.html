@@ -462,6 +462,13 @@ html[data-theme="light"] .ringfg{filter:none}
 .stepval{flex:1;text-align:center}
 .stepval b{font-size:38px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums}
 .stepval span{font-size:14px;color:var(--sub);font-weight:600;margin-left:4px}
+/* typed numeric controls: tap-and-type as the primary affordance, ± as a quick nudge */
+.stepin{flex:1;width:auto;min-width:0;text-align:center;font-size:32px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums;background:var(--bg);border:1px solid var(--bord);border-radius:12px;color:var(--ink);padding:8px 6px;min-height:56px}
+.stepu{flex:0 0 auto;color:var(--sub);font-weight:600;font-size:14px;margin:0 2px}
+.rkb{display:flex;align-items:center;gap:10px;margin-top:10px}
+.rkb input{flex:1;width:auto;min-width:0;text-align:center;font-size:32px;font-weight:800;font-family:var(--disp);letter-spacing:-1px;font-variant-numeric:tabular-nums;padding:8px 6px;min-height:56px}
+.rkb .rstep{flex:0 0 60px;height:56px;border-radius:14px;background:var(--raised);border:1px solid var(--line);font-size:26px;font-weight:800;color:var(--ink);touch-action:manipulation}
+.rkb .runit{flex:0 0 auto;color:var(--sub);font-weight:600;font-size:14px}
 .shsec{margin-top:18px}
 .arcwrap{position:relative;margin-top:4px;-webkit-user-select:none;user-select:none}
 .arcwrap svg{display:block;width:min(260px,80%);margin:0 auto;touch-action:none;height:auto}
@@ -805,27 +812,25 @@ function parsePace(str){
   return m?Number(m[1])*60+Number(m[2]):null;
 }
 function rulerFmt(r,v){return r.dataset.fmt==='pace'?fmtPace(v):v.toFixed(+r.dataset.dec);}
+/* Typed-first numeric control: a tap-and-type field with ± nudge buttons (pace as
+   mm:ss text). The id + data-* are the contract readRuler() reads — every save path
+   funnels through readRuler, so the entry method can change without touching saves.
+   (majorEvery/midEvery are vestigial from the old drag-tape and ignored.) */
 function rulerHTML(id,min,max,step,val,unit,majorEvery,dec,fmt,midEvery){
-  const F=v=>fmt==='pace'?fmtPace(v):(Math.round(v*10)/10);
-  let ticks='<div class="rpad"></div>';
-  const n=Math.round((max-min)/step);
-  for(let k=0;k<=n;k++){
-    const v=min+k*step;
-    const major=Math.abs(v/majorEvery-Math.round(v/majorEvery))<1e-6;
-    const mid=!major&&midEvery&&Math.abs(v/midEvery-Math.round(v/midEvery))<1e-6;
-    ticks+='<div class="rtick'+(major?' major':mid?' mid':'')+'">'+(major?'<b>'+F(v)+'</b>':'')+'<i></i></div>';
-  }
-  ticks+='<div class="rpad"></div>';
-  return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+(dec||0)+'" data-val="'+val+'"'+(fmt?' data-fmt="'+fmt+'"':'')+'>'
-    +'<div class="rval"><span class="rv">'+(fmt==='pace'?fmtPace(val):val.toFixed(dec))+'</span><span> '+unit+'</span></div>'
-    +(fmt==='pace'?'':'<button class="rkbd" data-action="rulerkbd" data-r="'+id+'" aria-label="Type the value instead">type</button>')
-    +'<div class="rtrack" data-lp tabindex="0" role="slider" aria-label="'+esc(unit)+' value" aria-valuemin="'+min+'" aria-valuemax="'+max+'" aria-valuenow="'+val+'">'+ticks+'</div>'
-    +'<div class="rline" aria-hidden="true"></div></div>';
+  dec=dec||0;
+  const inp=fmt==='pace'
+    ? '<input class="rinp" type="text" inputmode="numeric" pattern="[0-9:]*" value="'+fmtPace(val)+'" aria-label="'+esc(unit)+' (m:ss)">'
+    : '<input class="rinp" type="number" inputmode="decimal" step="'+step+'" min="'+min+'" max="'+max+'" value="'+val.toFixed(dec)+'" aria-label="'+esc(unit)+'">';
+  return '<div class="ruler" id="'+id+'" data-min="'+min+'" data-max="'+max+'" data-step="'+step+'" data-dec="'+dec+'" data-val="'+val+'"'+(fmt?' data-fmt="'+fmt+'"':'')+'>'
+    +'<div class="rkb"><button class="rstep" data-action="rstep" data-r="'+id+'" data-d="-1" aria-label="less">−</button>'
+    +inp+'<span class="runit">'+unit+'</span>'
+    +'<button class="rstep" data-action="rstep" data-r="'+id+'" data-d="1" aria-label="more">+</button></div></div>';
 }
 function initRulers(){
   document.querySelectorAll('.ruler').forEach(r=>{
     if(r._init)return;r._init=1;
-    const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step,val=+r.dataset.val;
+    const tr=r.querySelector('.rtrack');if(!tr)return; // typed-first rulers have no drag-tape
+    const min=+r.dataset.min,step=+r.dataset.step,val=+r.dataset.val;
     const idx=Math.round((val-min)/step);
     /* One loop owns the tape. Until the start value is centred (layout can lag far
        behind under view transitions / throttled frames), keep re-applying it — a late
@@ -882,9 +887,13 @@ function rulerToKeyboard(id){
 }
 function readRuler(id){
   const r=document.getElementById(id);if(!r)return null;
-  const kb=r.querySelector('input');
-  if(kb)return parseFloat(kb.value);
-  const tr=r.querySelector('.rtrack'),min=+r.dataset.min,step=+r.dataset.step;
+  const kb=r.querySelector('.rinp')||r.querySelector('input');
+  if(kb){
+    if(r.dataset.fmt==='pace'){const p=parsePace(kb.value);return p!=null?p:(+r.dataset.val);}
+    const v=parseFloat(kb.value);return isFinite(v)?Math.round(v*100)/100:(+r.dataset.val);
+  }
+  const tr=r.querySelector('.rtrack');if(!tr)return +r.dataset.val;
+  const min=+r.dataset.min,step=+r.dataset.step;
   const k=Math.max(0,Math.round(tr.scrollLeft/TICKW));
   return Math.round((min+k*step)*100)/100;
 }
@@ -915,7 +924,7 @@ function openLogSheet(i){
     +'<div class="seg" id="shseg" data-status="'+status0+'">'+segB('done','Done')+segB('partial','Partial')+segB('missed','Missed')+'</div>'
     +(isRest?'':'<div class="shsec"><label class="f">Distance</label>'
       +'<div class="stepper"><button id="shdown" aria-label="0.1 km less">−</button>'
-      +'<div class="stepval"><b id="shkm" data-v="'+km0+'">'+fmtKm(km0)+'</b><span>km</span></div>'
+      +'<input class="stepin" id="shkm" type="number" inputmode="decimal" min="0" max="80" step="0.1" value="'+km0+'" aria-label="Distance in kilometres"><span class="stepu">km</span>'
       +'<button id="shup" aria-label="0.1 km more">+</button></div></div>'
       +'<div class="shsec"><label class="f">Pace</label>'+rulerHTML('shpace',180,480,1,Math.max(180,Math.min(480,pace0)),'/km',30,0,'pace',5)+'</div>'
       +(isLong?'<div class="shsec"><label class="f">Fuelling practice</label><div class="loggrid">'
@@ -933,7 +942,7 @@ function openLogSheet(i){
       // stepper: tap = 0.1, hold = repeat
       const kmEl=document.getElementById('shkm');
       if(kmEl){
-        const step=d=>{const v=Math.max(0,Math.round(((+kmEl.dataset.v)+d*0.1)*10)/10);kmEl.dataset.v=v;kmEl.textContent=fmtKm(v);haptic();};
+        const step=d=>{const v=clamp(Math.round(((parseFloat(kmEl.value)||0)+d*0.1)*10)/10,0,80);kmEl.value=v;haptic();};
         ['shdown','shup'].forEach((bid,ix)=>{
           const b=document.getElementById(bid);if(!b)return;
           const d=ix?1:-1;let hold=null,rep=null;
@@ -4330,11 +4339,11 @@ function nutGoalSheetHTML(){
   const needByDate=(gi>rawT&&cur>gw)?clamp(Math.round((cur-gw)/((gi-rawT)/7)*3500/7),0,3000):0;
   return '<h2 style="margin:0">Your weight goal</h2>'
     +'<p class="note" style="margin:6px 0 14px">Set a target weight, a date to reach it, and a daily deficit — the tracker uses these. No daily meal plan: just a budget to aim under and your trend.</p>'
-    +'<div class="shsec"><label class="f">Goal weight</label><div class="stepper"><button data-action="nutgw" data-d="-1" aria-label="lower goal">−</button><div class="stepval"><b>'+fmtLb(gw)+'</b><span>lb</span></div><button data-action="nutgw" data-d="1" aria-label="higher goal">+</button></div></div>'
+    +'<div class="shsec"><label class="f" for="nutgwv">Goal weight</label><div class="stepper"><button data-action="nutgw" data-d="-1" aria-label="lower goal">−</button><input class="stepin" id="nutgwv" data-action="nutgwv" type="number" inputmode="decimal" min="150" max="210" step="0.1" value="'+gw+'" aria-label="Goal weight in pounds"><span class="stepu">lb</span><button data-action="nutgw" data-d="1" aria-label="higher goal">+</button></div></div>'
     +'<div class="shsec"><label class="f" for="goaldate">Reach it by</label>'
     +'<input type="date" id="goaldate" data-action="nutgddate" value="'+isoAt(gi)+'" min="'+isoAt(rawT+14)+'" max="'+isoAt(rawT+728)+'">'
     +'<p class="mini" style="margin:8px 2px 0">'+(wksAway>0?'About <b>'+wksAway+' wk'+(wksAway===1?'':'s')+'</b> away. ':'')+'Race day is '+goalDateLbl(RACE_IDX)+(gi===RACE_IDX?' — goal set to race day.':'.')+(needByDate>0?' To hit '+fmtLb(gw)+' lb by '+goalDateLbl(gi)+', about <b>−'+fmtKcal(needByDate)+'/day</b>.':'')+'</p></div>'
-    +'<div class="shsec"><label class="f">Daily deficit target</label><div class="stepper"><button data-action="nutdf" data-d="-50" aria-label="smaller deficit">−</button><div class="stepval"><b>'+fmtKcal(df)+'</b><span>kcal/day</span></div><button data-action="nutdf" data-d="50" aria-label="bigger deficit">+</button></div>'
+    +'<div class="shsec"><label class="f" for="nutdfv">Daily deficit target</label><div class="stepper"><button data-action="nutdf" data-d="-50" aria-label="smaller deficit">−</button><input class="stepin" id="nutdfv" data-action="nutdfv" type="number" inputmode="numeric" min="200" max="1200" step="10" value="'+df+'" aria-label="Daily deficit in kcal per day"><span class="stepu">kcal/day</span><button data-action="nutdf" data-d="50" aria-label="bigger deficit">+</button></div>'
     +'<p class="mini" style="margin:8px 2px 0">= '+fmtKcal(wk)+' kcal/week · about <b>'+fmtLb(lbwk)+' lb/week</b></p></div>'
     +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b> — around '+goalDateLbl(rawT+wks*7)+'.</p>':'')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:700;border:none;margin-top:16px">Done</button>';
@@ -4430,7 +4439,7 @@ function foodSheetHTML(){
     if(fs.pick){
       const g=fs.grams||100,kc=Math.round(fs.pick.k100*g/100);
       body='<section class="card" style="margin-top:12px"><b>'+esc(fs.pick.name)+'</b>'+(fs.pick.brand?' <span class="mini">'+esc(fs.pick.brand)+'</span>':'')
-        +'<div class="row" style="align-items:center;gap:12px;margin-top:14px"><div class="stepper"><button data-action="foodg" data-d="-10" aria-label="10 g less">−</button><div class="stepval"><b id="foodgv" data-v="'+g+'">'+g+'</b><span>g</span></div><button data-action="foodg" data-d="10" aria-label="10 g more">+</button></div>'
+        +'<div class="row" style="align-items:center;gap:12px;margin-top:14px"><div class="stepper"><button data-action="foodg" data-d="-10" aria-label="10 g less">−</button><input class="stepin" id="foodgv" data-action="foodgv" type="number" inputmode="numeric" min="5" max="2000" step="5" value="'+g+'" aria-label="Portion in grams"><span class="stepu">g</span><button data-action="foodg" data-d="10" aria-label="10 g more">+</button></div>'
         +'<div style="margin-left:auto;text-align:right"><div class="big num" id="foodkc">'+fmtKcal(kc)+'</div><span class="mini">kcal · '+fs.pick.k100+'/100g</span></div></div>'
         +'<div class="loggrid" style="margin-top:14px"><button class="btn2" data-action="foodpickcancel">Back</button><button class="btn" data-action="foodaddpick">Add to '+esc(mlabel)+'</button></div></section>';
     }else{
@@ -5333,7 +5342,7 @@ document.addEventListener('click',ev=>{
     const status=(document.getElementById('shseg')||{dataset:{}}).dataset.status||'done';
     const patch={status:status};
     const kmEl=document.getElementById('shkm');
-    if(kmEl)patch.km=status==='missed'?0:Math.round((+kmEl.dataset.v)*10)/10;
+    if(kmEl)patch.km=status==='missed'?0:clamp(Math.round((parseFloat(kmEl.value)||0)*10)/10,0,80);
     if(document.getElementById('shpace')&&status!=='missed'){
       const pv=readRuler('shpace');
       if(pv)patch.pace=fmtPace(pv);
@@ -5495,9 +5504,9 @@ document.addEventListener('click',ev=>{
   else if(a==='foodpickcancel'){if(ui.food){ui.food.pick=null;foodRefresh();}}
   else if(a==='foodg'){
     if(ui.food&&ui.food.pick){
-      ui.food.grams=Math.max(5,(ui.food.grams||100)+Number(el.dataset.d));haptic();
+      ui.food.grams=clamp((ui.food.grams||100)+Number(el.dataset.d),5,2000);haptic();
       const gv=document.getElementById('foodgv'),kc=document.getElementById('foodkc');
-      if(gv)gv.textContent=ui.food.grams;if(kc)kc.textContent=fmtKcal(Math.round(ui.food.pick.k100*ui.food.grams/100));
+      if(gv)gv.value=ui.food.grams;if(kc)kc.textContent=fmtKcal(Math.round(ui.food.pick.k100*ui.food.grams/100));
     }
   }
   else if(a==='foodaddpick'){
@@ -5556,6 +5565,14 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='snackundo'){const f=snackUndoFn;hideSnack();if(f)f();}
   else if(a==='rulerkbd'){rulerToKeyboard(el.dataset.r);}
+  else if(a==='rstep'){
+    const r=document.getElementById(el.dataset.r);if(!r)return;
+    const inp=r.querySelector('.rinp');if(!inp)return;
+    const min=+r.dataset.min,max=+r.dataset.max,step=+r.dataset.step,dec=+r.dataset.dec,d=Number(el.dataset.d);
+    if(r.dataset.fmt==='pace'){let c=parsePace(inp.value);if(c==null)c=+r.dataset.val;inp.value=fmtPace(clamp(c+d*5,min,max));}
+    else{let c=parseFloat(inp.value);if(!isFinite(c))c=+r.dataset.val;const nudge=dec>0?0.1:step;inp.value=clamp(Math.round((c+d*nudge)*100)/100,min,max).toFixed(dec);}
+    haptic();
+  }
   else if(a==='delweight'){
     if(confirm('Delete this weigh-in?')){S.weights.splice(Number(el.dataset.idx),1);save();rerenderKeepScroll();}
   }
@@ -5684,6 +5701,9 @@ document.addEventListener('change',ev=>{
   }
   else if(a==='nutweekfilter'){ui.nutWeek=el.value;const b=document.getElementById('nutbody');if(b)b.innerHTML=nutTableBody();}
   else if(a==='nutgddate'){if(!S.plan)S.plan={};const x=isoToIdx(el.value);if(isFinite(x)){S.plan.goalDate=isoAt(clamp(Math.round(x),rawT+14,rawT+728));save();nutGoalRefresh();rerenderKeepScroll();}}
+  else if(a==='nutgwv'){if(!S.plan)S.plan={};const v=parseFloat(el.value);if(isFinite(v)){S.plan.goalWeight=clamp(Math.round(v*10)/10,150,210);save();nutGoalRefresh();rerenderKeepScroll();}}
+  else if(a==='nutdfv'){if(!S.plan)S.plan={};const v=parseFloat(el.value);if(isFinite(v)){S.plan.dailyDeficit=clamp(Math.round(v),200,1200);save();nutGoalRefresh();rerenderKeepScroll();}}
+  else if(a==='foodgv'){if(ui.food&&ui.food.pick){const v=Math.round(parseFloat(el.value));if(isFinite(v)){ui.food.grams=clamp(v,5,2000);el.value=ui.food.grams;const kc=document.getElementById('foodkc');if(kc)kc.textContent=fmtKcal(Math.round(ui.food.pick.k100*ui.food.grams/100));}}}
   else if(a==='stravaday'){
     const p=stravaPend[Number(el.dataset.idx)];
     if(p){p.i=Number(el.value);stravaSheetRefresh();}
