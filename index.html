@@ -1148,6 +1148,7 @@ function sanitizePayload(data){
     if((x=nn(P.raceSecs,10800,18000))!=null)o.raceSecs=Math.round(x);
     if((x=nn(P.goalWeight,150,210))!=null)o.goalWeight=Math.round(x*10)/10;
     if((x=nn(P.dailyDeficit,200,1500))!=null)o.dailyDeficit=Math.round(x);
+    if(typeof P.goalDate==='string'&&/^\d{4}-\d\d-\d\d$/.test(P.goalDate)){const gx=isoToIdx(P.goalDate);if(isFinite(gx)&&gx>0&&gx<2000)o.goalDate=P.goalDate;}
     if((x=nn(P.volPct,0.5,1.3))!=null)o.volPct=Math.round(x*100)/100;
     if(P.volWeek&&typeof P.volWeek==='object')for(const k in P.volWeek){const w=Number(k),f=nn(P.volWeek[k],0.5,1.3);if(Number.isInteger(w)&&w>=0&&w<16&&f!=null)o.volWeek[w]=Math.round(f*100)/100;}
     if(P.paceShift&&typeof P.paceShift==='object')for(const z in P.paceShift){const f=nn(P.paceShift[z],-60,60);if(ZONE_MID_PACE[z]!=null&&f!=null)o.paceShift[z]=Math.round(f);}
@@ -2558,7 +2559,12 @@ function weekStatus(w){ // w: 0-based
   if(r>=0.6)return ['Partial','p-partial'];
   return ['Under','p-under'];
 }
-function planWtAt(i){const g=(S.plan&&S.plan.goalWeight!=null)?S.plan.goalWeight:189;return 210+(g-210)*(i/RACE_IDX);} // linear glide, start → goal weight
+/* The goal date — when the user wants to hit their goal weight. Defaults to race
+   day, so an unset goalDate keeps every old behaviour identical. Can be after the
+   race (the weight-loss goal often outlives the marathon). */
+function goalDateIdx(){const g=(S.plan&&S.plan.goalDate)||null;if(g){const x=isoToIdx(g);if(isFinite(x))return Math.round(x);}return RACE_IDX;}
+function goalDateLbl(i){const d=dAt(i);return d.getUTCDate()+' '+MONL[d.getUTCMonth()]+(d.getUTCFullYear()!==2026?' '+d.getUTCFullYear():'');}
+function planWtAt(i){const g=(S.plan&&S.plan.goalWeight!=null)?S.plan.goalWeight:189,gi=Math.max(1,goalDateIdx());return 210+(g-210)*clamp(i/gi,0,1);} // linear glide, start → goal weight by the goal date
 function latestWeight(){return S.weights.length?S.weights[S.weights.length-1]:null;}
 /* Time-aware EWMA over the weigh-ins (Libra / Hacker's Diet): each reading pulls
    the trend a gap-weighted fraction of the way toward it, so irregular logging
@@ -2908,7 +2914,7 @@ function trendNarration(){
 function weightChart(){
   const W=360,H=205,L=32,Rm=8,T=12,B=22,ih=H-T-B,iwd=W-L-Rm;
   const pts=S.weights.map(w=>({x:isoToIdx(w.date),y:w.lb,iso:w.date})).filter(p=>p.x>=-7&&p.x<=RACE_IDX+7);
-  let lo=188,hi=211;
+  let lo=Math.min(188,goalWeightVal()-1),hi=211;
   pts.forEach(p=>{lo=Math.min(lo,p.y-1);hi=Math.max(hi,p.y+1);});
   lo=Math.floor(lo);hi=Math.ceil(hi);
   const X=i=>L+iwd*clamp(i,0,RACE_IDX)/RACE_IDX;
@@ -2919,7 +2925,8 @@ function weightChart(){
       +'<text class="axis" x="'+(L-5)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+v+'</text>';
   }
   [0,4,8,12,15].forEach(w=>{g+='<text class="axis" x="'+X(w*7)+'" y="'+(H-8)+'" text-anchor="middle">W'+(w+1)+'</text>';});
-  g+='<line x1="'+X(0)+'" y1="'+Y(210)+'" x2="'+X(RACE_IDX)+'" y2="'+Y(189)+'" stroke="var(--sub)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>';
+  {const bk=Math.min(goalDateIdx(),RACE_IDX),glide=[[0,planWtAt(0)],[bk,planWtAt(bk)],[RACE_IDX,planWtAt(RACE_IDX)]];
+   g+='<path d="'+glide.map((q,j)=>(j?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1)).join('')+'" fill="none" stroke="var(--sub)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>';}
   if(rawT>=0&&rawT<=RACE_IDX)g+='<line x1="'+X(rawT)+'" y1="'+T+'" x2="'+X(rawT)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
   if(pts.length){
     const path=pts.map((p,j)=>(j?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)).join('');
@@ -2936,7 +2943,7 @@ function weightChart(){
   }
   /* plan milestones: phase starts as quiet ticks on the glide */
   [[28,'Build 1'],[56,'Build 2'],[84,'Peak'],[91,'Taper'],[105,'Race wk']].forEach(ms=>{
-    const px=X(ms[0]),py=Y(210+(189-210)*(ms[0]/RACE_IDX));
+    const px=X(ms[0]),py=Y(planWtAt(ms[0]));
     g+='<line x1="'+px+'" y1="'+(py-6)+'" x2="'+px+'" y2="'+(py+6)+'" stroke="var(--sub)" stroke-width="1.5" opacity="0.7"><title>'+ms[1]+'</title></line>';
   });
   /* scrub affordances (driven by pointer, hidden until touched) */
@@ -2945,7 +2952,7 @@ function weightChart(){
     +'<text id="scrubtx" class="axis" text-anchor="middle" style="font-size:11px;font-weight:700;fill:var(--ink)"></text></g>';
   scrubData={pts:pts.map(p=>({cx:X(p.x),cy:Y(p.y),iso:p.iso,lb:p.y,idx:p.x})),T:T};
   return '<svg id="wchart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weight, actual vs plan">'+g+'</svg>'
-    +'<div class="legend"><span><i style="background:var(--sub)"></i>Plan glide 210 → 189 lb</span><span><i style="background:var(--accent)"></i>Logged · thick line = 7-day trend</span></div>';
+    +'<div class="legend"><span><i style="background:var(--sub)"></i>Goal pace 210 → '+fmtLb(goalWeightVal())+' lb</span><span><i style="background:var(--accent)"></i>Logged · thick line = 7-day trend</span></div>';
 }
 
 /* ---------------- 8. Screens ---------------- */
@@ -4288,18 +4295,30 @@ function learnedDeficit(){ // your REAL deficit over the last 14 days, from days
   for(let i=Math.max(0,t-13);i<=t;i++){if(!ateLogged(i))continue;const b=dayBurn(i);if(b.burned==null)continue;s+=b.burned-eaten(i).kcal;burn+=b.burned;eat+=eaten(i).kcal;n++;}
   return n?{def:Math.round(s/n),burn:Math.round(burn/n),eat:Math.round(eat/n),days:n}:null;
 }
-function raceProjection(){ // projected race-day weight from the weight TREND
+/* Two questions from one weight trend: (1) where you'll be at RACE DAY (the fixed
+   milestone, informational), and (2) your own GOAL weight by your own GOAL DATE
+   (which may sit after the race) — the rate needed to make it and the date you'd
+   actually hit it at the current trend. */
+function raceProjection(){
   const goal=goalWeightVal(),daysLeft=Math.max(0,RACE_IDX-rawT),tw=trendWeight(),lw=latestWeight();
   const curW=tw?tw.lb:(lw?lw.lb:null);
-  if(curW==null||(S.weights||[]).length<2)return {confident:false,reason:'nodata',curW:curW,goal:goal,daysLeft:daysLeft};
+  const gIdx=goalDateIdx(),goalDaysLeft=gIdx-rawT,goalWksLeft=goalDaysLeft/7;
+  const base={goal:goal,daysLeft:daysLeft,goalIdx:gIdx,goalDaysLeft:goalDaysLeft,goalIsRace:gIdx===RACE_IDX};
+  if(curW==null||(S.weights||[]).length<2)return Object.assign({confident:false,reason:'nodata',curW:curW},base);
   const s=trendSeries().filter(p=>p.i<=clamp(rawT,0,RACE_IDX));
   const span=s.length?s[s.length-1].i-s[0].i:0;
   const rate=trendRate(); // lb/wk, − = losing
-  const neededWk=daysLeft>0?(curW-goal)/(daysLeft/7):0; // + = must lose this many lb/wk
+  // rate needed to reach the goal weight by the goal date (signed; − = must lose)
+  const goalNeededWk=goalWksLeft>0?Math.round((goal-curW)/goalWksLeft*10)/10:null;
   if(s.length<4||span<10||rate==null)
-    return {confident:false,reason:'early',curW:Math.round(curW*10)/10,goal:goal,daysLeft:daysLeft,neededWk:neededWk,changeSoFar:s.length?Math.round((s[0].lb-curW)*10)/10:0,spanDays:span};
-  const proj=Math.round((curW+rate*(daysLeft/7))*10)/10;
-  return {confident:true,curW:Math.round(curW*10)/10,goal:goal,daysLeft:daysLeft,projLb:proj,rateWk:Math.round(rate*10)/10,neededWk:Math.round(neededWk*10)/10,overGoal:Math.round((proj-goal)*10)/10};
+    return Object.assign({confident:false,reason:'early',curW:Math.round(curW*10)/10,goalNeededWk:goalNeededWk,changeSoFar:s.length?Math.round((s[0].lb-curW)*10)/10:0,spanDays:span},base);
+  const projLb=Math.round((curW+rate*(daysLeft/7))*10)/10; // race-day weight at the current trend
+  // ETA — when, at the current trend, you actually reach the goal weight
+  let etaIdx=null;const reached=curW<=goal+0.05;
+  if(reached)etaIdx=rawT; else if(rate<-0.02)etaIdx=Math.round(rawT+((curW-goal)/(-rate))*7);
+  const goalOnTrack=reached||(etaIdx!=null&&etaIdx<=gIdx);
+  return Object.assign({confident:true,curW:Math.round(curW*10)/10,projLb:projLb,rateWk:Math.round(rate*10)/10,
+    overGoal:Math.round((projLb-goal)*10)/10,goalNeededWk:goalNeededWk,etaIdx:etaIdx,reached:reached,goalOnTrack:goalOnTrack},base);
 }
 /* Plan builder — the only "plan" now: set goal weight + a daily deficit target.
    Opened from a link on the Nutrition tab, never the whole screen. */
@@ -4307,12 +4326,16 @@ function nutGoalSheetHTML(){
   const gw=goalWeightVal(),df=deficitGoal(),wk=df*7,lbwk=Math.round(df*7/3500*100)/100;
   const tw=trendWeight(),lw=latestWeight(),cur=tw?tw.lb:(lw?lw.lb:210);
   const wks=cur>gw?Math.ceil((cur-gw)/Math.max(0.1,lbwk)):0;
+  const gi=goalDateIdx(),wksAway=Math.round((gi-rawT)/7);
+  const needByDate=(gi>rawT&&cur>gw)?clamp(Math.round((cur-gw)/((gi-rawT)/7)*3500/7),0,3000):0;
   return '<h2 style="margin:0">Your weight goal</h2>'
-    +'<p class="note" style="margin:6px 0 14px">Set a target and a daily deficit — the tracker uses these. No daily meal plan: just a budget to aim under and your trend.</p>'
+    +'<p class="note" style="margin:6px 0 14px">Set a target weight, a date to reach it, and a daily deficit — the tracker uses these. No daily meal plan: just a budget to aim under and your trend.</p>'
     +'<div class="shsec"><label class="f">Goal weight</label><div class="stepper"><button data-action="nutgw" data-d="-1" aria-label="lower goal">−</button><div class="stepval"><b>'+fmtLb(gw)+'</b><span>lb</span></div><button data-action="nutgw" data-d="1" aria-label="higher goal">+</button></div></div>'
+    +'<div class="shsec"><label class="f">Reach it by</label><div class="stepper"><button data-action="nutgd" data-d="-28" aria-label="earlier date">−</button><div class="stepval"><b>'+goalDateLbl(gi)+'</b><span>'+(wksAway>0?'in '+wksAway+' wk'+(wksAway===1?'':'s'):'date passed')+'</span></div><button data-action="nutgd" data-d="28" aria-label="later date">+</button></div>'
+    +'<p class="mini" style="margin:8px 2px 0">Race day is '+goalDateLbl(RACE_IDX)+(gi===RACE_IDX?' — goal set to race day.':'.')+(needByDate>0?' To hit '+fmtLb(gw)+' lb by '+goalDateLbl(gi)+', about <b>−'+fmtKcal(needByDate)+'/day</b>.':'')+'</p></div>'
     +'<div class="shsec"><label class="f">Daily deficit target</label><div class="stepper"><button data-action="nutdf" data-d="-50" aria-label="smaller deficit">−</button><div class="stepval"><b>'+fmtKcal(df)+'</b><span>kcal/day</span></div><button data-action="nutdf" data-d="50" aria-label="bigger deficit">+</button></div>'
     +'<p class="mini" style="margin:8px 2px 0">= '+fmtKcal(wk)+' kcal/week · about <b>'+fmtLb(lbwk)+' lb/week</b></p></div>'
-    +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b>'+((RACE_IDX-rawT)>0?' ('+Math.round((RACE_IDX-rawT)/7)+' to race day)':'')+'.</p>':'')
+    +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b> — around '+goalDateLbl(rawT+wks*7)+'.</p>':'')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:700;border:none;margin-top:16px">Done</button>';
 }
 function openNutGoalSheet(){openSheet(nutGoalSheetHTML());}
@@ -4453,20 +4476,40 @@ function nutProjectionCard(){
   const p=raceProjection(),goal=goalWeightVal();
   if(p.curW==null)
     return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">Log your weight a few mornings and your projected Berlin weight appears here.</p></section>';
+  const gLbl=goalDateLbl(p.goalIdx);
+  const needDay=p.goalNeededWk!=null?Math.round(clamp(-p.goalNeededWk*3500/7,0,2000)):0; // kcal/day deficit to reach goal by its date
+  const goalPast=p.goalDaysLeft<=0;
   if(!p.confident){
     const word=p.changeSoFar>=0.3?'down <b>'+fmtLb(p.changeSoFar)+' lb</b>':p.changeSoFar<=-0.3?'up <b>'+fmtLb(-p.changeSoFar)+' lb</b>':'about level';
-    const needDay=p.daysLeft>0?Math.round(clamp(p.neededWk*3500/7,0,1500)):0;
     return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2><span class="chip neutral">building</span></div>'
-      +'<p class="note" style="margin:8px 0 0">'+word+' so far — the race-day projection firms up after ~2 weeks of weigh-ins.</p>'
-      +(needDay>0?'<p class="mini" style="margin:6px 2px 0">To reach '+fmtLb(goal)+' lb you’d average about <b>−'+fmtKcal(needDay)+'/day</b>.</p>':'')+'</section>';
+      +'<p class="note" style="margin:8px 0 0">'+word+' so far — your projection firms up after ~2 weeks of weigh-ins.</p>'
+      +'<p class="mini" style="margin:6px 2px 0">Goal '+fmtLb(goal)+' lb by '+gLbl+(p.goalIsRace?' (race day)':'')+(needDay>0?' — needs about <b>−'+fmtKcal(needDay)+'/day</b>':'')+'.</p></section>';
   }
-  const over=p.overGoal,chip=over<=0.4?'<span class="chip c-easy">on track</span>':'<span class="chip '+(over<=2?'c-long':'c-hard')+'">+'+fmtLb(over)+' lb</span>';
-  const mag=Math.abs(p.rateWk),trendPhrase=mag<0.06?'holding steady':(p.rateWk<0?'losing about <b>'+fmtLb(mag)+' lb/wk</b>':'up about <b>'+fmtLb(mag)+' lb/wk</b>');
+  const mag=Math.abs(p.rateWk),trendPhrase=mag<0.06?'holding steady':(p.rateWk<0?'losing about <b>'+fmtLb(mag)+' lb/wk</b>':'gaining about <b>'+fmtLb(mag)+' lb/wk</b>');
+  let chip,goalLine;
+  if(p.reached){
+    chip='<span class="chip c-easy">goal hit</span>';
+    goalLine='You’re at your goal of '+fmtLb(goal)+' lb — hold it steady.';
+  }else if(goalPast){
+    chip='<span class="chip c-long">date passed</span>';
+    goalLine='Your '+gLbl+' target for '+fmtLb(goal)+' lb has passed — set a new date below.';
+  }else if(p.etaIdx==null){
+    chip='<span class="chip c-hard">stalled</span>';
+    goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. You’re not losing right now — aim for about <b>−'+fmtKcal(needDay)+'/day</b> to get moving.';
+  }else{
+    const etaLbl=goalDateLbl(p.etaIdx),wksOff=Math.round(Math.abs(p.etaIdx-p.goalIdx)/7);
+    if(p.goalOnTrack){
+      chip='<span class="chip c-easy">on track</span>';
+      goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. At this rate you’ll get there around <b>'+etaLbl+'</b>'+(wksOff>=1?' — about '+wksOff+' wk'+(wksOff===1?'':'s')+' early':'')+'.';
+    }else{
+      chip='<span class="chip c-long">behind</span>';
+      goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. At this rate you’d reach it around <b>'+etaLbl+'</b>'+(wksOff>=1?', about '+wksOff+' wk'+(wksOff===1?'':'s')+' late':'')+'. Step up to about <b>−'+fmtKcal(needDay)+'/day</b> to hit your date.';
+    }
+  }
   return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2>'+chip+'</div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num">'+fmtLb(p.projLb)+'</span><span class="sub" style="font-weight:600">lb at Berlin · goal '+fmtLb(goal)+'</span></div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num">'+fmtLb(p.projLb)+'</span><span class="sub" style="font-weight:600">lb at Berlin'+(p.daysLeft>0?' · '+p.daysLeft+' d to go':'')+'</span></div>'
     +'<p class="note" style="margin:8px 0 0">You’re '+trendPhrase+' — at this rate, about <b>'+fmtLb(p.projLb)+' lb</b> on race day.</p>'
-    +(over>0.4&&p.neededWk>0.05?'<p class="mini" style="margin:6px 2px 0">Need about <b>−'+fmtLb(p.neededWk)+' lb/wk</b> (≈ −'+fmtKcal(Math.round(p.neededWk*3500/7))+'/day) to hit '+fmtLb(goal)+'.</p>':'')
-    +(over< -1.5?'<p class="mini" style="margin:6px 2px 0">On track to come in under '+fmtLb(goal)+' — you could ease off a little.</p>':'')+'</section>';
+    +'<p class="mini" style="margin:8px 2px 0">'+goalLine+'</p></section>';
 }
 /* Card B — the weight trend (smoothed line vs goal pace). */
 function nutTrendCard(){
@@ -4474,7 +4517,7 @@ function nutTrendCard(){
   if(!tw)return '';
   return '<section class="card"><div class="spread"><h2 style="margin:0">Weight trend</h2><span class="mini">'+fmtLb(tw.lb)+' lb'+(rate!=null?' · '+(rate<=0?'−':'+')+fmtLb(Math.abs(rate))+'/wk':'')+'</span></div>'
     +'<div class="svgwrap" style="margin-top:8px">'+weightChart()+'</div>'
-    +'<p class="mini" style="margin:6px 2px 0">One weigh-in is noise — the line is the truth. Dashed = pace to '+fmtLb(goalWeightVal())+' lb. Touch to scrub.</p></section>';
+    +'<p class="mini" style="margin:6px 2px 0">One weigh-in is noise — the line is the truth. Dashed = pace to '+fmtLb(goalWeightVal())+' lb'+(goalDateIdx()!==RACE_IDX?' by '+goalDateLbl(goalDateIdx()):'')+'. Touch to scrub.</p></section>';
 }
 /* Card C — your real deficit, learned from logged days. */
 function nutDeficitCard(){
@@ -5471,6 +5514,7 @@ document.addEventListener('click',ev=>{
   else if(a==='nutgoal'){openNutGoalSheet();}
   else if(a==='nutgw'){if(!S.plan)S.plan={};S.plan.goalWeight=clamp(Math.round((goalWeightVal()+Number(el.dataset.d))*10)/10,150,210);save();nutGoalRefresh();rerenderKeepScroll();}
   else if(a==='nutdf'){if(!S.plan)S.plan={};S.plan.dailyDeficit=clamp(deficitGoal()+Number(el.dataset.d),200,1200);save();nutGoalRefresh();rerenderKeepScroll();}
+  else if(a==='nutgd'){if(!S.plan)S.plan={};const ni=clamp(goalDateIdx()+Number(el.dataset.d),rawT+14,rawT+728);S.plan.goalDate=isoAt(ni);save();nutGoalRefresh();rerenderKeepScroll();}
   else if(a==='lockweek'){
     const w2=Number(el.dataset.w);
     if(!S.locked||typeof S.locked!=='object')S.locked={};
