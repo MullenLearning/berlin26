@@ -4232,33 +4232,42 @@ function nutDayHero(i){
     +'</section>';
 }
 
-/* Where you'll weigh on race day if you keep up your ACTUAL average daily deficit
-   since the plan started (the calorie-balance projection the user asked for).
-   Falls back to the weigh-in trend when there's no burn data. */
+/* Where you'll weigh on race day at your ACTUAL average daily deficit since the
+   plan started. Read from the SCALE (the ground truth) — weight lost over days
+   elapsed IS your real average deficit, and it doesn't depend on logging every
+   meal. Early on (or with few weigh-ins) the trend is noise, so we don't
+   extrapolate it into a race-day number yet. */
 function raceProjectionCard(){
   const goal=goalWeightVal(),daysLeft=Math.max(0,RACE_IDX-rawT),tw=trendWeight(),lw=latestWeight();
   const curW=tw?tw.lb:(lw?lw.lb:null);
-  if(curW==null)
-    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">Log a few weigh-ins'+(ouraConnected()?'':' and connect Oura on the Training tab')+' and your projected Berlin weight shows here.</p></section>';
-  let banked=0,days=0;const t=clamp(rawT,0,RACE_IDX);
-  for(let k=0;k<=t;k++){const bb=dayBurn(k);if(bb.burned!=null){banked+=bb.burned-eaten(k).kcal;days++;}}
-  let proj=null,avgDef=null,basis=null;
-  if(days>=3){avgDef=banked/days;proj=curW-(avgDef*daysLeft/3500);basis='deficit';}
-  else if(S.weights.length>=2){const r=trendRate();if(r!=null){proj=curW-(r*daysLeft/7);basis='trend';}}
-  if(proj==null)
-    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">A few more '+(ouraConnected()?'logged days':'weigh-ins')+' and the projection appears.</p></section>';
-  proj=Math.round(proj*10)/10;
+  const needNow=(daysLeft>0&&curW!=null)?Math.round(clamp((curW-goal)*3500/daysLeft,0,2000)):0;
+  const needLine=needNow>0?'<p class="mini" style="margin:6px 2px 0">To reach '+fmtLb(goal)+' lb by Berlin, average about <b>−'+fmtKcal(needNow)+'/day</b>.</p>':'';
+  if(curW==null||S.weights.length<2)
+    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">Log your weight for a week or so and your projected Berlin weight appears here'+(curW!=null?' (you’re '+fmtLb(curW)+' lb now)':'')+'.</p>'+needLine+'</section>';
+  const first=S.weights[0];
+  const fIdx=clamp(isoToIdx(first.date),0,RACE_IDX),nowIdx=clamp(rawT,0,RACE_IDX);
+  const daysElapsed=Math.max(1,nowIdx-fIdx);
+  const lost=first.lb-curW;                          // +ve = lost, −ve = gained
+  const avgDef=Math.round(lost*3500/daysElapsed);    // +ve = deficit/day
+  // too early / too few points → the trend is noise; don't project a race weight from it
+  if(daysElapsed<12||S.weights.length<4){
+    const word=lost>=0.3?'down <b>'+fmtLb(lost)+' lb</b>':lost<=-0.3?'up <b>'+fmtLb(-lost)+' lb</b>':'about level';
+    return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2><span class="chip neutral">building</span></div>'
+      +'<p class="note" style="margin:8px 0 0">'+word+' over the first '+daysElapsed+' day'+(daysElapsed===1?'':'s')+' — too early to project a race-day weight. It firms up after ~2 weeks of weigh-ins.</p>'
+      +needLine+'</section>';
+  }
+  const proj=Math.round((curW-avgDef*daysLeft/3500)*10)/10;
   const over=proj-goal;
-  const chip=over<=0.4?'<span class="chip c-easy">on track</span>':'<span class="chip '+(over<=2?'c-long':'c-hard')+'">'+(over>0?'+':'')+fmtLb(over)+' lb</span>';
-  const need=daysLeft>0?clamp((curW-goal)*3500/daysLeft,0,1500):0;
-  return '<section class="card">'
-    +'<div class="spread"><h2 style="margin:0">Race-day weight</h2>'+chip+'</div>'
+  const chip=over<=0.4?'<span class="chip c-easy">on track</span>':'<span class="chip '+(over<=2?'c-long':'c-hard')+'">+'+fmtLb(over)+' lb</span>';
+  const lbWk=Math.abs(avgDef)*7/3500;
+  const trend=avgDef>=35?'losing about <b>'+fmtLb(lbWk)+' lb/week</b> (a −'+fmtKcal(avgDef)+'/day deficit)'
+    :avgDef<=-35?'<b>gaining</b> about '+fmtLb(lbWk)+' lb/week (a +'+fmtKcal(-avgDef)+'/day surplus)'
+    :'holding roughly steady';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2>'+chip+'</div>'
     +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num">'+fmtLb(proj)+'</span><span class="sub" style="font-weight:600">lb at Berlin · goal '+fmtLb(goal)+'</span></div>'
-    +'<p class="note" style="margin:8px 0 0">'+(basis==='deficit'
-        ?'At your average <b>−'+fmtKcal(Math.round(avgDef))+'/day</b> over the last '+days+' day'+(days===1?'':'s')+', you’ll reach about <b>'+fmtLb(proj)+' lb</b> by race day.'
-        :'From your weigh-in trend you’re heading for about <b>'+fmtLb(proj)+' lb</b> by race day.')+'</p>'
-    +(daysLeft>0&&over>0.4?'<p class="mini" style="margin:6px 2px 0">To land on '+fmtLb(goal)+', average about <b>−'+fmtKcal(Math.round(need))+'/day</b> from here.</p>':'')
-    +(over< -1.5?'<p class="mini" style="margin:6px 2px 0">On track to come in under '+fmtLb(goal)+' — you could eat a little more.</p>':'')
+    +'<p class="note" style="margin:8px 0 0">Since you started you’re '+trend+' — at that rate, about <b>'+fmtLb(proj)+' lb</b> by race day.</p>'
+    +(over>0.4?needLine:'')
+    +(over< -1.5?'<p class="mini" style="margin:6px 2px 0">On track to come in under '+fmtLb(goal)+' — you could ease the deficit a little.</p>':'')
     +'</section>';
 }
 /* One quiet line of weekly context (no claw-back / rebalance clutter). */
