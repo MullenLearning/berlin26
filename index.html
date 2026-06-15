@@ -4331,8 +4331,9 @@ function nutGoalSheetHTML(){
   return '<h2 style="margin:0">Your weight goal</h2>'
     +'<p class="note" style="margin:6px 0 14px">Set a target weight, a date to reach it, and a daily deficit — the tracker uses these. No daily meal plan: just a budget to aim under and your trend.</p>'
     +'<div class="shsec"><label class="f">Goal weight</label><div class="stepper"><button data-action="nutgw" data-d="-1" aria-label="lower goal">−</button><div class="stepval"><b>'+fmtLb(gw)+'</b><span>lb</span></div><button data-action="nutgw" data-d="1" aria-label="higher goal">+</button></div></div>'
-    +'<div class="shsec"><label class="f">Reach it by</label><div class="stepper"><button data-action="nutgd" data-d="-28" aria-label="earlier date">−</button><div class="stepval"><b>'+goalDateLbl(gi)+'</b><span>'+(wksAway>0?'in '+wksAway+' wk'+(wksAway===1?'':'s'):'date passed')+'</span></div><button data-action="nutgd" data-d="28" aria-label="later date">+</button></div>'
-    +'<p class="mini" style="margin:8px 2px 0">Race day is '+goalDateLbl(RACE_IDX)+(gi===RACE_IDX?' — goal set to race day.':'.')+(needByDate>0?' To hit '+fmtLb(gw)+' lb by '+goalDateLbl(gi)+', about <b>−'+fmtKcal(needByDate)+'/day</b>.':'')+'</p></div>'
+    +'<div class="shsec"><label class="f" for="goaldate">Reach it by</label>'
+    +'<input type="date" id="goaldate" data-action="nutgddate" value="'+isoAt(gi)+'" min="'+isoAt(rawT+14)+'" max="'+isoAt(rawT+728)+'">'
+    +'<p class="mini" style="margin:8px 2px 0">'+(wksAway>0?'About <b>'+wksAway+' wk'+(wksAway===1?'':'s')+'</b> away. ':'')+'Race day is '+goalDateLbl(RACE_IDX)+(gi===RACE_IDX?' — goal set to race day.':'.')+(needByDate>0?' To hit '+fmtLb(gw)+' lb by '+goalDateLbl(gi)+', about <b>−'+fmtKcal(needByDate)+'/day</b>.':'')+'</p></div>'
     +'<div class="shsec"><label class="f">Daily deficit target</label><div class="stepper"><button data-action="nutdf" data-d="-50" aria-label="smaller deficit">−</button><div class="stepval"><b>'+fmtKcal(df)+'</b><span>kcal/day</span></div><button data-action="nutdf" data-d="50" aria-label="bigger deficit">+</button></div>'
     +'<p class="mini" style="margin:8px 2px 0">= '+fmtKcal(wk)+' kcal/week · about <b>'+fmtLb(lbwk)+' lb/week</b></p></div>'
     +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b> — around '+goalDateLbl(rawT+wks*7)+'.</p>':'')
@@ -5514,7 +5515,6 @@ document.addEventListener('click',ev=>{
   else if(a==='nutgoal'){openNutGoalSheet();}
   else if(a==='nutgw'){if(!S.plan)S.plan={};S.plan.goalWeight=clamp(Math.round((goalWeightVal()+Number(el.dataset.d))*10)/10,150,210);save();nutGoalRefresh();rerenderKeepScroll();}
   else if(a==='nutdf'){if(!S.plan)S.plan={};S.plan.dailyDeficit=clamp(deficitGoal()+Number(el.dataset.d),200,1200);save();nutGoalRefresh();rerenderKeepScroll();}
-  else if(a==='nutgd'){if(!S.plan)S.plan={};const ni=clamp(goalDateIdx()+Number(el.dataset.d),rawT+14,rawT+728);S.plan.goalDate=isoAt(ni);save();nutGoalRefresh();rerenderKeepScroll();}
   else if(a==='lockweek'){
     const w2=Number(el.dataset.w);
     if(!S.locked||typeof S.locked!=='object')S.locked={};
@@ -5683,6 +5683,7 @@ document.addEventListener('change',ev=>{
     fieldDirty=true;flushFieldRender();
   }
   else if(a==='nutweekfilter'){ui.nutWeek=el.value;const b=document.getElementById('nutbody');if(b)b.innerHTML=nutTableBody();}
+  else if(a==='nutgddate'){if(!S.plan)S.plan={};const x=isoToIdx(el.value);if(isFinite(x)){S.plan.goalDate=isoAt(clamp(Math.round(x),rawT+14,rawT+728));save();nutGoalRefresh();rerenderKeepScroll();}}
   else if(a==='stravaday'){
     const p=stravaPend[Number(el.dataset.idx)];
     if(p){p.i=Number(el.value);stravaSheetRefresh();}
