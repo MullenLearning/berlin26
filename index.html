@@ -4128,6 +4128,48 @@ function cutPayingCard(){
     +'</section>';
 }
 
+/* The easy daily tracker: today's calorie budget at a glance — burn, target
+   deficit, what's eaten, and how many calories are LEFT. Reads eff(today), so
+   it always reflects the session currently scheduled for today (move a run and
+   the burn/target/deficit shown here move with it). */
+function nutTodayHero(){
+  const i=clamp(rawT,0,RACE_IDX),e=eff(i),ea=eaten(i),b=dayBurn(i),real=ateLogged(i);
+  const burnReal=b.burned!=null,burn=burnReal?b.burned:e.burn;
+  const target=Math.max(0,burn-e.deficit);          // calories you can eat and still hit the deficit
+  const ek=real?ea.kcal:0,left=target-ek,over=ek>target;
+  const pct=target>0?clamp(ek/target*100,0,100):0;
+  const heroNum=!real?fmtKcal(target):fmtKcal(Math.abs(left));
+  const heroLbl=!real?'kcal to eat today':(left>=0?'kcal left today':'kcal over today');
+  const moved=movedChip(e);
+  const gauge='<div style="height:16px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:14px">'
+    +'<i style="display:block;height:100%;width:'+(real?pct:0)+'%;background:'+(over?'var(--hard)':'var(--accent)')+';border-radius:99px;transition:width .5s var(--ease-out)"></i></div>'
+    +'<div class="spread" style="margin-top:5px"><span class="mini">'+(real?fmtKcal(ek)+' eaten':'nothing logged yet')+'</span><span class="mini">'+fmtKcal(target)+' budget</span></div>';
+  const stat=(lbl,val,col)=>'<div style="flex:1;text-align:center;padding:0 4px"><div class="num" style="font-size:19px;font-weight:700;color:'+(col||'var(--ink)')+'">'+val+'</div><div class="mini" style="margin-top:2px">'+lbl+'</div></div>';
+  const div='<div style="width:1px;background:var(--line);align-self:stretch"></div>';
+  const stats='<div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:13px;gap:0">'
+    +stat(burnReal?'burned':'plan burn',fmtKcal(burn))+div
+    +stat('target deficit','−'+fmtKcal(e.deficit))+div
+    +stat('eaten',real?fmtKcal(ea.kcal):'—')+'</div>';
+  let logBtn;
+  if(ui.ateOpen===i){
+    const lo=Math.max(800,e.kcal-700),start=Math.round(real?ea.kcal:(lastAte(i)||e.kcal));
+    logBtn='<div style="margin-top:14px">'+rulerHTML('ater',lo,e.kcal+900,25,clamp(start,lo,e.kcal+900),'kcal',250,0)+'</div>'
+      +'<div class="loggrid" style="margin-top:12px"><button class="btn2" data-action="atecancel">Cancel</button><button class="btn" data-action="atesave" data-i="'+i+'">Save</button></div>'
+      +(real?'<button class="btn3" data-action="ateclear" data-i="'+i+'" style="width:100%;margin-top:8px;color:var(--sub)">Back to plan estimate</button>':'');
+  }else{
+    logBtn='<button class="btn" style="width:100%;margin-top:14px" data-action="ateopen" data-i="'+i+'">'+(real?'Ate '+fmtKcal(ea.kcal)+' · edit':'Log what I ate')+'</button>';
+  }
+  return '<section class="card" style="border-color:var(--accent)">'
+    +'<div class="spread" style="align-items:flex-start"><div><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700">Today</div><b style="font-size:15px">'+longDate(i)+'</b></div>'
+    +'<span class="chip c-'+DAYTYPE[e.type].c+'">'+esc(headline(e))+'</span></div>'
+    +(moved?'<div class="row" style="margin-top:7px">'+moved+'<span class="mini" style="color:var(--sub)">fuel moved with the session</span></div>':'')
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:12px"><span class="hero num" style="color:'+(over?'var(--hard)':'var(--ink)')+'">'+heroNum+'</span><span class="sub" style="font-weight:600">'+heroLbl+'</span></div>'
+    +gauge+stats
+    +'<p class="mini" style="margin:11px 2px 0">Plan: burn '+fmtKcal(burn)+' − eat '+fmtKcal(target)+' = <b>−'+fmtKcal(e.deficit)+'</b> deficit'+(burnReal?'':' (planned — connect Oura for live burn)')+'.</p>'
+    +logBtn
+    +'</section>';
+}
+
 function vNut(){
   const i=clamp(ui.nutDay,0,RACE_IDX);
   const w=Math.floor(i/7);
@@ -4164,12 +4206,14 @@ function vNut(){
   chips+='</div>';
 
   return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Nutrition</h1>'
-    +cutCard()
-    +cutPayingCard()
-    +'<div style="margin-top:14px">'+chips+'</div>'
+    +nutTodayHero()
+    +'<h2 style="margin:22px 2px 0">Plan the week</h2>'
+    +'<div style="margin-top:10px">'+chips+'</div>'
     +weekStrap(w)
     +strip
-    +nutDayCard(i)
+    +(i!==t?nutDayCard(i):'')
+    +cutCard()
+    +cutPayingCard()
     +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
     +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
     +'<button class="btn2" style="width:100%;margin-top:14px" data-action="planopen" aria-haspopup="dialog">Full plan &amp; daily-calorie chart</button>'
