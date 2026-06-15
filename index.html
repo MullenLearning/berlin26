@@ -4840,7 +4840,8 @@ function fitToday(){
   const nutTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.flame,clamp(ea.kcal/e.kcal*100,0,100),'var(--m-cal)')+'<h3>Nutrition</h3><span class="ftrend flat">'+(ateLogged(todayIdx)?'logged':'target')+'</span></div>'
     +'<div style="margin-top:8px"><span class="fbig">'+fmtKcal(ea.kcal)+'</span><span class="funit"> / '+fmtKcal(e.kcal)+' kcal</span></div>'
     +'<div class="fmacro">'+macG.map(m=>'<div class="mb"><div class="bar"><i style="width:'+Math.round(m[1]/macMax*100)+'%;background:'+m[2]+'"></i></div><div class="lbl">'+m[0]+' '+m[1]+'g</div></div>').join('')+'</div>'
-    +'<p class="finsight"><span class="spk">✦</span> '+(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Calories follow today’s '+esc(e.zone.toLowerCase())+' load.':'Calories follow today’s session — higher on hard days, lower on easy.')+'</p></section>';
+    +'<p class="finsight"><span class="spk">✦</span> '+(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Calories follow today’s '+esc(e.zone.toLowerCase())+' load.':'Calories follow today’s session — higher on hard days, lower on easy.')+'</p>'
+    +'<button class="fcta tonal" style="width:100%;margin-top:12px" data-action="foodlog" data-i="'+todayIdx+'">'+(ateLogged(todayIdx)?'Edit food':'Log food')+'</button></section>';
   return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'+fitBar()+chips+sessionTile+readyTile+sleepTile+runTile+azmTile+nutTile+'</div>';
 }
 function fitCoach(){
@@ -5012,7 +5013,8 @@ function appleCatSheet(cat){
     const rd=whoopRecovery();body='<section class="card"><div class="aHi">Readiness</div><div style="margin-top:8px"><span class="aBig">'+(rd.pct!=null?rd.pct:'—')+'</span><span class="aUnit"> / 100</span></div><p style="margin:8px 0 0;font-size:14px;color:var(--txt2);line-height:1.4">'+(rd.real?'From your Oura ring vs your 7-day baseline.':'Estimated from training load — connect Oura for a measured score.')+'</p></section>';
   }else if(cat==='nutrition'){
     const bal=[],lab=[];for(let k=6;k>=0;k--){const idx=rawT-k;if(idx<0||idx>RACE_IDX)continue;const b=dayBurn(idx);if(b.burned!=null){bal.push(Math.max(0,b.burned-eaten(idx).kcal));lab.push(['M','T','W','T','F','S','S'][idx%7]);}}
-    body=(bal.length?'<section class="card"><div class="aHi">Daily deficit · last 7 days</div>'+appleBars(bal,lab,'var(--c-nutrition)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura for energy-balance tracking.</p></section>');
+    body=(bal.length?'<section class="card"><div class="aHi">Daily deficit · last 7 days</div>'+appleBars(bal,lab,'var(--c-nutrition)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura for energy-balance tracking.</p></section>')
+      +'<button class="fcta" style="width:100%;margin-top:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px;font-size:16px;font-weight:600;cursor:pointer" data-action="foodlog" data-i="'+todayIdx+'">'+(ateLogged(todayIdx)?'Edit today’s food':'Log food')+'</button>';
   }else if(cat==='body'){
     body='<section class="card" style="padding:10px"><div class="svgwrap" style="padding:8px">'+weightChart()+'</div></section>';
   }else if(cat==='heart'){
