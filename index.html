@@ -994,7 +994,7 @@ function payoff(pre,e){
    source tag, so imported data lands beside manual entries without rework. */
 const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
+function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -1124,6 +1124,15 @@ function sanitizePayload(data){
     for(const k in data.ate){
       const i=Number(k),v=Number(data.ate[k]);
       if(Number.isInteger(i)&&i>=0&&i<N_DAYS&&isFinite(v)&&v>=800&&v<=8000)out.ate[i]=Math.round(v);
+    }
+  }
+  // per-day food log: {dayIndex:[{n:name,k:kcal,m:meal b|l|d|s}]}
+  out.food={};
+  if(data&&data.food&&typeof data.food==='object'){
+    for(const k in data.food){
+      const i=Number(k);if(!(Number.isInteger(i)&&i>=0&&i<N_DAYS)||!Array.isArray(data.food[k]))continue;
+      const arr=data.food[k].slice(0,60).map(f=>({n:String(f&&f.n||'Food').slice(0,60),k:Math.max(0,Math.min(5000,Math.round(Number(f&&f.k)||0))),m:({b:1,l:1,d:1,s:1}[f&&f.m]?f.m:'s')})).filter(f=>f.k>0);
+      if(arr.length)out.food[i]=arr;
     }
   }
   // weeks frozen as fact (lock-the-week): map of 0-based week → 1
@@ -4219,7 +4228,7 @@ function nutDayHero(i){
       +'<div class="loggrid" style="margin-top:12px"><button class="btn2" data-action="atecancel">Cancel</button><button class="btn" data-action="atesave" data-i="'+i+'">Save</button></div>'
       +(real?'<button class="btn3" data-action="ateclear" data-i="'+i+'" style="width:100%;margin-top:8px;color:var(--sub)">Back to plan estimate</button>':'');
   }else{
-    actions='<button class="btn" style="width:100%;margin-top:14px" data-action="ateopen" data-i="'+i+'">'+(real?'Ate '+fmtKcal(ea.kcal)+' · edit':(isToday?'Log what I ate':'Log what I ate that day'))+'</button>';
+    actions='<button class="btn" style="width:100%;margin-top:14px" data-action="foodlog" data-i="'+i+'">'+(real?'Ate '+fmtKcal(ea.kcal)+' · edit foods':(isToday?'Log food':'Log food that day'))+'</button>';
   }
   return '<section class="card" style="border-color:var(--accent)">'
     +'<div class="spread" style="align-items:flex-start"><div><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:'+tagCol+';font-weight:700">'+tag+'</div><b style="font-size:15px">'+longDate(i)+'</b></div>'
@@ -4271,6 +4280,95 @@ function weekLine(w){
   const lg=weekLedger(w);
   if(!lg.counted)return '<p class="mini" style="margin:9px 2px 2px;color:var(--sub)">Tap a day above to see what to eat that day.</p>';
   return '<p class="note" style="margin:9px 2px 2px">This week: <b>'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+'</b> banked so far'+(lg.futureN?', on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
+}
+
+/* ====================================================================
+   Food logging — search OpenFoodFacts, calories only, grouped by meal.
+   Items live in S.food[dayIndex]=[{n,k,m}] (m: b|l|d|s) and sum into
+   S.ate[dayIndex], the existing 'logged intake' seam everything reads. */
+const MEALS=[['b','Breakfast'],['l','Lunch'],['d','Dinner'],['s','Snacks']];
+function foodArr(i){return (S.food&&S.food[i])||[];}
+function foodTotal(i){return foodArr(i).reduce((s,f)=>s+(f.k||0),0);}
+function mealTotal(i,m){return foodArr(i).reduce((s,f)=>s+(f.m===m?(f.k||0):0),0);}
+function syncAte(i){ // food log is the source of truth for logged intake
+  if(!S.ate||typeof S.ate!=='object')S.ate={};
+  if(foodArr(i).length)S.ate[i]=Math.round(foodTotal(i));else delete S.ate[i];
+}
+function addFood(i,m,name,kcal){
+  if(!S.food||typeof S.food!=='object')S.food={};
+  if(!Array.isArray(S.food[i]))S.food[i]=[];
+  S.food[i].push({n:String(name||'Food').slice(0,60),k:Math.max(0,Math.round(kcal)),m:m});
+  syncAte(i);save();
+}
+function rmFood(i,idx){
+  const arr=foodArr(i);if(idx<0||idx>=arr.length)return;
+  arr.splice(idx,1);if(!arr.length&&S.food)delete S.food[i];syncAte(i);save();
+}
+function offKcal100(p){const n=p.nutriments||{};let k=n['energy-kcal_100g'];if(k==null||isNaN(k)){const kj=n['energy_100g'];if(kj!=null&&!isNaN(kj))k=kj/4.184;}k=Math.round(k);return (isFinite(k)&&k>0&&k<900)?k:null;}
+function foodSearchRun(){
+  const fs=ui.food;if(!fs||!fs.q){return;}
+  fs.loading=true;fs.results=null;fs.err=false;foodRefresh();
+  const q=fs.q;
+  const ctl=('AbortController'in window)?new AbortController():null;
+  const to=setTimeout(()=>{if(ctl)ctl.abort();},9000); // OFF can be slow → fall back to manual
+  fetch('https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=24&fields=product_name,brands,nutriments,serving_size',ctl?{signal:ctl.signal}:undefined)
+    .then(r=>{clearTimeout(to);return r.ok?r.json():Promise.reject(0);})
+    .then(j=>{
+      if(ui.food!==fs||fs.q!==q)return; // a newer search superseded this one
+      const out=[];(j.products||[]).forEach(p=>{const k=offKcal100(p);if(k!=null&&p.product_name)out.push({name:String(p.product_name).slice(0,70),brand:String(p.brands||'').split(',')[0].slice(0,32),k100:k});});
+      fs.results=out;fs.loading=false;foodRefresh();
+    })
+    .catch(()=>{clearTimeout(to);if(ui.food===fs){fs.loading=false;fs.results=[];fs.err=true;foodRefresh();}});
+}
+function foodSheetHTML(){
+  const fs=ui.food,i=fs.i,e=eff(i),total=foodTotal(i),budget=e.kcal;
+  const headTotal='<span class="chip '+(total>budget+1?'c-long':'neutral')+'">'+fmtKcal(total)+' / '+fmtKcal(budget)+'</span>';
+  if(fs.view==='search'){
+    const mlabel=((MEALS.find(x=>x[0]===fs.meal)||[])[1])||'';
+    let body;
+    if(fs.pick){
+      const g=fs.grams||100,kc=Math.round(fs.pick.k100*g/100);
+      body='<section class="card" style="margin-top:12px"><b>'+esc(fs.pick.name)+'</b>'+(fs.pick.brand?' <span class="mini">'+esc(fs.pick.brand)+'</span>':'')
+        +'<div class="row" style="align-items:center;gap:12px;margin-top:14px"><div class="stepper"><button data-action="foodg" data-d="-10" aria-label="10 g less">−</button><div class="stepval"><b id="foodgv" data-v="'+g+'">'+g+'</b><span>g</span></div><button data-action="foodg" data-d="10" aria-label="10 g more">+</button></div>'
+        +'<div style="margin-left:auto;text-align:right"><div class="big num" id="foodkc">'+fmtKcal(kc)+'</div><span class="mini">kcal · '+fs.pick.k100+'/100g</span></div></div>'
+        +'<div class="loggrid" style="margin-top:14px"><button class="btn2" data-action="foodpickcancel">Back</button><button class="btn" data-action="foodaddpick">Add to '+esc(mlabel)+'</button></div></section>';
+    }else{
+      let res;
+      if(fs.loading)res='<p class="note" style="margin:12px 2px">Searching…</p>';
+      else if(fs.results&&fs.results.length)res=fs.results.map((r,ix)=>'<button class="sheetrow" data-action="foodpick" data-ix="'+ix+'" style="text-align:left"><span class="t" style="flex:1"><b style="color:var(--ink)">'+esc(r.name)+'</b>'+(r.brand?'<br><span class="mini">'+esc(r.brand)+'</span>':'')+'</span><span class="mini" style="white-space:nowrap">'+r.k100+' /100g ›</span></button>').join('');
+      else if(fs.err)res='<p class="note" style="margin:12px 2px">Couldn’t reach the food database. Add it manually below.</p>';
+      else if(fs.results)res='<p class="note" style="margin:12px 2px">No matches — add it manually below.</p>';
+      else res='<p class="mini" style="margin:12px 2px;color:var(--sub)">Search by name (e.g. “porridge”, “banana”, a brand). Calories are per 100 g — you set the portion next.</p>';
+      body='<div class="shsec"><input id="foodq" type="text" placeholder="Search foods…" value="'+esc(fs.q||'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button class="btn2" data-action="foodsearch" style="width:100%;margin-top:8px">Search</button></div>'
+        +res
+        +'<section class="card" style="margin-top:14px"><b class="mini" style="text-transform:uppercase;letter-spacing:.06em;color:var(--sub)">Can’t find it? Add manually</b>'
+        +'<div class="loggrid" style="margin-top:8px"><input id="foodmn" type="text" placeholder="Name" autocomplete="off"><input id="foodmk" type="number" inputmode="numeric" placeholder="kcal"></div>'
+        +'<button class="btn2" style="width:100%;margin-top:8px" data-action="foodquick">Add to '+esc(mlabel)+'</button></section>';
+    }
+    return '<div class="spread" style="align-items:center"><button class="btn3" data-action="foodback" style="color:var(--accent)">‹ '+esc(mlabel)+'</button>'+headTotal+'</div>'+body
+      +'<button class="sheetrow" data-action="foodclose" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:12px">Done</button>';
+  }
+  let meals='';
+  MEALS.forEach(m=>{
+    let rows='';
+    foodArr(i).forEach((f,ix)=>{if(f.m!==m[0])return;
+      rows+='<div class="sheetrow" style="cursor:default"><span class="t" style="flex:1;color:var(--ink)">'+esc(f.n)+'</span><span class="mini">'+fmtKcal(f.k)+'</span><button class="del" data-action="foodrm" data-i="'+i+'" data-ix="'+ix+'" aria-label="Remove '+esc(f.n)+'">✕</button></div>';});
+    const sub=mealTotal(i,m[0]);
+    meals+='<div class="spread" style="margin:18px 2px 0;align-items:baseline"><b>'+m[1]+'</b>'+(sub?'<span class="mini">'+fmtKcal(sub)+' kcal</span>':'')+'</div>'+rows
+      +'<button class="btn3" data-action="foodadd" data-i="'+i+'" data-meal="'+m[0]+'" style="margin-top:6px;color:var(--accent)">+ Add food</button>';
+  });
+  return '<div class="spread" style="align-items:center"><h2 style="margin:0">'+isoShort(isoAt(i))+' · food</h2>'+headTotal+'</div>'
+    +'<p class="mini" style="margin:6px 2px 0">Search foods and they add up to your day’s total.</p>'+meals
+    +'<button class="sheetrow" data-action="foodclose" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:18px">Done</button>';
+}
+function foodFocus(){const fs=ui.food;if(fs&&fs.view==='search'&&!fs.pick&&!fs.results&&!fs.loading){const q=document.getElementById('foodq');if(q)q.focus();}}
+function foodRefresh(){const p=document.querySelector('#sheet .panel');if(p){p.innerHTML=foodSheetHTML();foodFocus();}}
+function openFoodSheet(i){
+  i=clamp(i,0,RACE_IDX);
+  // bring a pre-existing quick-logged total in as an editable item
+  if((!S.food||!S.food[i])&&S.ate&&S.ate[i]!=null){if(!S.food)S.food={};S.food[i]=[{n:'Logged earlier',k:Math.round(S.ate[i]),m:'s'}];}
+  ui.food={i:i,view:'list',meal:'b',q:'',results:null,loading:false,pick:null,grams:100,err:false};
+  openSheet(foodSheetHTML(),null,foodFocus);
 }
 
 function vNut(){
@@ -4628,6 +4726,7 @@ function whoopSleepSheet(){
 function whoopFabSheet(){
   openSheet('<h2 style="margin:0 0 2px;letter-spacing:.12em">QUICK LOG</h2>'
     +'<button class="wcta" style="margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log today’s run</button>'
+    +'<button class="wcta ghost" style="margin-top:10px" data-action="foodlog" data-i="'+todayIdx+'">Log food</button>'
     +'<button class="wcta ghost" style="margin-top:10px" data-action="addweight">Log weight</button>'
     +(stravaConnected()?'<button class="wcta ghost" style="margin-top:10px" data-action="stravasync">Sync Strava</button>':'')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:10px">Cancel</button>');
@@ -5221,9 +5320,8 @@ document.addEventListener('click',ev=>{
   else if(a==='wtcancel'){ui.wtOpen=false;rerenderKeepScroll();}
   else if(a==='ateopen'){ui.ateOpen=Number(el.dataset.i);rerenderKeepScroll();}
   else if(a==='gotoate'){
-    ui.tab='nut';ui.nutDay=todayIdx;ui.ateOpen=todayIdx;render();
-    const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    requestAnimationFrame(()=>{const r=document.getElementById('ater');if(r)r.scrollIntoView({block:'center',behavior:reduce?'auto':'smooth'});});
+    if(!skinHasTab('nut'))ui.tab=skinDefaultTab();else{ui.tab='nut';ui.nutDay=todayIdx;}
+    render();openFoodSheet(todayIdx);
   }
   else if(a==='burnsplit'){ui.showBurnSplit=!ui.showBurnSplit;rerenderKeepScroll();}
   else if(a==='cutweeks'){ui.showCutWeeks=!ui.showCutWeeks;rerenderKeepScroll();}
@@ -5244,6 +5342,31 @@ document.addEventListener('click',ev=>{
     if(S.ate)delete S.ate[i2];ui.ateOpen=false;save();rerenderKeepScroll();
     if(prev!=null)snack(shortDate(i2)+' — back to plan estimate',()=>{if(!S.ate)S.ate={};S.ate[i2]=prev;save();rerenderKeepScroll();});
   }
+  /* ---- Food logging ---- */
+  else if(a==='foodlog'){openFoodSheet(Number(el.dataset.i));}
+  else if(a==='foodadd'){if(ui.food){ui.food.view='search';ui.food.meal=el.dataset.meal;ui.food.q='';ui.food.results=null;ui.food.pick=null;ui.food.err=false;foodRefresh();}}
+  else if(a==='foodback'){if(ui.food){ui.food.view='list';ui.food.pick=null;foodRefresh();}}
+  else if(a==='foodsearch'){const q=document.getElementById('foodq');if(ui.food&&q&&q.value.trim()){ui.food.q=q.value.trim();foodSearchRun();}}
+  else if(a==='foodpick'){if(ui.food&&ui.food.results){ui.food.pick=ui.food.results[Number(el.dataset.ix)];ui.food.grams=100;foodRefresh();}}
+  else if(a==='foodpickcancel'){if(ui.food){ui.food.pick=null;foodRefresh();}}
+  else if(a==='foodg'){
+    if(ui.food&&ui.food.pick){
+      ui.food.grams=Math.max(5,(ui.food.grams||100)+Number(el.dataset.d));haptic();
+      const gv=document.getElementById('foodgv'),kc=document.getElementById('foodkc');
+      if(gv)gv.textContent=ui.food.grams;if(kc)kc.textContent=fmtKcal(Math.round(ui.food.pick.k100*ui.food.grams/100));
+    }
+  }
+  else if(a==='foodaddpick'){
+    const fs=ui.food;if(fs&&fs.pick){const kc=Math.round(fs.pick.k100*(fs.grams||100)/100);
+      addFood(fs.i,fs.meal,fs.pick.name+' · '+(fs.grams||100)+'g',kc);
+      fs.pick=null;fs.view='list';foodRefresh();haptic(true);}
+  }
+  else if(a==='foodquick'){
+    const fs=ui.food,n=document.getElementById('foodmn'),k=document.getElementById('foodmk');
+    if(fs&&k){const kc=parseInt(k.value,10);if(isFinite(kc)&&kc>0&&kc<=5000){addFood(fs.i,fs.meal,(n&&n.value.trim())||'Food',kc);fs.view='list';foodRefresh();haptic(true);}else if(k){showFieldErr('foodmk');}}
+  }
+  else if(a==='foodrm'){rmFood(Number(el.dataset.i),Number(el.dataset.ix));foodRefresh();}
+  else if(a==='foodclose'){closeSheet();rerenderKeepScroll();}
   else if(a==='lockweek'){
     const w2=Number(el.dataset.w);
     if(!S.locked||typeof S.locked!=='object')S.locked={};
