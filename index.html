@@ -3949,7 +3949,7 @@ function weekLedger(w){
   // is hitting the week's plan still physically possible? remaining days floored at 1600 kcal/day
   const maxRecoverable=burnLeft-future.length*1600; // most deficit the rest of the week can bank without starving
   const achievable=future.length?need<=maxRecoverable+1:true;
-  return {w:w,banked:Math.round(banked),weekPlanTot:Math.round(weekPlanTot),
+  return {w:w,banked:Math.round(banked),weekPlanTot:Math.round(weekPlanTot),planElapsed:Math.round(planElapsed),
     onPace:Math.round(banked+planLeft),ahead:Math.round(banked-planElapsed),
     futureN:future.length,future:future,eatTarget:eatTarget,achievable:achievable,estN:estN,logN:logN,counted:logN+estN};
 }
@@ -4081,10 +4081,10 @@ function weekStrap(w){
   const behindRecoverable=lg.ahead<=-250&&lg.futureN&&lg.achievable;
   const est=lg.estN>0?' ('+lg.estN+' est)':'';
   // the chip carries ahead/behind; the line states the banked figure (+ on-pace while days remain). No restated advice.
-  let s='<div class="spread" style="margin:8px 2px 0;align-items:center"><b>'+(isCur?'This week':'Week '+(w+1))+'</b>'
+  let s='<div class="spread" style="margin:8px 2px 0;align-items:center"><b>'+(isCur?'This week’s deficit':'Week '+(w+1)+' deficit')+'</b>'
     +'<span class="chip '+chipCls+'">'+(lg.ahead>=0?'+':'−')+fmtKcal(Math.abs(lg.ahead))+' '+aheadWord+'</span></div>'
-    +'<p class="note" style="margin:4px 2px 0">'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+' banked'+est
-    +(isCur&&lg.futureN?' · on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
+    +'<p class="note" style="margin:4px 2px 0">So far <b>'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+'</b> banked vs <b>−'+fmtKcal(lg.planElapsed)+'</b> planned'+est+'.</p>'
+    +'<p class="mini" style="margin:3px 2px 0">Full week target −'+fmtKcal(lg.weekPlanTot)+(isCur&&lg.futureN?' · on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
   if(behindRecoverable&&lg.eatTarget!=null&&lg.eatTarget>=800)
     s+='<p class="mini" style="margin:4px 2px 0">Eat ≤'+fmtKcal(lg.eatTarget)+'/day the rest of the week to still land on −'+fmtKcal(lg.weekPlanTot)+'.</p>';
   if(Math.abs(lg.ahead)>500&&lg.futureN&&lg.achievable)
@@ -4133,25 +4133,38 @@ function cutPayingCard(){
    it always reflects the session currently scheduled for today (move a run and
    the burn/target/deficit shown here move with it). */
 function nutTodayHero(){
-  const i=clamp(rawT,0,RACE_IDX),e=eff(i),ea=eaten(i),real=ateLogged(i);
-  // Budget is the PLAN intake for today's (possibly moved) session: e.kcal = plan burn − plan deficit.
-  // This follows a moved run and matches the day strip — we do NOT recompute it from live Oura burn,
-  // which would diverge from the plan and read as "over" on a low-burn rest day.
-  const burn=e.burn,target=e.kcal;
-  const ek=real?ea.kcal:0,left=target-ek,over=ek>target;
-  const pct=target>0?clamp(ek/target*100,0,100):0;
-  const heroNum=!real?fmtKcal(target):fmtKcal(Math.abs(left));
-  const heroLbl=!real?'kcal to eat today':(left>=0?'kcal left today':'kcal over today');
+  const i=clamp(rawT,0,RACE_IDX),e=eff(i),ea=eaten(i),b=dayBurn(i),real=ateLogged(i);
+  // Reality first: use the day's measured burn (Oura) when we have it, else the plan's modelled burn.
+  const burnReal=b.burned!=null,burn=burnReal?b.burned:e.burn;
+  const eatToHit=Math.max(0,burn-e.deficit);   // intake that lands today's target deficit AT THIS burn
+  const ek=real?ea.kcal:0,curDef=burn-ek,room=eatToHit-ek;  // room>0 = can still eat & hit target; <0 = short by |room|
   const moved=movedChip(e);
-  const gauge='<div style="height:16px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:14px">'
-    +'<i style="display:block;height:100%;width:'+(real?pct:0)+'%;background:'+(over?'var(--hard)':'var(--accent)')+';border-radius:99px;transition:width .5s var(--ease-out)"></i></div>'
-    +'<div class="spread" style="margin-top:5px"><span class="mini">'+(real?fmtKcal(ek)+' eaten':'nothing logged yet')+'</span><span class="mini">'+fmtKcal(target)+' budget</span></div>';
+  // hero = the deficit you're actually running (once logged), else today's target
+  const heroNum=real?((curDef>=0?'−':'+')+fmtKcal(Math.abs(curDef))):'−'+fmtKcal(e.deficit);
+  const heroLbl=real?'deficit so far today':'today’s target deficit';
+  const heroColor=!real?'var(--ink)':(curDef>=e.deficit?'var(--easy)':(curDef>=e.deficit*0.5?'var(--long)':'var(--hard)'));
+  // gauge: bar = today's burn; fill = eaten; marker = the intake that hits the target deficit
+  const eatenPct=burn>0?clamp(ek/burn*100,0,100):0,markPct=burn>0?clamp(eatToHit/burn*100,0,100):0;
+  const fillCol=!real?'var(--accent)':(ek<=eatToHit?'var(--easy)':'var(--long)');
+  const gauge='<div style="position:relative;height:18px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:14px">'
+    +'<i style="display:block;height:100%;width:'+(real?eatenPct:0)+'%;background:'+fillCol+';border-radius:99px;transition:width .5s var(--ease-out)"></i>'
+    +'<span style="position:absolute;top:0;bottom:0;left:'+markPct+'%;width:2px;background:var(--ink);opacity:.5"></span></div>'
+    +'<div class="spread" style="margin-top:5px"><span class="mini">'+(real?fmtKcal(ek)+' eaten':'nothing logged yet')+'</span><span class="mini">'+fmtKcal(burn)+(burnReal?' burned':' plan burn')+'</span></div>';
   const stat=(lbl,val,col)=>'<div style="flex:1;text-align:center;padding:0 4px"><div class="num" style="font-size:19px;font-weight:700;color:'+(col||'var(--ink)')+'">'+val+'</div><div class="mini" style="margin-top:2px">'+lbl+'</div></div>';
   const div='<div style="width:1px;background:var(--line);align-self:stretch"></div>';
   const stats='<div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:13px;gap:0">'
-    +stat('plan burn',fmtKcal(burn))+div
-    +stat('target deficit','−'+fmtKcal(e.deficit))+div
-    +stat('eaten',real?fmtKcal(ea.kcal):'—')+'</div>';
+    +stat(burnReal?'burned':'plan burn',fmtKcal(burn))+div
+    +stat('eaten',real?fmtKcal(ea.kcal):'—')+div
+    +stat('target','−'+fmtKcal(e.deficit))+'</div>';
+  let defNote;
+  if(!real){
+    defNote='Today’s target is a <b>−'+fmtKcal(e.deficit)+'</b> deficit — eat up to <b>'+fmtKcal(eatToHit)+'</b> to hit it. Log what you ate to track the real number.';
+  }else{
+    if(Math.abs(room)<40)defNote='Right on your <b>−'+fmtKcal(e.deficit)+'</b> target.';
+    else if(room>0)defNote='<b>'+fmtKcal(room)+' kcal left</b> and you still hit your −'+fmtKcal(e.deficit)+' target.';
+    else defNote='<b>'+fmtKcal(-room)+' short</b> of your −'+fmtKcal(e.deficit)+' target today (still a '+fmtKcal(curDef)+'-kcal deficit).';
+    if(burnReal&&Math.abs(burn-e.burn)>=150)defNote+=' Your ring logged '+fmtKcal(burn)+' today vs the plan’s '+fmtKcal(e.burn)+'.';
+  }
   let logBtn;
   if(ui.ateOpen===i){
     const lo=Math.max(800,e.kcal-700),start=Math.round(real?ea.kcal:(lastAte(i)||e.kcal));
@@ -4165,9 +4178,9 @@ function nutTodayHero(){
     +'<div class="spread" style="align-items:flex-start"><div><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700">Today</div><b style="font-size:15px">'+longDate(i)+'</b></div>'
     +'<span class="chip c-'+DAYTYPE[e.type].c+'">'+esc(headline(e))+'</span></div>'
     +(moved?'<div class="row" style="margin-top:7px">'+moved+'<span class="mini" style="color:var(--sub)">fuel moved with the session</span></div>':'')
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:12px"><span class="hero num" style="color:'+(over?'var(--hard)':'var(--ink)')+'">'+heroNum+'</span><span class="sub" style="font-weight:600">'+heroLbl+'</span></div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:12px"><span class="hero num" style="color:'+heroColor+'">'+heroNum+'</span><span class="sub" style="font-weight:600">'+heroLbl+'</span></div>'
     +gauge+stats
-    +'<p class="mini" style="margin:11px 2px 0">Today’s plan: burn '+fmtKcal(burn)+' − eat '+fmtKcal(target)+' = <b>−'+fmtKcal(e.deficit)+'</b> deficit. The cut card tracks your real burn vs plan.</p>'
+    +'<p class="mini" style="margin:11px 2px 0">'+defNote+'</p>'
     +logBtn
     +'</section>';
 }
