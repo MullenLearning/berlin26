@@ -4133,9 +4133,11 @@ function cutPayingCard(){
    it always reflects the session currently scheduled for today (move a run and
    the burn/target/deficit shown here move with it). */
 function nutTodayHero(){
-  const i=clamp(rawT,0,RACE_IDX),e=eff(i),ea=eaten(i),b=dayBurn(i),real=ateLogged(i);
-  const burnReal=b.burned!=null,burn=burnReal?b.burned:e.burn;
-  const target=Math.max(0,burn-e.deficit);          // calories you can eat and still hit the deficit
+  const i=clamp(rawT,0,RACE_IDX),e=eff(i),ea=eaten(i),real=ateLogged(i);
+  // Budget is the PLAN intake for today's (possibly moved) session: e.kcal = plan burn − plan deficit.
+  // This follows a moved run and matches the day strip — we do NOT recompute it from live Oura burn,
+  // which would diverge from the plan and read as "over" on a low-burn rest day.
+  const burn=e.burn,target=e.kcal;
   const ek=real?ea.kcal:0,left=target-ek,over=ek>target;
   const pct=target>0?clamp(ek/target*100,0,100):0;
   const heroNum=!real?fmtKcal(target):fmtKcal(Math.abs(left));
@@ -4147,7 +4149,7 @@ function nutTodayHero(){
   const stat=(lbl,val,col)=>'<div style="flex:1;text-align:center;padding:0 4px"><div class="num" style="font-size:19px;font-weight:700;color:'+(col||'var(--ink)')+'">'+val+'</div><div class="mini" style="margin-top:2px">'+lbl+'</div></div>';
   const div='<div style="width:1px;background:var(--line);align-self:stretch"></div>';
   const stats='<div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:13px;gap:0">'
-    +stat(burnReal?'burned':'plan burn',fmtKcal(burn))+div
+    +stat('plan burn',fmtKcal(burn))+div
     +stat('target deficit','−'+fmtKcal(e.deficit))+div
     +stat('eaten',real?fmtKcal(ea.kcal):'—')+'</div>';
   let logBtn;
@@ -4165,7 +4167,7 @@ function nutTodayHero(){
     +(moved?'<div class="row" style="margin-top:7px">'+moved+'<span class="mini" style="color:var(--sub)">fuel moved with the session</span></div>':'')
     +'<div class="row" style="align-items:baseline;gap:8px;margin-top:12px"><span class="hero num" style="color:'+(over?'var(--hard)':'var(--ink)')+'">'+heroNum+'</span><span class="sub" style="font-weight:600">'+heroLbl+'</span></div>'
     +gauge+stats
-    +'<p class="mini" style="margin:11px 2px 0">Plan: burn '+fmtKcal(burn)+' − eat '+fmtKcal(target)+' = <b>−'+fmtKcal(e.deficit)+'</b> deficit'+(burnReal?'':' (planned — connect Oura for live burn)')+'.</p>'
+    +'<p class="mini" style="margin:11px 2px 0">Today’s plan: burn '+fmtKcal(burn)+' − eat '+fmtKcal(target)+' = <b>−'+fmtKcal(e.deficit)+'</b> deficit. The cut card tracks your real burn vs plan.</p>'
     +logBtn
     +'</section>';
 }
