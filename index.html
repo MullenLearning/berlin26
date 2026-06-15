@@ -1147,6 +1147,7 @@ function sanitizePayload(data){
     let x;
     if((x=nn(P.raceSecs,10800,18000))!=null)o.raceSecs=Math.round(x);
     if((x=nn(P.goalWeight,150,210))!=null)o.goalWeight=Math.round(x*10)/10;
+    if((x=nn(P.dailyDeficit,200,1500))!=null)o.dailyDeficit=Math.round(x);
     if((x=nn(P.volPct,0.5,1.3))!=null)o.volPct=Math.round(x*100)/100;
     if(P.volWeek&&typeof P.volWeek==='object')for(const k in P.volWeek){const w=Number(k),f=nn(P.volWeek[k],0.5,1.3);if(Number.isInteger(w)&&w>=0&&w<16&&f!=null)o.volWeek[w]=Math.round(f*100)/100;}
     if(P.paceShift&&typeof P.paceShift==='object')for(const z in P.paceShift){const f=nn(P.paceShift[z],-60,60);if(ZONE_MID_PACE[z]!=null&&f!=null)o.paceShift[z]=Math.round(f);}
@@ -4262,6 +4263,56 @@ function nutDayHero(i){
     +'</section>';
 }
 
+/* ====================================================================
+   Tracker model (no pre-baked plan): your own deficit target, a learned
+   real deficit, a soft daily budget, and a race-day projection from the
+   weight trend. The user sets the target via the plan builder below. */
+function deficitGoal(){return (S.plan&&S.plan.dailyDeficit!=null)?S.plan.dailyDeficit:700;} // kcal/day target
+function expenditure14(){ // learned 14-day mean burn (BMR + active)
+  const t=clamp(rawT,0,RACE_IDX);let s=0,n=0;
+  for(let i=Math.max(0,t-13);i<=t;i++){const b=dayBurn(i);if(b.burned!=null){s+=b.burned;n++;}}
+  return n?Math.round(s/n):null;
+}
+function todayBudget(){ // what to eat today = expected burn − your deficit target (scales with the day's session)
+  const pb=plannedBurn(clamp(rawT,0,RACE_IDX));
+  const exp=pb!=null?pb:expenditure14();
+  return exp!=null?Math.max(1500,Math.round(exp-deficitGoal())):null;
+}
+function learnedDeficit(){ // your REAL deficit over the last 14 days, from days you logged food
+  const t=clamp(rawT,0,RACE_IDX);let s=0,burn=0,eat=0,n=0;
+  for(let i=Math.max(0,t-13);i<=t;i++){if(!ateLogged(i))continue;const b=dayBurn(i);if(b.burned==null)continue;s+=b.burned-eaten(i).kcal;burn+=b.burned;eat+=eaten(i).kcal;n++;}
+  return n?{def:Math.round(s/n),burn:Math.round(burn/n),eat:Math.round(eat/n),days:n}:null;
+}
+function raceProjection(){ // projected race-day weight from the weight TREND
+  const goal=goalWeightVal(),daysLeft=Math.max(0,RACE_IDX-rawT),tw=trendWeight(),lw=latestWeight();
+  const curW=tw?tw.lb:(lw?lw.lb:null);
+  if(curW==null||(S.weights||[]).length<2)return {confident:false,reason:'nodata',curW:curW,goal:goal,daysLeft:daysLeft};
+  const s=trendSeries().filter(p=>p.i<=clamp(rawT,0,RACE_IDX));
+  const span=s.length?s[s.length-1].i-s[0].i:0;
+  const rate=trendRate(); // lb/wk, − = losing
+  const neededWk=daysLeft>0?(curW-goal)/(daysLeft/7):0; // + = must lose this many lb/wk
+  if(s.length<4||span<10||rate==null)
+    return {confident:false,reason:'early',curW:Math.round(curW*10)/10,goal:goal,daysLeft:daysLeft,neededWk:neededWk,changeSoFar:s.length?Math.round((s[0].lb-curW)*10)/10:0,spanDays:span};
+  const proj=Math.round((curW+rate*(daysLeft/7))*10)/10;
+  return {confident:true,curW:Math.round(curW*10)/10,goal:goal,daysLeft:daysLeft,projLb:proj,rateWk:Math.round(rate*10)/10,neededWk:Math.round(neededWk*10)/10,overGoal:Math.round((proj-goal)*10)/10};
+}
+/* Plan builder — the only "plan" now: set goal weight + a daily deficit target.
+   Opened from a link on the Nutrition tab, never the whole screen. */
+function nutGoalSheetHTML(){
+  const gw=goalWeightVal(),df=deficitGoal(),wk=df*7,lbwk=Math.round(df*7/3500*100)/100;
+  const tw=trendWeight(),lw=latestWeight(),cur=tw?tw.lb:(lw?lw.lb:210);
+  const wks=cur>gw?Math.ceil((cur-gw)/Math.max(0.1,lbwk)):0;
+  return '<h2 style="margin:0">Your weight goal</h2>'
+    +'<p class="note" style="margin:6px 0 14px">Set a target and a daily deficit — the tracker uses these. No daily meal plan: just a budget to aim under and your trend.</p>'
+    +'<div class="shsec"><label class="f">Goal weight</label><div class="stepper"><button data-action="nutgw" data-d="-1" aria-label="lower goal">−</button><div class="stepval"><b>'+fmtLb(gw)+'</b><span>lb</span></div><button data-action="nutgw" data-d="1" aria-label="higher goal">+</button></div></div>'
+    +'<div class="shsec"><label class="f">Daily deficit target</label><div class="stepper"><button data-action="nutdf" data-d="-50" aria-label="smaller deficit">−</button><div class="stepval"><b>'+fmtKcal(df)+'</b><span>kcal/day</span></div><button data-action="nutdf" data-d="50" aria-label="bigger deficit">+</button></div>'
+    +'<p class="mini" style="margin:8px 2px 0">= '+fmtKcal(wk)+' kcal/week · about <b>'+fmtLb(lbwk)+' lb/week</b></p></div>'
+    +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b>'+((RACE_IDX-rawT)>0?' ('+Math.round((RACE_IDX-rawT)/7)+' to race day)':'')+'.</p>':'')
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:700;border:none;margin-top:16px">Done</button>';
+}
+function openNutGoalSheet(){openSheet(nutGoalSheetHTML());}
+function nutGoalRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=nutGoalSheetHTML();}
+
 /* Your average daily calorie deficit (burn − eaten) over the days you've actually
    LOGGED your food — i.e. real app data, not plan estimates — plus the weight
    that average lands you at on race day. Days you didn't log are skipped (their
@@ -5390,6 +5441,10 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='foodrm'){rmFood(Number(el.dataset.i),Number(el.dataset.ix));foodRefresh();}
   else if(a==='foodclose'){closeSheet();rerenderKeepScroll();}
+  /* ---- Nutrition goal / plan builder ---- */
+  else if(a==='nutgoal'){openNutGoalSheet();}
+  else if(a==='nutgw'){if(!S.plan)S.plan={};S.plan.goalWeight=clamp(Math.round((goalWeightVal()+Number(el.dataset.d))*10)/10,150,210);save();nutGoalRefresh();rerenderKeepScroll();}
+  else if(a==='nutdf'){if(!S.plan)S.plan={};S.plan.dailyDeficit=clamp(deficitGoal()+Number(el.dataset.d),200,1200);save();nutGoalRefresh();rerenderKeepScroll();}
   else if(a==='lockweek'){
     const w2=Number(el.dataset.w);
     if(!S.locked||typeof S.locked!=='object')S.locked={};
