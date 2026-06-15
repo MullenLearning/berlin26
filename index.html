@@ -1016,7 +1016,9 @@ let storageOK=true;
 try{localStorage.setItem(KEY+'.probe','1');localStorage.removeItem(KEY+'.probe');}catch(e){storageOK=false;}
 let S=loadState();
 let saveWarned=false;
+let _neatCache=null; // memoised learned non-exercise active-calorie baseline (see dailyNEAT)
 function save(){
+  _neatCache=null; // recompute the learned NEAT baseline after any data change
   if(!storageOK)return; // in-memory session; the Today banner explains
   try{
     localStorage.setItem(KEY,JSON.stringify(S));
@@ -2489,10 +2491,21 @@ function deficitFactor(w){
    the within-week rebalance, so the goal-weight cut never double-counts. */
 function planNutRow(i){
   const w=Math.floor(i/7),op=orderOf(w)[i%7],n=NUTW[w][op],df=deficitFactor(w);
-  if(df===1)return n;
-  const burn=n[4],newDef=Math.round(n[5]*df),newKcal=Math.max(1600,burn-newDef),realDef=burn-newKcal;
-  const newCarbs=Math.max(0,n[2]+Math.round((newKcal-n[1])/4)); // carbs flex at 4 kcal/g, protein/fat fixed
-  return [n[0],newKcal,newCarbs,n[3],burn,realDef];
+  let row=n;
+  if(df!==1){
+    const burn=n[4],newDef=Math.round(n[5]*df),newKcal=Math.max(1600,burn-newDef),realDef=burn-newKcal;
+    const newCarbs=Math.max(0,n[2]+Math.round((newKcal-n[1])/4)); // carbs flex at 4 kcal/g, protein/fat fixed
+    row=[n[0],newKcal,newCarbs,n[3],burn,realDef];
+  }
+  // Personal burn model: swap the plan's modelled burn for BMR + active, and
+  // re-derive intake = burn − (target deficit), preserving the deficit + flexing carbs.
+  const pb=plannedBurn(i);
+  if(pb!=null){
+    const def=row[5],kcal=Math.max(1500,pb-def),realDef=pb-kcal;
+    const carbs=Math.max(0,row[2]+Math.round((kcal-row[1])/4));
+    row=[row[0],kcal,carbs,row[3],pb,realDef];
+  }
+  return row;
 }
 
 function eff(i){
@@ -3264,36 +3277,49 @@ function wRecovery(){
     +'</section>';
 }
 
-/* Energy balance: eaten (the day's plan, edits included) vs Total burned.
-   Total burned blends two independent estimates — Oura's day total and
-   Mifflin-St Jeor BMR ×1.2 from the LATEST weight log plus the day's actual
-   Strava run calories — because Oura alone reads high vs Luke's Garmin.
-   Oura's running figure only joins the blend once it's plausibly mature
-   (≥80% of the formula, or evening), so the number reads sane all day. */
+/* ---- Burn model: BMR (resting) + active calories ----
+   Resting = Mifflin-St Jeor from the Oura profile (height/age/sex) at the latest
+   weight. Active = the day's TRACKED active calories (Oura) for today/past, or
+   the PLANNED active (a learned non-exercise baseline + the planned run) for
+   future days. No Oura profile → fall back to Oura's day total / null. */
+function bmrAt(lb){
+  const ost=ouraState();
+  if(!(ost&&ost.h>0&&ost.age>0))return null;
+  return Math.round(10*(lb/2.2046)+6.25*(ost.h*100)-5*ost.age+(ost.sex==='female'?-161:5));
+}
+function lbAt(i){const lw=latestWeight();return lw?lw.lb:planWtAt(clamp(i,0,RACE_IDX));}
+function plannedRunKcal(i){const km=planKmAt(i);return km>0?Math.round(km*(lbAt(i)/2.2046)*1.036):0;}
+/* Learned daily non-exercise active calories: median of (Oura active − that day's
+   run) over the last ~4 weeks. Falls back to 450 until there's enough data. */
+function dailyNEAT(){
+  if(_neatCache!=null)return _neatCache;
+  const H=healthRef(),t=clamp(rawT,0,RACE_IDX),vals=[];
+  for(let i=Math.max(0,t-27);i<=t;i++){
+    const h=H.d[isoAt(i)];if(!h||h.calA==null)continue;
+    const l=sessLog(idAt(i)),lb=lbAt(i);
+    let runK=0;if(l&&(l.status==='done'||l.status==='partial'))runK=l.kcal!=null?l.kcal:(l.km?Math.round(l.km*(lb/2.2046)*1.036):0);
+    vals.push(Math.max(0,h.calA-runK));
+  }
+  let neat=450;
+  if(vals.length>=3){vals.sort((a,b)=>a-b);neat=clamp(Math.round(vals[Math.floor(vals.length/2)]),150,900);}
+  _neatCache=neat;return neat;
+}
+/* Planned total burn for a day = BMR + planned active (NEAT + planned run). null if no profile. */
+function plannedBurn(i){const bmr=bmrAt(lbAt(i));return bmr==null?null:bmr+dailyNEAT()+plannedRunKcal(i);}
 function dayBurn(i){
-  const ost=ouraState(),H=healthRef(),iso=isoAt(i),h=H.d[iso];
-  const lw=latestWeight();
-  const kg=(lw?lw.lb:planWtAt(clamp(i,0,RACE_IDX)))/2.2046;
-  let formula=null,run=0,bmr=null;
-  if(ost&&ost.h>0&&ost.age>0){
-    bmr=10*kg+6.25*(ost.h*100)-5*ost.age+(ost.sex==='female'?-161:5);
-    const l=sessLog(eff(i).id);
-    if(l&&(l.status==='done'||l.status==='partial'))run=l.kcal!=null?l.kcal:(l.km?Math.round(l.km*kg*1.036):0);
-    formula=Math.round(bmr*1.2+run);
+  const H=healthRef(),iso=isoAt(i),h=H.d[iso],lb=lbAt(i),bmr=bmrAt(lb);
+  const l=sessLog(idAt(i));
+  let run=0;
+  if(l&&(l.status==='done'||l.status==='partial'))run=l.kcal!=null?l.kcal:(l.km?Math.round(l.km*(lb/2.2046)*1.036):0);
+  else run=plannedRunKcal(i);
+  if(bmr==null){ // no Oura profile — keep the legacy day-total (or nothing)
+    const oura=h&&h.calT?h.calT:null;
+    return {burned:oura,resting:null,active:null,oura:oura,run:run,measured:oura!=null};
   }
-  const oura=h&&h.calT?h.calT:null;
-  const ouraAct=(oura&&h.calA!=null)?h.calA:null;
-  const mature=i<rawT||new Date().getHours()>=20||(oura&&formula&&oura>=formula*0.8);
-  const blend=!!(oura&&formula&&mature);
-  const burned=blend?Math.round((oura+formula)/2):(formula||oura||null);
-  // resting/active split, mirroring the total's blend; active = total − resting so the equation always sums
-  let resting=null;
-  if(burned!=null){
-    if(blend)resting=ouraAct!=null?Math.round((bmr+(oura-ouraAct))/2):Math.round(bmr);
-    else if(formula&&burned===formula)resting=Math.round(bmr);
-    else if(oura&&ouraAct!=null)resting=oura-ouraAct;
-  }
-  return {burned:burned,resting:resting,active:resting!=null?burned-resting:null,oura:oura,formula:formula,run:run};
+  // active: measured (Oura) for today/past; planned (NEAT + planned run) otherwise
+  const measuredActive=h&&h.calA!=null?h.calA:(h&&h.calT!=null?Math.max(0,h.calT-bmr):null);
+  const active=measuredActive!=null?measuredActive:(dailyNEAT()+run);
+  return {burned:bmr+active,resting:bmr,active:active,oura:(h&&h.calT)||null,run:run,measured:measuredActive!=null};
 }
 function wDeficit(){
   const e=eff(todayIdx),b=dayBurn(todayIdx),ea=eaten(todayIdx);
