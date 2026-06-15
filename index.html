@@ -924,6 +924,7 @@ function openLogSheet(i){
         +'</div></div>':''))
     +'<div class="shsec" id="shnotewrap"><button class="btn3" data-action="shnotetoggle">+ Add note</button></div>'
     +'<button class="btn" style="width:100%;margin-top:16px" data-action="sheetlogsave" data-i="'+i+'">Save</button>'
+    +(l.status?'<button class="sheetrow" data-action="clearlog" data-i="'+i+'" style="justify-content:center;color:var(--hard);font-weight:700;margin-top:8px">Clear this log — back to planned</button>':'')
     +'<button class="sheetrow" data-action="movestart" data-i="'+i+'" style="justify-content:center;color:var(--txt2);font-weight:700;margin-top:8px">Move this day instead</button>'
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>',
     document.querySelector('[data-swipe][data-i="'+i+'"]')||document.getElementById('day-'+i),
@@ -4965,6 +4966,13 @@ document.addEventListener('click',ev=>{
       if(prev)S.sessions[e2.id]=prev;else delete S.sessions[e2.id];
       save();rerenderKeepScroll();
     });
+  }
+  else if(a==='clearlog'){ // accidentally logged? wipe the result, back to the planned (unlogged) day
+    const i2=Number(el.dataset.i),e2=eff(i2);
+    const prev=S.sessions[e2.id]?Object.assign({},S.sessions[e2.id]):null;
+    delete S.sessions[e2.id];
+    save();closeSheet();rerenderKeepScroll();
+    if(prev)snack('Cleared · '+headline(e2),()=>{S.sessions[e2.id]=prev;save();rerenderKeepScroll();});
   }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
