@@ -3083,14 +3083,18 @@ function wFuel(){
       }
       if(bed&&(te.zone==='Long'||te.zone==='Marathon'))bed=' Big one tomorrow — '+bed.slice(1,2).toLowerCase()+bed.slice(2);
     }
-    tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b> — '+fmtKcal(te.kcal)+' kcal'
+    const tb=budgetAt(todayIdx+1);
+    tomorrow='<p class="note" style="margin:12px 0 0;border-top:1px solid var(--line-soft);padding-top:10px">Tomorrow: <b>'+esc(headline(te))+'</b>'+(tb!=null?' — room for ~'+fmtKcal(tb)+' kcal':'')
       +(te.type==='S'||te.type==='L'?'. Big breakfast.':te.type==='R'?'. Rest day, keep it light.':'')+bed+'</p>';
   }
+  const bud=budgetAt(todayIdx);
+  const heroRow=bud!=null
+    ?'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(bud)+'</span><span class="sub" style="font-weight:600">kcal to eat · −'+fmtKcal(deficitGoal())+' target</span></div>'
+      +'<p class="mini" style="margin:6px 2px 0">Scales with today’s '+esc(e.zone.toLowerCase())+' load — eat more on hard days.</p>'
+    :'<p class="note" style="margin:8px 0 0">Add your weight and connect Oura (Training tab) to see a daily target.</p>';
   return '<section class="card">'
-    +'<div class="spread"><h2>Fuel today</h2><div class="row">'+typeChip(e.type)
-    +'<button class="btn3" data-action="nutadjust" data-i="'+todayIdx+'" aria-haspopup="dialog" style="padding:4px 8px;min-height:32px">Adjust</button></div></div>'
-    +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(e.kcal)+'</span><span class="sub" style="font-weight:600">kcal · −'+fmtKcal(e.deficit)+' deficit</span></div>'
-    +(nutAdjChip(e)?'<div class="row" style="margin-top:6px">'+nutAdjChip(e)+'</div>':'')
+    +'<div class="spread"><h2>Fuel today</h2>'+typeChip(e.type)+'</div>'
+    +heroRow
     +tomorrow
     +'</section>';
 }
@@ -3363,14 +3367,14 @@ function wDeficit(){
     return '<section class="card"><div class="spread"><h2>Energy balance</h2><span class="chip neutral">needs Oura</span></div>'
       +'<p class="note" style="margin:8px 0 0">Connect Oura (Training tab) and this card tracks eaten vs burned, live.</p></section>';
   const def=b.burned-ea.kcal; // positive = deficit
-  const onPlan=Math.abs(def-e.deficit)<=200,real=ateLogged(todayIdx);
+  const goal=deficitGoal(),real=ateLogged(todayIdx),onTarget=def>=goal-150;
   const chip=real?'<span class="chip c-blue">logged</span>'
-    :'<span class="chip '+(onPlan?'c-easy':'c-long')+'">'+(onPlan?'on plan':(def>e.deficit?'ahead':'behind'))+' · est</span>';
+    :'<span class="chip '+(onTarget?'c-easy':'c-long')+'">'+(onTarget?'on target':'building')+' · est</span>';
   // one composed sentence — the coach voice
   const sentence=real
     ?'Ate '+fmtKcal(ea.kcal)+', burned '+fmtKcal(b.burned)+' — '+fmtKcal(Math.abs(def))+(def>=0?' under':' over')
-      +(Math.abs(def-e.deficit)>=50?', '+fmtKcal(Math.abs(def-e.deficit))+(def>e.deficit?' deeper than plan.':' shy of plan.'):', right on plan.')
-    :'Burned '+fmtKcal(b.burned)+' so far. Eat up to <b>'+fmtKcal(Math.max(0,b.burned-e.deficit))+'</b> to hit today’s −'+fmtKcal(e.deficit)+'.';
+      +(def>=goal-50?'. On track for your −'+fmtKcal(goal)+' day.':'. Target is −'+fmtKcal(goal)+'.')
+    :'Burned '+fmtKcal(b.burned)+' so far. Eat up to <b>'+fmtKcal(Math.max(0,b.burned-goal))+'</b> for a −'+fmtKcal(goal)+' day.';
   // demoted Resting+Active split, behind a tap
   const split=b.resting!=null?(ui.showBurnSplit
     ?'<p class="mini" style="margin:8px 2px 0">Resting '+fmtKcal(b.resting)+' + Active '+fmtKcal(b.active)+' = '+fmtKcal(b.burned)+' · <button class="btn3" data-action="burnsplit" aria-expanded="true" style="padding:0;color:var(--accent)">hide</button></p>'
@@ -3385,7 +3389,7 @@ function wDeficit(){
   }
   return '<section class="card"><div class="spread"><h2>Energy balance</h2>'+chip+'</div>'
     +'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+'</span>'
-    +'<span class="sub" style="font-weight:600">kcal today · plan −'+fmtKcal(e.deficit)+'</span></div>'
+    +'<span class="sub" style="font-weight:600">kcal today · target −'+fmtKcal(goal)+'</span></div>'
     +'<p class="note" style="margin:8px 0 0">'+sentence+'</p>'
     +'<div class="row" style="gap:18px;margin-top:8px">'
     +(real
@@ -4273,11 +4277,12 @@ function expenditure14(){ // learned 14-day mean burn (BMR + active)
   for(let i=Math.max(0,t-13);i<=t;i++){const b=dayBurn(i);if(b.burned!=null){s+=b.burned;n++;}}
   return n?Math.round(s/n):null;
 }
-function todayBudget(){ // what to eat today = expected burn − your deficit target (scales with the day's session)
-  const pb=plannedBurn(clamp(rawT,0,RACE_IDX));
+function budgetAt(i){ // room to eat on day i = expected burn − your deficit target (scales with the day's session)
+  const pb=plannedBurn(clamp(i,0,RACE_IDX));
   const exp=pb!=null?pb:expenditure14();
   return exp!=null?Math.max(1500,Math.round(exp-deficitGoal())):null;
 }
+function todayBudget(){return budgetAt(rawT);}
 function learnedDeficit(){ // your REAL deficit over the last 14 days, from days you logged food
   const t=clamp(rawT,0,RACE_IDX);let s=0,burn=0,eat=0,n=0;
   for(let i=Math.max(0,t-13);i<=t;i++){if(!ateLogged(i))continue;const b=dayBurn(i);if(b.burned==null)continue;s+=b.burned-eaten(i).kcal;burn+=b.burned;eat+=eaten(i).kcal;n++;}
@@ -4767,7 +4772,8 @@ function whoopStats(){
   if(b.burned!=null){const def=b.burned-eaten0.kcal;
     energy='<section class="card"><div class="spread"><span class="wcaps">Energy balance</span><span class="wcaps" style="color:'+(def>=e0Deficit(def)?'var(--rec-green)':'var(--rec-yellow)')+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+'</span></div>'
       +'<div class="row" style="align-items:baseline;gap:8px;margin-top:9px"><span class="whero" style="font-size:30px">'+fmtKcal(eaten0.kcal)+'</span><span class="wcaps" style="font-size:11px">/ '+fmtKcal(b.burned)+' KCAL BURNED</span></div>'
-      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(eaten0.kcal/b.burned*100,0,100)+'%;background:linear-gradient(90deg,var(--accent),var(--strain-2))"></i></div></section>';}
+      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(eaten0.kcal/b.burned*100,0,100)+'%;background:linear-gradient(90deg,var(--accent),var(--strain-2))"></i></div>'
+      +'<div class="wcaps" style="font-size:10px;color:var(--txt2);margin-top:9px;letter-spacing:.06em">TARGET −'+fmtKcal(deficitGoal())+' / DAY</div></section>';}
   return '<div>'+whoopHeader('Stats')
     +'<section class="card"><div class="spread"><span class="wcaps">Berlin 2026</span><span class="wcaps" style="color:var(--accent)">'+(days>0?'D−'+days:'RACE DAY')+'</span></div>'
       +'<div class="row" style="align-items:center;gap:18px;margin-top:8px">'
@@ -4782,7 +4788,7 @@ function whoopStats(){
     +ouraCard()+stravaCard()
     +'</div>';
 }
-function e0Deficit(){const e=eff(todayIdx);return e.deficit;} // tiny helper for the energy chip threshold
+function e0Deficit(){return deficitGoal();} // chip turns green once you hit your deficit target
 /* Deep-dive sheets (tap a dial) */
 function whoopRecovSheet(){
   const rec=whoopRecovery(),h=(healthRef().d[todayISO()])||{},iso=todayISO();
@@ -4922,14 +4928,17 @@ function fitToday(){
   const azmTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.bolt,clamp(wkMin/azmGoal*100,0,100),'var(--m-azm)')+'<h3>Active Zone Minutes</h3><span class="ftrend flat">this week</span></div>'
     +'<div style="margin-top:8px"><span class="fbig">'+Math.round(wkMin)+'</span><span class="funit"> / '+azmGoal+' min</span></div>'
     +'<p class="finsight">Training load across your runs this week — keep it climbing toward the weekly goal.</p></section>';
-  // nutrition tile
-  const tw=trendWeight(),gw=goalWeightVal();
-  const macG=[['Carbs',e.carbs,'var(--m-cal)'],['Protein',e.p,'var(--accent)'],['Fat',e.fat,'var(--m-sleep)']];
-  const macMax=Math.max.apply(null,macG.map(m=>m[1]))||1;
-  const nutTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.flame,clamp(ea.kcal/e.kcal*100,0,100),'var(--m-cal)')+'<h3>Nutrition</h3><span class="ftrend flat">'+(ateLogged(todayIdx)?'logged':'target')+'</span></div>'
-    +'<div style="margin-top:8px"><span class="fbig">'+fmtKcal(ea.kcal)+'</span><span class="funit"> / '+fmtKcal(e.kcal)+' kcal</span></div>'
-    +'<div class="fmacro">'+macG.map(m=>'<div class="mb"><div class="bar"><i style="width:'+Math.round(m[1]/macMax*100)+'%;background:'+m[2]+'"></i></div><div class="lbl">'+m[0]+' '+m[1]+'g</div></div>').join('')+'</div>'
-    +'<p class="finsight"><span class="spk">✦</span> '+(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Calories follow today’s '+esc(e.zone.toLowerCase())+' load.':'Calories follow today’s session — higher on hard days, lower on easy.')+'</p>'
+  // nutrition tile — eaten vs your soft daily budget (no prescriptive plan)
+  const tw=trendWeight(),gw=goalWeightVal(),bud=budgetAt(todayIdx),proj=raceProjection();
+  const ringPct=bud?clamp(ea.kcal/bud*100,0,100):0,left=bud!=null?bud-ea.kcal:null;
+  const insight=proj&&proj.confident
+    ?'On your current trend, about '+fmtLb(proj.projLb)+' lb on race day (goal '+fmtLb(proj.goal)+').'
+    :(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Your budget scales with today’s '+esc(e.zone.toLowerCase())+' load.'
+       :'Your budget scales with today’s session — more on hard days, less on easy.');
+  const nutTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.flame,ringPct,'var(--m-cal)')+'<h3>Nutrition</h3><span class="ftrend '+(left!=null&&left<0?'down':'flat')+'">'+(ateLogged(todayIdx)?'logged':'today')+'</span></div>'
+    +'<div style="margin-top:8px"><span class="fbig">'+fmtKcal(ea.kcal)+'</span><span class="funit"> / '+(bud!=null?fmtKcal(bud)+' kcal budget':'— kcal')+'</span></div>'
+    +(left!=null?'<div class="funit" style="margin-top:4px;color:'+(left<0?'var(--m-hr)':'var(--txt2)')+'">'+(left>=0?fmtKcal(left)+' kcal left for a −'+fmtKcal(deficitGoal())+' day':fmtKcal(-left)+' over today’s budget — one day’s fine')+'</div>':'')
+    +'<p class="finsight"><span class="spk">✦</span> '+insight+'</p>'
     +'<button class="fcta tonal" style="width:100%;margin-top:12px" data-action="foodlog" data-i="'+todayIdx+'">'+(ateLogged(todayIdx)?'Edit food':'Log food')+'</button></section>';
   return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'+fitBar()+chips+sessionTile+readyTile+sleepTile+runTile+azmTile+nutTile+'</div>';
 }
@@ -5013,7 +5022,7 @@ function appleNav(title,sub){
     +'<button class="aAvatar" data-action="editwidgets" aria-label="Profile">L</button></div>';
 }
 function appleSummary(){
-  const e=eff(todayIdx),w=Math.floor(todayIdx/7),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx);
+  const e=eff(todayIdx),w=Math.floor(todayIdx/7),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx),bud=budgetAt(todayIdx);
   const lt=sessLog(e.id),doneKm=(lt&&lt.status&&lt.km)?Number(lt.km):0;
   const movePct=e.km>0?doneKm/e.km*100:0, exPct=effWeekTarget(w)>0?weekActualKm(w)/effWeekTarget(w)*100:0, standPct=rd.pct||0;
   const H=healthRef().d[todayISO()]||{};
@@ -5022,7 +5031,7 @@ function appleSummary(){
   fav+=appleRow(APL.bed,'var(--c-sleep)','Sleep',sl.real?fmtSleep(sl.total):'No Data','','data-action="applecat" data-c="sleep"');
   fav+=appleRow(APL.heart,'var(--c-heart)','Heart Rate Variability',H.hrv!=null?H.hrv:'—','ms','data-action="applecat" data-c="recovery"');
   fav+=appleRow(APL.heart,'var(--c-heart)','Resting Heart Rate',H.rhr!=null?H.rhr:'—','BPM','data-action="applecat" data-c="heart"');
-  fav+=appleRow(APL.flame,'var(--c-energy)','Active Energy',fmtKcal(ea.kcal),'/ '+fmtKcal(e.kcal)+' kcal','data-action="applecat" data-c="nutrition"');
+  fav+=appleRow(APL.flame,'var(--c-energy)','Energy eaten',fmtKcal(ea.kcal),(bud!=null?'/ '+fmtKcal(bud)+' kcal':'kcal'),'data-action="applecat" data-c="nutrition"');
   const lw=latestWeight();
   fav+=appleRow(APL.scale,'var(--c-body)','Weight',lw?fmtLb(lw.lb):'—','lb','data-action="applecat" data-c="body"');
   // highlights — last 7 logged runs
