@@ -4079,7 +4079,11 @@ function openPlanSheet(){
   let wkOpts='<option value="all">All weeks</option>';
   for(let j=0;j<16;j++)wkOpts+='<option value="'+j+'"'+(ui.nutWeek===String(j)?' selected':'')+'>Week '+(j+1)+'</option>';
   openSheet('<div class="spread"><h2 style="margin:0">Full plan · all 112 days</h2><button class="btn3" data-action="jumptoday">Jump to today</button></div>'
-    +'<h2 style="margin:14px 0 4px;font-size:15px">Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
+    +cutCard()
+    +cutPayingCard()
+    +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
+    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
+    +'<h2 style="margin:18px 0 4px;font-size:15px">Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
     +'<p class="mini" style="margin:6px 2px 10px">Spikes = long-run fuelling, troughs = rest days. The curve drifts down as weight falls.</p>'
     +'<div style="margin-top:8px"><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
     +'<div class="scroll-x" style="margin-top:6px"><table style="min-width:580px"><thead><tr><th>W</th><th>Day</th><th><span class="sr">Day type</span></th><th class="right">kcal</th><th class="right">Prot</th><th class="right">Carb</th><th class="right">Fat</th><th class="right">Burn</th><th class="right">Deficit</th><th class="right">Plan lb</th></tr></thead><tbody id="nutbody">'+nutTableBody()+'</tbody></table></div>'
@@ -4165,49 +4169,45 @@ function cutPayingCard(){
    so it moves with a moved session. */
 function nutDayHero(i){
   i=clamp(i==null?rawT:i,0,RACE_IDX);
-  const today=clamp(rawT,0,RACE_IDX),isToday=i===today,isFuture=i>today,isPast=i<today;
+  const today=clamp(rawT,0,RACE_IDX),isToday=i===today,isFuture=i>today;
   const e=eff(i),ea=eaten(i),b=dayBurn(i),real=ateLogged(i);
   const burnReal=b.burned!=null,burn=burnReal?b.burned:e.burn;
-  const eatToHit=Math.max(0,burn-e.deficit);     // intake that lands the target deficit at this burn
-  const ek=real?ea.kcal:0,curDef=burn-ek,room=eatToHit-ek;
+  const eatTarget=e.kcal;                       // what to eat = burn − your daily cut
+  const ek=real?ea.kcal:0,curDef=burn-ek,left=eatTarget-ek;
   const moved=movedChip(e);
   const tag=isToday?'TODAY':isFuture?'UPCOMING':'PAST';
   const tagCol=isToday?'var(--accent)':'var(--sub)';
-  // hero number
+  const sess=e.km>0?esc(headline(e)).toLowerCase():'a rest day';
+  // hero: once logged → the deficit you actually ran; otherwise → what to eat
   let heroNum,heroLbl,heroColor;
-  if(isFuture||(!real&&isFuture)){ // future = the plan
-    heroNum='−'+fmtKcal(e.deficit);heroLbl='planned deficit';heroColor='var(--ink)';
-  }else if(real){
+  if(real){
     heroNum=(curDef>=0?'−':'+')+fmtKcal(Math.abs(curDef));heroLbl=isToday?'deficit so far today':'deficit that day';
-    heroColor=curDef>=e.deficit?'var(--easy)':(curDef>=e.deficit*0.5?'var(--long)':'var(--hard)');
-  }else{ // today/past, not logged
-    heroNum='−'+fmtKcal(e.deficit);heroLbl=isToday?'today’s target deficit':'planned deficit';heroColor='var(--ink)';
+    heroColor=curDef>=0?'var(--easy)':'var(--hard)';
+  }else{
+    heroNum=fmtKcal(eatTarget);heroLbl=isFuture?'kcal to eat':isToday?'kcal to eat today':'kcal to eat that day';heroColor='var(--ink)';
   }
-  // gauge: bar = burn; fill = eaten (future shows the planned intake); marker = target-deficit intake
-  const eatenPct=burn>0?clamp(ek/burn*100,0,100):0,markPct=burn>0?clamp(eatToHit/burn*100,0,100):0;
+  // gauge: eaten vs burn, marker where eating lands your cut
+  const eatenPct=burn>0?clamp(ek/burn*100,0,100):0,markPct=burn>0?clamp(eatTarget/burn*100,0,100):0;
   const fillPct=isFuture?markPct:(real?eatenPct:0);
-  const fillCol=isFuture?'color-mix(in srgb,var(--accent) 45%,transparent)':(!real?'var(--accent)':(ek<=eatToHit?'var(--easy)':'var(--long)'));
+  const fillCol=isFuture?'color-mix(in srgb,var(--accent) 40%,transparent)':(!real?'var(--accent)':(ek<=eatTarget?'var(--easy)':'var(--long)'));
   const gauge='<div style="position:relative;height:18px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:14px">'
     +'<i style="display:block;height:100%;width:'+fillPct+'%;background:'+fillCol+';border-radius:99px;transition:width .5s var(--ease-out)"></i>'
     +'<span style="position:absolute;top:0;bottom:0;left:'+markPct+'%;width:2px;background:var(--ink);opacity:.5"></span></div>'
-    +'<div class="spread" style="margin-top:5px"><span class="mini">'+(isFuture?'plan: eat '+fmtKcal(eatToHit):(real?fmtKcal(ek)+' eaten':'nothing logged yet'))+'</span><span class="mini">'+fmtKcal(burn)+(burnReal?' burned':' plan burn')+'</span></div>';
+    +'<div class="spread" style="margin-top:5px"><span class="mini">'+(isFuture?'eat ~'+fmtKcal(eatTarget):(real?fmtKcal(ek)+' eaten':'eat up to '+fmtKcal(eatTarget)))+'</span><span class="mini">'+fmtKcal(burn)+(burnReal?' burned':' burn')+'</span></div>';
   const stat=(lbl,val,col)=>'<div style="flex:1;text-align:center;padding:0 4px"><div class="num" style="font-size:19px;font-weight:700;color:'+(col||'var(--ink)')+'">'+val+'</div><div class="mini" style="margin-top:2px">'+lbl+'</div></div>';
   const div='<div style="width:1px;background:var(--line);align-self:stretch"></div>';
   const stats='<div class="row" style="margin-top:14px;border-top:1px solid var(--line);padding-top:13px;gap:0">'
-    +stat(burnReal?'burned':'plan burn',fmtKcal(burn))+div
-    +stat(isFuture?'plan eat':'eaten',isFuture?fmtKcal(eatToHit):(real?fmtKcal(ea.kcal):'—'))+div
-    +stat('target','−'+fmtKcal(e.deficit))+'</div>';
+    +stat(burnReal?'burned':'burn (plan)',fmtKcal(burn))+div
+    +stat('eaten',real?fmtKcal(ea.kcal):'—')+div
+    +stat(isFuture?'to eat':'deficit',isFuture?fmtKcal(eatTarget):(real?((curDef>=0?'−':'+')+fmtKcal(Math.abs(curDef))):'—'),isFuture?'var(--ink)':(real?(curDef>=0?'var(--easy)':'var(--hard)'):'var(--ink)'))+'</div>';
   let defNote;
   if(isFuture){
-    defNote='Plan for '+shortDate(i)+': eat <b>'+fmtKcal(eatToHit)+'</b> for a −'+fmtKcal(e.deficit)+' deficit ('+esc(DAYTYPE[e.type].label.toLowerCase())+').';
+    defNote=sess.charAt(0).toUpperCase()+sess.slice(1)+' on '+shortDate(i)+' — you’ll burn about <b>'+fmtKcal(burn)+'</b>, so eat around <b>'+fmtKcal(eatTarget)+'</b>.';
   }else if(!real){
-    defNote=isToday?'Today’s target is a <b>−'+fmtKcal(e.deficit)+'</b> deficit — eat up to <b>'+fmtKcal(eatToHit)+'</b> to hit it. Log what you ate to track the real number.'
-      :'Plan estimate — eat ≤<b>'+fmtKcal(eatToHit)+'</b> for the −'+fmtKcal(e.deficit)+' target. Log what you ate that day.';
+    defNote='You’ve burned <b>'+fmtKcal(burn)+'</b> '+(isToday?'so far ':'')+'(your BMR + '+sess+'). Eat up to <b>'+fmtKcal(eatTarget)+'</b>, then log it.';
   }else{
-    if(Math.abs(room)<40)defNote='Right on the <b>−'+fmtKcal(e.deficit)+'</b> target.';
-    else if(room>0)defNote=isToday?'<b>'+fmtKcal(room)+' kcal left</b> and you still hit your −'+fmtKcal(e.deficit)+' target.':'Ran a <b>'+fmtKcal(curDef)+'-kcal</b> deficit — '+fmtKcal(room)+' deeper than the −'+fmtKcal(e.deficit)+' target.';
-    else defNote='<b>'+fmtKcal(-room)+' '+(isToday?'short':'over')+'</b> of the −'+fmtKcal(e.deficit)+' target (still a '+fmtKcal(curDef)+'-kcal deficit).';
-    if(burnReal&&Math.abs(burn-e.burn)>=150)defNote+=' Ring logged '+fmtKcal(burn)+' vs the plan’s '+fmtKcal(e.burn)+'.';
+    defNote='Burned <b>'+fmtKcal(burn)+'</b> '+(isToday?'so far ':'')+'(BMR + '+sess+') and ate <b>'+fmtKcal(ea.kcal)+'</b>'
+      +(left>50?' — room for <b>'+fmtKcal(left)+'</b> more.':left<-50?' — <b>'+fmtKcal(-left)+'</b> over the day’s plan.':' — right on plan.');
   }
   // actions: log/edit for today & past; future shows the plan-target editor
   let actions;
@@ -4230,6 +4230,42 @@ function nutDayHero(i){
     +'<p class="mini" style="margin:11px 2px 0">'+defNote+'</p>'
     +actions
     +'</section>';
+}
+
+/* Where you'll weigh on race day if you keep up your ACTUAL average daily deficit
+   since the plan started (the calorie-balance projection the user asked for).
+   Falls back to the weigh-in trend when there's no burn data. */
+function raceProjectionCard(){
+  const goal=goalWeightVal(),daysLeft=Math.max(0,RACE_IDX-rawT),tw=trendWeight(),lw=latestWeight();
+  const curW=tw?tw.lb:(lw?lw.lb:null);
+  if(curW==null)
+    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">Log a few weigh-ins'+(ouraConnected()?'':' and connect Oura on the Training tab')+' and your projected Berlin weight shows here.</p></section>';
+  let banked=0,days=0;const t=clamp(rawT,0,RACE_IDX);
+  for(let k=0;k<=t;k++){const bb=dayBurn(k);if(bb.burned!=null){banked+=bb.burned-eaten(k).kcal;days++;}}
+  let proj=null,avgDef=null,basis=null;
+  if(days>=3){avgDef=banked/days;proj=curW-(avgDef*daysLeft/3500);basis='deficit';}
+  else if(S.weights.length>=2){const r=trendRate();if(r!=null){proj=curW-(r*daysLeft/7);basis='trend';}}
+  if(proj==null)
+    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">A few more '+(ouraConnected()?'logged days':'weigh-ins')+' and the projection appears.</p></section>';
+  proj=Math.round(proj*10)/10;
+  const over=proj-goal;
+  const chip=over<=0.4?'<span class="chip c-easy">on track</span>':'<span class="chip '+(over<=2?'c-long':'c-hard')+'">'+(over>0?'+':'')+fmtLb(over)+' lb</span>';
+  const need=daysLeft>0?clamp((curW-goal)*3500/daysLeft,0,1500):0;
+  return '<section class="card">'
+    +'<div class="spread"><h2 style="margin:0">Race-day weight</h2>'+chip+'</div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num">'+fmtLb(proj)+'</span><span class="sub" style="font-weight:600">lb at Berlin · goal '+fmtLb(goal)+'</span></div>'
+    +'<p class="note" style="margin:8px 0 0">'+(basis==='deficit'
+        ?'At your average <b>−'+fmtKcal(Math.round(avgDef))+'/day</b> over the last '+days+' day'+(days===1?'':'s')+', you’ll reach about <b>'+fmtLb(proj)+' lb</b> by race day.'
+        :'From your weigh-in trend you’re heading for about <b>'+fmtLb(proj)+' lb</b> by race day.')+'</p>'
+    +(daysLeft>0&&over>0.4?'<p class="mini" style="margin:6px 2px 0">To land on '+fmtLb(goal)+', average about <b>−'+fmtKcal(Math.round(need))+'/day</b> from here.</p>':'')
+    +(over< -1.5?'<p class="mini" style="margin:6px 2px 0">On track to come in under '+fmtLb(goal)+' — you could eat a little more.</p>':'')
+    +'</section>';
+}
+/* One quiet line of weekly context (no claw-back / rebalance clutter). */
+function weekLine(w){
+  const lg=weekLedger(w);
+  if(!lg.counted)return '<p class="mini" style="margin:9px 2px 2px;color:var(--sub)">Tap a day above to see what to eat that day.</p>';
+  return '<p class="note" style="margin:9px 2px 2px">This week: <b>'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+'</b> banked so far'+(lg.futureN?', on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
 }
 
 function vNut(){
@@ -4269,15 +4305,12 @@ function vNut(){
 
   return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Nutrition</h1>'
     +nutDayHero(i)
-    +'<h2 style="margin:22px 2px 0">Plan the week</h2>'
+    +raceProjectionCard()
+    +'<h2 style="margin:22px 2px 0">This week</h2>'
     +'<div style="margin-top:10px">'+chips+'</div>'
-    +weekStrap(w)
     +strip
-    +cutCard()
-    +cutPayingCard()
-    +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
-    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
-    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="planopen" aria-haspopup="dialog">Full plan &amp; daily-calorie chart</button>'
+    +weekLine(w)
+    +'<button class="btn2" style="width:100%;margin-top:16px" data-action="planopen" aria-haspopup="dialog">Full plan, cut tracker &amp; charts</button>'
     +'</div>';
 }
 
