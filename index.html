@@ -2759,9 +2759,8 @@ const BERLIN={
     {id:'today',label:'Today',icon:TAB_ICONS.today},
     {id:'train',label:'Training',icon:TAB_ICONS.train},
     {id:'nut',label:'Nutrition',icon:TAB_ICONS.nut},
-    {id:'wt',label:'Weight',icon:TAB_ICONS.wt},
   ],
-  screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut(),wt:()=>vWeight()},
+  screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut()},
 };
 const SKIN_REG={berlin:BERLIN,whoop:WHOOP,fitbit:FITBIT,apple:APPLE};
 
@@ -4281,12 +4280,6 @@ function budgetAt(i){ // room to eat on day i = expected burn − your deficit t
   const exp=pb!=null?pb:expenditure14();
   return exp!=null?Math.max(1500,Math.round(exp-deficitGoal())):null;
 }
-function todayBudget(){return budgetAt(rawT);}
-function learnedDeficit(){ // your REAL deficit over the last 14 days, from days you logged food
-  const t=clamp(rawT,0,RACE_IDX);let s=0,burn=0,eat=0,n=0;
-  for(let i=Math.max(0,t-13);i<=t;i++){if(!ateLogged(i))continue;const b=dayBurn(i);if(b.burned==null)continue;s+=b.burned-eaten(i).kcal;burn+=b.burned;eat+=eaten(i).kcal;n++;}
-  return n?{def:Math.round(s/n),burn:Math.round(burn/n),eat:Math.round(eat/n),days:n}:null;
-}
 /* Two questions from one weight trend: (1) where you'll be at RACE DAY (the fixed
    milestone, informational), and (2) your own GOAL weight by your own GOAL DATE
    (which may sit after the race) — the rate needed to make it and the date you'd
@@ -4334,47 +4327,6 @@ function nutGoalSheetHTML(){
 function openNutGoalSheet(){openSheet(nutGoalSheetHTML());}
 function nutGoalRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=nutGoalSheetHTML();}
 
-/* Your average daily calorie deficit (burn − eaten) over the days you've actually
-   LOGGED your food — i.e. real app data, not plan estimates — plus the weight
-   that average lands you at on race day. Days you didn't log are skipped (their
-   plan-estimate intake would dilute the real number). */
-function raceProjectionCard(){
-  const goal=goalWeightVal(),daysLeft=Math.max(0,RACE_IDX-rawT),tw=trendWeight(),lw=latestWeight();
-  const curW=tw?tw.lb:(lw?lw.lb:null),t=clamp(rawT,0,RACE_IDX);
-  const needNow=(daysLeft>0&&curW!=null)?Math.round(clamp((curW-goal)*3500/daysLeft,0,2000)):0;
-  const needLine=needNow>0?'<p class="mini" style="margin:6px 2px 0">To reach '+fmtLb(goal)+' lb by Berlin, average about <b>−'+fmtKcal(needNow)+'/day</b>.</p>':'';
-  // average over days with a logged intake AND a burn figure
-  let banked=0,days=0;
-  for(let k=0;k<=t;k++){if(!ateLogged(k))continue;const bb=dayBurn(k);if(bb.burned==null)continue;banked+=bb.burned-eaten(k).kcal;days++;}
-  if(days<1)
-    return '<section class="card"><h2 style="margin:0">Average deficit</h2><p class="note" style="margin:8px 0 0">Log what you eat for a few days and your average daily deficit — and the weight it lands you at for Berlin — show here.</p>'+needLine+'</section>';
-  const avgDef=Math.round(banked/days);                       // +ve = deficit/day
-  const defStr=avgDef>=0?'−'+fmtKcal(avgDef):'+'+fmtKcal(-avgDef);
-  const defColor=avgDef>=0?'var(--easy)':'var(--hard)';
-  const dayLbl=days+' logged day'+(days===1?'':'s');
-  // project race weight from the current weight at this average
-  let projNote='',chip='',proj=null,over=null;
-  if(curW!=null){
-    proj=Math.round((curW-avgDef*daysLeft/3500)*10)/10;over=proj-goal;
-    chip=over<=0.4?'<span class="chip c-easy">on track</span>':'<span class="chip '+(over<=2?'c-long':'c-hard')+'">+'+fmtLb(over)+' lb</span>';
-    projNote='<p class="note" style="margin:8px 0 0">Keep that up from '+fmtLb(curW)+' lb and you’ll weigh about <b>'+fmtLb(proj)+' lb</b> at Berlin (goal '+fmtLb(goal)+').</p>';
-  }else{
-    projNote='<p class="mini" style="margin:8px 2px 0">Log your weight and we’ll project your Berlin weight from this.</p>';
-  }
-  return '<section class="card"><div class="spread"><h2 style="margin:0">Average deficit</h2>'+chip+'</div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num" style="color:'+defColor+'">'+defStr+'</span><span class="sub" style="font-weight:600">avg kcal/day · '+dayLbl+'</span></div>'
-    +projNote
-    +(over!=null&&over>0.4?needLine:'')
-    +(days<3?'<p class="mini" style="margin:6px 2px 0">From '+dayLbl+' so far — it sharpens as you log more.</p>':'')
-    +'</section>';
-}
-/* One quiet line of weekly context (no claw-back / rebalance clutter). */
-function weekLine(w){
-  const lg=weekLedger(w);
-  if(!lg.counted)return '<p class="mini" style="margin:9px 2px 2px;color:var(--sub)">Tap a day above to see what to eat that day.</p>';
-  return '<p class="note" style="margin:9px 2px 2px">This week: <b>'+(lg.banked>=0?'−':'+')+fmtKcal(Math.abs(lg.banked))+'</b> banked so far'+(lg.futureN?', on pace for −'+fmtKcal(lg.onPace):'')+'.</p>';
-}
-
 /* ====================================================================
    Food logging — search OpenFoodFacts, calories only, grouped by meal.
    Items live in S.food[dayIndex]=[{n,k,m}] (m: b|l|d|s) and sum into
@@ -4414,8 +4366,8 @@ function foodSearchRun(){
     .catch(()=>{clearTimeout(to);if(ui.food===fs){fs.loading=false;fs.results=[];fs.err=true;foodRefresh();}});
 }
 function foodSheetHTML(){
-  const fs=ui.food,i=fs.i,e=eff(i),total=foodTotal(i),budget=e.kcal;
-  const headTotal='<span class="chip '+(total>budget+1?'c-long':'neutral')+'">'+fmtKcal(total)+' / '+fmtKcal(budget)+'</span>';
+  const fs=ui.food,i=fs.i,total=foodTotal(i);
+  const headTotal='<span class="chip neutral">'+fmtKcal(total)+' kcal</span>';
   if(fs.view==='search'){
     const mlabel=((MEALS.find(x=>x[0]===fs.meal)||[])[1])||'';
     let body;
@@ -4464,121 +4416,99 @@ function openFoodSheet(i){
   openSheet(foodSheetHTML(),null,foodFocus);
 }
 
-/* Card A — race-day weight projection (the hero answer). */
-function nutProjectionCard(){
-  const p=raceProjection(),goal=goalWeightVal();
-  if(p.curW==null)
-    return '<section class="card"><h2 style="margin:0">Race-day weight</h2><p class="note" style="margin:8px 0 0">Log your weight a few mornings and your projected Berlin weight appears here.</p></section>';
-  const gLbl=goalDateLbl(p.goalIdx);
-  const needDay=p.goalNeededWk!=null?Math.round(clamp(-p.goalNeededWk*3500/7,0,2000)):0; // kcal/day deficit to reach goal by its date
-  const goalPast=p.goalDaysLeft<=0;
-  if(!p.confident){
-    const word=p.changeSoFar>=0.3?'down <b>'+fmtLb(p.changeSoFar)+' lb</b>':p.changeSoFar<=-0.3?'up <b>'+fmtLb(-p.changeSoFar)+' lb</b>':'about level';
-    return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2><span class="chip neutral">building</span></div>'
-      +'<p class="note" style="margin:8px 0 0">'+word+' so far — your projection firms up after ~2 weeks of weigh-ins.</p>'
-      +'<p class="mini" style="margin:6px 2px 0">Goal '+fmtLb(goal)+' lb by '+gLbl+(p.goalIsRace?' (race day)':'')+(needDay>0?' — needs about <b>−'+fmtKcal(needDay)+'/day</b>':'')+'.</p></section>';
+/* ====================================================================
+   Nutrition tab — scale-led. The weight trend is the spine (the judge);
+   today is a reactive burned − eaten = deficit readout; food logging is
+   optional. No daily plan, no prescriptive budget, no scolding. The old
+   Weight tab folds in here (log form + history + backup live below). */
+function nutRaceLine(curW){ // a neutral, deficit-based race-day estimate — never a "short of goal" verdict
+  const daysLeft=Math.max(0,RACE_IDX-rawT);
+  if(curW==null||daysLeft<=0)return '';
+  const t=clamp(rawT,0,RACE_IDX);
+  let banked=0,days=0; // average over days you actually logged food (real data, not plan estimates)
+  for(let k=0;k<=t;k++){if(!ateLogged(k))continue;const bb=dayBurn(k);if(bb.burned==null)continue;banked+=bb.burned-eaten(k).kcal;days++;}
+  if(days>=1){
+    const avgDef=Math.round(banked/days),proj=Math.round((curW-avgDef*daysLeft/3500)*10)/10;
+    const defStr=(avgDef>=0?'−':'+')+fmtKcal(Math.abs(avgDef));
+    return '<p class="note" style="margin:10px 0 0;line-height:1.5">At your average <b>'+defStr+'/day</b>, you’re heading for about <b>'+fmtLb(proj)+' lb</b> on race day.</p>';
   }
-  const mag=Math.abs(p.rateWk),trendPhrase=mag<0.06?'holding steady':(p.rateWk<0?'losing about <b>'+fmtLb(mag)+' lb/wk</b>':'gaining about <b>'+fmtLb(mag)+' lb/wk</b>');
-  let chip,goalLine;
-  if(p.reached){
-    chip='<span class="chip c-easy">goal hit</span>';
-    goalLine='You’re at your goal of '+fmtLb(goal)+' lb — hold it steady.';
-  }else if(goalPast){
-    chip='<span class="chip c-long">date passed</span>';
-    goalLine='Your '+gLbl+' target for '+fmtLb(goal)+' lb has passed — set a new date below.';
-  }else if(p.etaIdx==null){
-    chip='<span class="chip c-hard">stalled</span>';
-    goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. You’re not losing right now — aim for about <b>−'+fmtKcal(needDay)+'/day</b> to get moving.';
-  }else{
-    const etaLbl=goalDateLbl(p.etaIdx),wksOff=Math.round(Math.abs(p.etaIdx-p.goalIdx)/7);
-    if(p.goalOnTrack){
-      chip='<span class="chip c-easy">on track</span>';
-      goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. At this rate you’ll get there around <b>'+etaLbl+'</b>'+(wksOff>=1?' — about '+wksOff+' wk'+(wksOff===1?'':'s')+' early':'')+'.';
-    }else{
-      chip='<span class="chip c-long">behind</span>';
-      goalLine='Goal '+fmtLb(goal)+' lb by '+gLbl+'. At this rate you’d reach it around <b>'+etaLbl+'</b>'+(wksOff>=1?', about '+wksOff+' wk'+(wksOff===1?'':'s')+' late':'')+'. Step up to about <b>−'+fmtKcal(needDay)+'/day</b> to hit your date.';
-    }
+  const rate=trendRate(); // no logged-food days yet — fall back to the scale trend, still neutral
+  if(rate!=null&&Math.abs(rate)>=0.02){
+    const proj=Math.round((curW+rate*daysLeft/7)*10)/10;
+    return '<p class="note" style="margin:10px 0 0;line-height:1.5">At your current trend, you’re heading for about <b>'+fmtLb(proj)+' lb</b> on race day.</p>';
   }
-  return '<section class="card"><div class="spread"><h2 style="margin:0">Race-day weight</h2>'+chip+'</div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num">'+fmtLb(p.projLb)+'</span><span class="sub" style="font-weight:600">lb at Berlin'+(p.daysLeft>0?' · '+p.daysLeft+' d to go':'')+'</span></div>'
-    +'<p class="note" style="margin:8px 0 0">You’re '+trendPhrase+' — at this rate, about <b>'+fmtLb(p.projLb)+' lb</b> on race day.</p>'
-    +'<p class="mini" style="margin:8px 2px 0">'+goalLine+'</p></section>';
+  return '<p class="mini" style="margin:10px 2px 0;color:var(--sub)">Log your food for a few days and a race-day weight estimate appears here.</p>';
 }
-/* Card B — the weight trend (smoothed line vs goal pace). */
-function nutTrendCard(){
-  const tw=trendWeight(),rate=trendRate();
-  if(!tw)return '';
-  return '<section class="card"><div class="spread"><h2 style="margin:0">Weight trend</h2><span class="mini">'+fmtLb(tw.lb)+' lb'+(rate!=null?' · '+(rate<=0?'−':'+')+fmtLb(Math.abs(rate))+'/wk':'')+'</span></div>'
-    +'<div class="svgwrap" style="margin-top:8px">'+weightChart()+'</div>'
-    +'<p class="mini" style="margin:6px 2px 0">One weigh-in is noise — the line is the truth. Dashed = pace to '+fmtLb(goalWeightVal())+' lb'+(goalDateIdx()!==RACE_IDX?' by '+goalDateLbl(goalDateIdx()):'')+'. Touch to scrub.</p></section>';
+function nutWeightLog(){ // "Log weight" → reveals the date + ruler in place (reuses wtopen/addweight)
+  const lw=latestWeight();
+  if(ui.wtOpen){
+    const st=Math.round((lw?lw.lb:planWtAt(clamp(rawT,0,RACE_IDX)))*10)/10;
+    return '<div style="margin-top:14px"><label class="f" for="wdate">Date</label>'
+      +'<input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27">'
+      +rulerHTML('wtr2',Math.max(120,Math.round(st)-15),Math.min(280,Math.round(st)+15),0.1,st,'lb',1,1)
+      +'<p class="err" id="wlb-err" role="alert" hidden>Pick a date and a weight between 120 and 280 lb.</p>'
+      +'<div class="loggrid" style="margin-top:10px"><button class="btn2" data-action="wtcancel">Cancel</button>'
+      +'<button class="btn" data-action="addweight">Log weight</button></div></div>';
+  }
+  return '<button class="btn" style="width:100%;margin-top:14px" data-action="wtopen">'
+    +(S.weights.find(x=>x.date===todayISO())?'Edit today’s weigh-in':'Log weight')+'</button>';
 }
-/* Card C — your real deficit, learned from logged days. */
-function nutDeficitCard(){
-  const d=learnedDeficit();
-  if(!d)return '<section class="card"><h2 style="margin:0">Your deficit</h2><p class="note" style="margin:8px 0 0">Log your food for a few days'+(ouraConnected()?'':' and connect Oura on the Training tab')+' and your real daily deficit shows here.</p></section>';
-  const sign=d.def>=0?'−':'+';let reconcile='';const rate=trendRate();
-  if(rate!=null){const scaleDef=Math.round(-rate*3500/7);if(Math.abs(scaleDef-d.def)>=180)reconcile='<p class="mini" style="margin:6px 2px 0">Your scale trend suggests ~'+(scaleDef>=0?'−':'+')+fmtKcal(Math.abs(scaleDef))+'/day — logging gaps and water weight explain the gap; trust the trend over time.</p>';}
-  return '<section class="card"><div class="spread"><h2 style="margin:0">Your deficit now</h2><span class="chip neutral">'+d.days+' logged day'+(d.days===1?'':'s')+'</span></div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="hero num" style="color:'+(d.def>=0?'var(--easy)':'var(--hard)')+'">'+sign+fmtKcal(Math.abs(d.def))+'</span><span class="sub" style="font-weight:600">kcal/day · last 14 days, logged</span></div>'
-    +'<p class="note" style="margin:8px 0 0">Burned about <b>'+fmtKcal(d.burn)+'/day</b>, ate <b>'+fmtKcal(d.eat)+'/day</b>. Your target is −'+fmtKcal(deficitGoal())+'.</p>'+reconcile+'</section>';
-}
-/* Card D — today's soft budget + food log. */
-function nutTodayCard(){
-  const i=clamp(rawT,0,RACE_IDX),budget=todayBudget(),eatenK=foodTotal(i),logged=ateLogged(i),e=eff(i);
-  if(budget==null)
-    return '<section class="card" style="border-color:var(--accent)"><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700">Today</div><p class="note" style="margin:8px 0 0">Connect Oura (Training tab) for a daily budget, or just log food.</p><button class="btn" style="width:100%;margin-top:12px" data-action="foodlog" data-i="'+i+'">Log food</button></section>';
-  const left=budget-eatenK,over=left<0,pct=budget>0?clamp(eatenK/budget*100,0,100):0;
-  const isLong=e.zone==='Long'||e.zone==='Marathon';
-  return '<section class="card" style="border-color:var(--accent)">'
-    +'<div class="spread" style="align-items:flex-start"><div><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700">Today</div><b style="font-size:15px">'+longDate(i)+'</b></div><span class="chip neutral">'+esc(headline(e))+'</span></div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:12px"><span class="hero num" style="color:'+(over?'var(--long)':'var(--ink)')+'">'+fmtKcal(Math.abs(left))+'</span><span class="sub" style="font-weight:600">'+(over?'kcal over — that’s fine':'kcal room left today')+'</span></div>'
-    +'<div style="height:14px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:12px"><i style="display:block;height:100%;width:'+pct+'%;background:'+(over?'var(--long)':'var(--accent)')+';border-radius:99px;transition:width .5s var(--ease-out)"></i></div>'
-    +'<div class="spread" style="margin-top:5px"><span class="mini">'+fmtKcal(eatenK)+' eaten</span><span class="mini">'+fmtKcal(budget)+' budget</span></div>'
-    +'<p class="mini" style="margin:9px 2px 0">'+(isLong?'Long run today — eat freely, you’re fuelling. The trend is the judge.':'Aim under ~'+fmtKcal(budget)+' for a −'+fmtKcal(deficitGoal())+' day. One day doesn’t make or break it.')+'</p>'
-    +'<button class="btn" style="width:100%;margin-top:14px" data-action="foodlog" data-i="'+i+'">'+(logged?'Logged '+fmtKcal(eatenK)+' · edit food':'Log food')+'</button></section>';
+function nutTodayBalance(i){ // reactive: what you burned − what you logged = today's deficit
+  const b=dayBurn(i),eatenK=Math.round(foodTotal(i)),hasEat=ateLogged(i)||eatenK>0;
+  const burned=b.burned,est=burned!=null&&!b.measured;
+  const burnedVal=burned!=null?(est?'~':'')+fmtKcal(burned):'–';
+  const eatenVal=hasEat?fmtKcal(eatenK):'—';
+  let defVal='—',defCol='var(--sub)';
+  if(burned!=null&&hasEat){const def=burned-eatenK;defVal=(def>=0?'−':'+')+fmtKcal(Math.abs(def));defCol=def>=0?'var(--easy)':'var(--long)';}
+  const num='font-size:24px;font-weight:800;line-height:1',lbl='margin-top:5px;letter-spacing:.05em';
+  const opDiv='<div class="num" style="display:flex;align-items:center;color:var(--sub);font-size:18px">';
+  const hint=burned==null?'Connect Oura on the Training tab to see what you’ve burned.':(!hasEat?'Log a meal to see today’s deficit.':'');
+  return '<section class="card">'
+    +'<div class="spread" style="align-items:center"><h2 style="margin:0">Today</h2><span class="mini">so far</span></div>'
+    +'<div class="row" style="align-items:stretch;gap:6px;margin-top:14px">'
+      +'<div style="flex:1;text-align:center"><div class="num" style="'+num+'">'+burnedVal+'</div><div class="mini" style="'+lbl+'">BURNED</div></div>'
+      +opDiv+'−</div>'
+      +'<div style="flex:1;text-align:center"><div class="num" style="'+num+'">'+eatenVal+'</div><div class="mini" style="'+lbl+'">EATEN</div></div>'
+      +opDiv+'=</div>'
+      +'<div style="flex:1;text-align:center;background:var(--inset);border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div class="num" style="'+num+';color:'+defCol+'">'+defVal+'</div><div class="mini" style="'+lbl+';color:'+(defVal==='—'?'var(--sub)':defCol)+'">DEFICIT</div></div>'
+    +'</div>'
+    +(hint?'<p class="mini" style="margin:11px 2px 0;color:var(--sub)">'+hint+'</p>':'')
+    +'<button class="btn3" style="margin-top:12px;color:var(--accent)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
+    +'</section>';
 }
 function vNut(){
-  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Nutrition</h1>'
-    +nutProjectionCard()
-    +nutTrendCard()
-    +nutDeficitCard()
-    +nutTodayCard()
-    +'<div style="text-align:center;margin:18px 2px 2px"><button class="btn3" data-action="nutgoal" style="color:var(--accent)">Goal '+fmtLb(goalWeightVal())+' lb · −'+fmtKcal(deficitGoal())+'/day · edit ›</button></div>'
-    +'</div>';
-}
-
-function vWeight(){
-  const lw=latestWeight(),tw=trendWeight();
-  const dlt=tw?tw.lb-planWtAt(clamp(rawTodayIdx(),0,RACE_IDX)):(lw?lw.lb-planWtAt(clamp(isoToIdx(lw.date),0,RACE_IDX)):null);
-  let list='';
+  const i=clamp(rawT,0,RACE_IDX);
+  const tw=trendWeight(),lw=latestWeight(),rate=trendRate();
+  const curW=tw?tw.lb:(lw?lw.lb:null),goal=goalWeightVal();
+  let hist='';
   S.weights.slice().reverse().forEach((wn,ri)=>{
     const idx=S.weights.length-1-ri;
-    const i=clamp(isoToIdx(wn.date),0,RACE_IDX);
-    const d=wn.lb-planWtAt(i);
-    list+='<li><b class="num" style="min-width:64px">'+fmtLb(wn.lb)+' lb</b>'
-      +'<span class="sub" style="flex:1">'+isoShort(wn.date)+' · <span class="chip c-'+deltaClass(d)+'" style="padding:2px 8px">'+(d>0?'+':'')+fmtLb(d)+'</span></span>'
+    hist+='<li><b class="num" style="min-width:60px">'+fmtLb(wn.lb)+' lb</b>'
+      +'<span class="sub" style="flex:1">'+isoShort(wn.date)+'</span>'
       +'<button class="del" data-action="delweight" data-idx="'+idx+'">Delete</button></li>';
   });
-  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Weight</h1>'
-    +'<div class="sub">Race-protective cut · plan 210 → 189 lb</div>'
-    +'<div class="kpis">'
-    +'<div class="kpi"><b class="num">'+(tw?fmtLb(tw.lb):(lw?fmtLb(lw.lb):'–'))+'</b><span>'+(tw?'7-day trend lb':'latest lb')+'</span></div>'
-    +'<div class="kpi"><b class="num" style="color:var(--'+(dlt!=null?deltaClass(dlt):'rest')+')">'+(dlt!=null?(dlt>0?'+':'')+fmtLb(dlt):'–')+'</b><span>'+(tw?'trend vs plan':'vs plan')+'</span></div>'
-    +'<div class="kpi"><b class="num">'+(tw?fmtLb(Math.max(0,tw.lb-189)):(lw?fmtLb(Math.max(0,lw.lb-189)):'–'))+'</b><span>lb to 189</span></div>'
-    +'</div>'
-    +'<section class="card"><h2>Trend vs plan</h2>'
-    +'<p class="note" style="margin:0 0 6px">'+trendNarration()+'</p>'
-    +'<div class="svgwrap">'+weightChart()+'</div>'
-    +'<p class="mini" style="margin:6px 2px 0">Touch the chart to scrub through your weigh-ins.</p></section>'
-    +'<section class="card"><h2>Log a weight</h2>'
-    +'<div><label class="f" for="wdate">Date</label><input type="date" id="wdate" value="'+todayISO()+'" min="2026-06-08" max="2026-09-27"></div>'
-    +(function(){const st=Math.round((lw?lw.lb:planWtAt(clamp(rawT,0,RACE_IDX)))*10)/10;
-      return rulerHTML('wtr2',Math.max(120,Math.round(st)-15),Math.min(280,Math.round(st)+15),0.1,st,'lb',1,1);})()
-    +'<p class="err" id="wlb-err" role="alert" hidden>Pick a date and a weight between 120 and 280 lb.</p>'
-    +'<button class="btn" style="width:100%;margin-top:10px" data-action="addweight">Log weight</button>'
-    +(list?'<ul class="weights" style="list-style:none;margin:14px 0 0;padding:0">'+list+'</ul>':'<p class="note center" style="margin:14px 0 0">Log your first weigh-in above. The trend vs plan builds from here.</p>')
-    +'</section>'
-    +'<div class="footlinks"><button class="btn3" data-action="export">Back up data</button>'
+  let weightCard;
+  if(curW==null){
+    weightCard='<section class="card"><h2 style="margin:0">Weight</h2>'
+      +'<p class="note" style="margin:8px 0 0">Log your weight a few mornings and your trend toward race weight appears here.</p>'
+      +nutWeightLog()+'</section>';
+  }else{
+    const toGo=Math.max(0,curW-goal),rateStr=rate!=null?((rate<=0?'−':'+')+fmtLb(Math.abs(rate))+' lb/wk'):'';
+    weightCard='<section class="card">'
+      +'<div class="spread" style="align-items:baseline"><h2 style="margin:0">Weight</h2>'+(rateStr?'<span class="mini" style="color:'+(rate<=0?'var(--easy)':'var(--sub)')+'">'+rateStr+'</span>':'')+'</div>'
+      +'<div class="row" style="align-items:baseline;gap:10px;margin-top:6px"><span class="hero num">'+fmtLb(curW)+'</span><span class="sub" style="font-weight:600">lb · '+(tw?'7-day trend':'latest')+(toGo>0?' · '+fmtLb(toGo)+' lb to go':'')+'</span></div>'
+      +'<div class="svgwrap" style="margin-top:10px">'+weightChart()+'</div>'
+      +nutRaceLine(curW)
+      +nutWeightLog()
+      +'</section>';
+  }
+  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Nutrition</h1>'
+    +'<div class="sub">Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin</div>'
+    +weightCard
+    +nutTodayBalance(i)
+    +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
+    +(hist?'<details style="margin-top:6px"><summary class="mini" style="cursor:pointer;color:var(--sub);padding:6px 2px;list-style:none">Weigh-in history</summary><ul class="weights" style="list-style:none;margin:8px 0 0;padding:0">'+hist+'</ul></details>':'')
+    +'<div class="footlinks" style="margin-top:14px"><button class="btn3" data-action="export">Back up data</button>'
     +'<button class="btn3" data-action="importpick">Restore backup</button>'
     +'<input type="file" id="importfile" accept="application/json" style="display:none"></div>'
     +'<p class="mini center" style="margin-top:6px">All logs live on this device'+(S.lastBackup?' · last backup '+isoShort(S.lastBackup):' · never backed up')+'.</p>'
@@ -5519,7 +5449,7 @@ document.addEventListener('click',ev=>{
     const d=document.getElementById('wdate').value,v=readRuler('wtr2');
     if(d&&v>=120&&v<=280){
       const prev=S.weights.slice();
-      logWeight(d,Math.round(v*10)/10);rerenderKeepScroll();
+      logWeight(d,Math.round(v*10)/10);ui.wtOpen=false;rerenderKeepScroll();
       snack('Logged '+fmtLb(v)+' lb · '+isoShort(d),()=>{S.weights=prev;save();rerenderKeepScroll();});
     }
     else showFieldErr('wlb');
