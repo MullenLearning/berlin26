@@ -177,10 +177,10 @@ tr[data-action]:active{background:var(--bg)}
 .weekchips{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .weekchips::-webkit-scrollbar{display:none}
 .weekchips button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--sub);min-height:44px}
-.weekchips button.sel{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.weekchips button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
 .daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
 .daystrip button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 2px;text-align:center;min-height:58px}
-.daystrip button.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.daystrip button.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .daystrip .d{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase}
 .daystrip .k{font-size:12px;font-weight:800;margin-top:3px}
 .nbar{height:56px;display:flex;align-items:flex-end;justify-content:center;position:relative;margin:4px 0 2px;width:100%}
@@ -2645,24 +2645,23 @@ function nutAdjChip(e){
 /* ---------------- 7. Charts (inline SVG) ---------------- */
 
 function volumeChart(){
-  const W=360,H=185,L=26,Rm=4,T=14,B=24,max=90,ih=H-T-B;
-  const iw=(W-L-Rm)/16,bw=Math.min(15,iw*0.62);
+  const W=360,H=178,L=24,Rm=6,T=12,B=22,max=90,ih=H-T-B;
+  const iw=(W-L-Rm)/16,bw=Math.min(13,iw*0.58),rad=bw/2;
   let g='';
   [0,30,60,90].forEach(v=>{
     const y=T+ih*(1-v/max);
-    g+='<line class="gridline" x1="'+L+'" y1="'+y+'" x2="'+(W-Rm)+'" y2="'+y+'"/>'
-      +'<text class="axis" x="'+(L-5)+'" y="'+(y+3)+'" text-anchor="end">'+v+'</text>';
+    g+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-Rm)+'" y2="'+y.toFixed(1)+'" stroke="var(--grid)" stroke-width="1"/>'
+      +'<text x="'+(L-6)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" fill="var(--sub)" font-size="10" font-weight="600">'+v+'</text>';
   });
   const rawW=Math.floor(rawTodayIdx()/7);
   for(let w=0;w<16;w++){
     const x=L+iw*w+(iw-bw)/2;
-    const ph=ih*effWeekTarget(w)/max;
+    const ph=Math.max(bw,ih*effWeekTarget(w)/max);            // planned — faint full-height pill
     const act=weekActualKm(w);
-    const ah=ih*Math.min(act,max)/max;
-    g+='<rect x="'+x+'" y="'+(T+ih-ph)+'" width="'+bw+'" height="'+ph+'" rx="3" fill="var(--track)"/>';
-    if(act>0)g+='<rect x="'+(x+bw*0.18)+'" y="'+(T+ih-ah)+'" width="'+(bw*0.64)+'" height="'+ah+'" rx="2.5" fill="var(--accent)"/>';
-    if((w+1)===1||(w+1)%4===0)g+='<text class="axis" x="'+(x+bw/2)+'" y="'+(H-9)+'" text-anchor="middle">W'+(w+1)+'</text>';
-    if(w===rawW)g+='<circle cx="'+(x+bw/2)+'" cy="'+(H-3)+'" r="2.4" fill="var(--accent)"/>';
+    const ah=act>0?Math.max(bw,ih*Math.min(act,max)/max):0;   // actual — solid pill, current week brightest
+    g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ph).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ph.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="var(--track)"/>';
+    if(ah>0)g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ah).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ah.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="var(--accent)" opacity="'+(w===rawW?1:0.55)+'"/>';
+    if((w+1)===1||(w+1)%4===0)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" fill="var(--sub)" font-size="10" font-weight="600">W'+(w+1)+'</text>';
   }
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly volume, planned vs actual">'+g+'</svg>'
     +'<div class="legend"><span><i style="background:var(--track)"></i>Planned</span><span><i style="background:var(--accent)"></i>Actual logged</span></div>';
@@ -2869,18 +2868,19 @@ function wMorning(){ // first open of the day: one interaction, then it folds aw
 
 function wWeek(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
-  const wTarget=effWeekTarget(e.w),wActual=weekActualKm(e.w),sched=scheduledSoFar(e.w,e.pos-(l.status?0:1));
-  const onTrack=wActual>=sched*0.9;
-  const pct=Math.min(1,wActual/wTarget);
-  return '<section class="card"><div class="spread"><h2>Week '+(e.w+1)+' · '+e.wk.phase+'</h2>'
-    +'<span class="pill '+(onTrack?'p-hit':'p-partial')+'">'+(onTrack?'On track':'Behind plan')+'</span></div>'
-    +'<div class="row" style="gap:18px;align-items:center">'
-    +ring(pct,108,'<div><b class="num">'+Math.round(pct*100)+'%</b><span>of target</span></div>')
-    +'<div style="flex:1"><div class="big num">'+fmtKm(wActual)+' <span style="font-size:16px;color:var(--sub)">of '+fmtKm(wTarget)+' km</span></div>'
-    +'<div class="statrow" style="margin-top:10px"><div><b class="num" id="stk">'+streak()+'</b><span>streak</span></div>'
-    +'<div><b class="num" id="dn">'+doneCount()+'</b><span>done</span></div></div>'
-    +'</div></div>'
-    +'</section>';
+  const wTarget=effWeekTarget(e.w),wActual=weekActualKm(e.w);
+  const doneKm=(l.status&&l.km)?Number(l.km):0;
+  const movePct=e.km>0?doneKm/e.km*100:0;        // outer: today's run vs planned
+  const exPct=wTarget>0?wActual/wTarget*100:0;    // middle: week volume vs target
+  const H=healthRef().d[todayISO()]||{};
+  const rec=H.rs!=null?H.rs:null;                 // inner: Oura readiness
+  // Apple Activity card — the one dark card in the light app (concentric rings + stat readout)
+  return '<section class="card aActivity">'+appleRings(movePct,exPct,rec==null?0:rec,128)
+    +'<div class="aAct-stats">'
+    +'<div class="aAct-row"><span class="lab" style="color:var(--move-b)">Run</span><span class="val">'+fmtKm(doneKm)+'<span class="vu">/'+fmtKm(e.km)+' KM</span></span></div>'
+    +'<div class="aAct-row"><span class="lab" style="color:var(--ex-b)">Week</span><span class="val">'+fmtKm(wActual)+'<span class="vu">/'+fmtKm(wTarget)+' KM</span></span></div>'
+    +'<div class="aAct-row"><span class="lab" style="color:var(--st-b)">Recovery</span><span class="val">'+(rec!=null?Math.round(rec):'—')+'<span class="vu">'+(rec!=null?'%':'no data')+'</span></span></div>'
+    +'</div></section>';
 }
 
 function wFuel(){
