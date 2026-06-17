@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Berlin 26">
-<meta name="theme-color" content="#0a0d15">
+<meta name="theme-color" content="#F2F2F7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -22,14 +22,14 @@
   /* secondary/tertiary text darkened from Apple's .6/.3 alphas to solid greys that clear WCAG AA (4.5:1) on white, #F2F2F7 and #E5E5EA — .mini/.note body text relies on --sub */
   --txt2:#545458; --sub:#646469;
   --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
-  --accent:#007AFF; --accent-ink:#fff; --chevron:#C7C7CC; --signal:#FF9500;
+  --accent:#007AFF; --accent-ink:#fff; --accent-text:#0a63d6; --chevron:#C7C7CC; --signal:#FF9500;
   /* Activity-ring stops */
   --move-a:#FF0436; --move-b:#FA114F; --ex-a:#A2FF00; --ex-b:#66E300; --st-a:#00B9C8; --st-b:#1AEBFF;
   /* health category glyph colours */
   --c-activity:#FA114F; --c-heart:#FF2D55; --c-sleep:#5E5CE6; --c-nutrition:#34C759; --c-energy:#FF9500; --c-body:#AF52DE; --c-mind:#5AC8FA;
   /* training zone semantic colours (+ tint backgrounds) */
-  --rec:#5AC8FA; --rec-bg:#e1f4fd; --easy:#34C759; --easy-bg:#e3f9e9; --long:#FF9500; --long-bg:#fff0db;
-  --hard:#FF3B30; --hard-bg:#ffe5e3; --rest:#8E8E93; --rest-bg:#eceef2; --blue:#007AFF; --blue-bg:#e4eeff;
+  --rec:#0a6e9e; --rec-bg:#e1f4fd; --easy:#1c7d3f; --easy-bg:#e3f9e9; --long:#9a5a00; --long-bg:#fff0db;
+  --hard:#c62a1f; --hard-bg:#ffe5e3; --rest:#52606f; --rest-bg:#eceef2; --blue:#1d4ed8; --blue-bg:#e4eeff;
   --track:#E5E5EA; --shadow:0 1px 2px rgba(0,0,0,.04);
   --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
@@ -45,18 +45,17 @@ html[data-skin="berlin"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdr
 html[data-skin="berlin"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
 html[data-skin="berlin"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
 html[data-skin="berlin"] #tabbar button{color:#8E8E93}
-html[data-skin="berlin"] #tabbar button.sel{color:var(--accent)}
+html[data-skin="berlin"] #tabbar button.sel{color:var(--accent-text)}
 html[data-skin="berlin"] #tabbar button.sel::after{display:none}
 html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
-html[data-skin="berlin"] .skinseg{background:#fff;border:1px solid var(--line)}
-html[data-skin="berlin"] .skinseg button.on{background:var(--accent);color:#fff}
 /* Apple components */
 .aNav{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 2px 0}
 .aTitle{font-size:34px;font-weight:700;letter-spacing:.37px;color:#000;line-height:1.1}
 .aSub{font-size:15px;color:var(--txt2);margin:2px 2px 6px}
-.aAvatar{width:34px;height:34px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--txt2);font-size:16px;border:none;cursor:pointer;flex:none;margin-top:6px}
+.aAvatar{width:34px;height:34px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--txt2);font-size:16px;border:none;cursor:pointer;flex:none;margin-top:6px;position:relative}
+.aAvatar::before{content:"";position:absolute;inset:-5px}
 .aSec{font-size:22px;font-weight:700;color:#000;margin:24px 2px 9px;display:flex;justify-content:space-between;align-items:baseline}
-.aSec .lnk{font-size:17px;font-weight:400;color:var(--accent);cursor:pointer}
+.aSec .lnk{font-size:17px;font-weight:400;color:var(--accent-text);cursor:pointer}
 .aActivity{background:#000 !important;color:#fff;border-radius:13px;padding:18px;display:flex;align-items:center;gap:16px}
 .aAct-stats{flex:1;min-width:0}
 .aAct-row{display:flex;align-items:baseline;gap:7px;margin:3px 0}
@@ -124,7 +123,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
 .seg button{border:1.5px solid var(--line);border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;color:var(--sub);min-height:46px;background:var(--card)}
 .seg button.on-done{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
-.seg button.selb{background:var(--blue-bg);border-color:var(--accent);color:var(--accent)}
+.seg button.selb{background:var(--blue-bg);border-color:var(--accent-text);color:var(--accent-text)}
 .seg button.on-partial{background:var(--long-bg);border-color:var(--long);color:var(--long)}
 .seg button.on-missed{background:var(--hard-bg);border-color:var(--hard);color:var(--hard)}
 .loggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -132,7 +131,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 label.f{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sub);margin:0 0 4px 2px}
 input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:10px 12px;width:100%;min-height:44px;appearance:none;-webkit-appearance:none}
 input::placeholder{color:var(--sub);opacity:1}
-select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%237e8ca3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23C7C7CC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
 .err{color:var(--hard);font-size:12px;font-weight:600;margin:6px 2px 0}
 /* flat macro row — dividers + type hierarchy, no boxes-in-boxes */
 .macros{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px}
@@ -148,7 +147,7 @@ select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http
 /* widget edit sheet controls */
 .switch{width:46px;height:28px;border-radius:99px;background:var(--raised);border:1px solid var(--line);position:relative;flex:none;transition:background .16s ease}
 .switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:99px;background:var(--sub);transition:transform .16s var(--ease-out),background .16s ease}
-.switch[aria-pressed="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-text)}
 .switch[aria-pressed="true"]::after{transform:translateX(18px);background:var(--accent-ink)}
 .worder{display:flex;gap:4px}
 .worder button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt2);font-size:15px;font-weight:700}
@@ -188,7 +187,7 @@ tr[data-action]:active{background:var(--bg)}
 .nbar i{display:block;width:14px;border-radius:5px 5px 2px 2px;opacity:.85;transition:height .2s var(--ease-out)}
 .nbar.ed{touch-action:none}
 .nbar.ed i{opacity:1}
-.ndelta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--accent);white-space:nowrap}
+.ndelta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--accent-text);white-space:nowrap}
 body.nutdrag .nbar i{transition:none}
 /* fuel card: slim macro bars + meal dots */
 .mbar{display:flex;align-items:center;gap:10px;margin-top:9px}
@@ -200,7 +199,7 @@ body.nutdrag .nbar i{transition:none}
 .tag-moved{background:var(--blue-bg);color:var(--blue)}
 .note{font-size:13px;line-height:1.5;color:var(--sub)}
 .banner{background:var(--long-bg);color:var(--long);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;margin-top:12px}
-.svgwrap{margin-top:8px;background:var(--inset);border:1px solid var(--line-soft);border-radius:10px;padding:8px 8px 4px;box-shadow:inset 0 1px 0 #00000022}
+.svgwrap{margin-top:8px;background:transparent;border:none;border-radius:10px;padding:6px 0 0;box-shadow:none}
 svg{display:block;width:100%;height:auto}
 .gridline{stroke:var(--grid);stroke-width:1}
 .axis{font-size:9px;fill:var(--sub);font-weight:600}
@@ -212,7 +211,7 @@ svg{display:block;width:100%;height:auto}
   padding:6px 8px calc(6px + env(safe-area-inset-bottom));}
 #tabbar .inner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 #tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;color:var(--sub);font-size:11px;font-weight:700;min-height:50px}
-#tabbar button.sel{color:var(--accent)}
+#tabbar button.sel{color:var(--accent-text)}
 #tabbar button.sel::after{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:18px;height:3px;border-radius:99px;background:var(--accent)}
 #tabbar svg{width:23px;height:23px}
 #sheet{position:fixed;inset:0;z-index:100}
@@ -253,8 +252,8 @@ html[data-theme="light"] .ringfg{filter:none}
   transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:transform var(--dur-snap) var(--snap),opacity .2s ease}
 #snack.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 .snackin{display:flex;gap:14px;align-items:center;background:var(--raised);border:1px solid var(--line);
-  border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 28px rgba(0,0,0,.35);white-space:nowrap}
-.snackin button{color:var(--accent);font-weight:700;min-height:40px;padding:0 4px}
+  border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.12);white-space:nowrap}
+.snackin button{color:var(--accent-text);font-weight:700;min-height:40px;padding:0 4px}
 /* swipeable cards */
 [data-swipe]{touch-action:pan-y;position:relative;will-change:transform;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 [data-swipe] input,[data-swipe] select{-webkit-user-select:auto;user-select:auto}
@@ -301,11 +300,11 @@ html[data-theme="light"] .ringfg{filter:none}
 .swipe-onboard{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 /* drag-and-drop the week */
 .card.dragging{z-index:40;box-shadow:0 18px 44px rgba(0,0,0,.55);transition:none;position:relative}
-.card.droptarget{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.card.droptarget{border-color:var(--accent-text);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .card.dropinert{opacity:.45}
 body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 .dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(0,0,0,.4);background:var(--raised);color:var(--txt2)}
-.dragpreview{font-size:12.5px;font-weight:700;color:var(--accent);margin-top:8px;font-variant-numeric:tabular-nums}
+.dragpreview{font-size:12.5px;font-weight:700;color:var(--accent-text);margin-top:8px;font-variant-numeric:tabular-nums}
 /* catch-up deck */
 .deck .card{animation:deckup var(--dur-snap) var(--snap)}
 @keyframes deckup{0%{transform:translateY(12px) scale(.97);opacity:.6}100%{transform:none;opacity:1}}
@@ -321,10 +320,6 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 #wrapclose{position:fixed;top:calc(10px + env(safe-area-inset-top));right:14px;z-index:91;background:var(--raised);border:1px solid var(--line);border-radius:99px;padding:9px 16px;font-weight:700;color:var(--ink);min-height:44px}
 #wrapsave{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:91}
 .wdots{font-size:12px;color:var(--sub);text-align:center;padding:10px 0}
-/* Skin switcher — the one always-visible control that flips Whoop / Fitbit / Apple */
-.skinseg{display:flex;gap:3px;background:var(--raised);border:1px solid var(--line);border-radius:999px;padding:3px}
-.skinseg button{flex:1;border:none;background:none;color:var(--txt2);font-size:12px;font-weight:700;padding:7px 4px;border-radius:999px;letter-spacing:.01em;cursor:pointer;transition:background .18s var(--ease-out),color .18s var(--ease-out)}
-.skinseg button.on{background:var(--accent);color:var(--accent-ink)}
 #tabbar .inner{position:relative}
 .tabfab{position:absolute;left:50%;bottom:calc(100% - 26px);transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(0,0,0,.5);cursor:pointer;z-index:2}
 .tabfab svg{width:26px;height:26px}
@@ -354,7 +349,7 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .state .st-t{display:block;font-weight:700}
 .state.err .st-t{color:var(--hard)}
 /* error-tone toast accent (info toasts unchanged) — token only */
-.snackin.err{box-shadow:inset 3px 0 0 var(--hard),0 8px 28px rgba(0,0,0,.35)}
+.snackin.err{box-shadow:inset 3px 0 0 var(--hard),0 6px 20px rgba(0,0,0,.12)}
 </style>
 </head>
 <body>
@@ -1474,7 +1469,7 @@ function runChart(l,big){ // pace (accent) + HR (hard hue); pauses (v<0.5 m/s) b
   }
   if(!parts)return '';
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Pace and heart rate trace">'+parts+'</svg>'
-    +(big?'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent)">—</span> pace · <span style="color:var(--hard)">—</span> heart rate</p>':'');
+    +(big?'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent-text)">—</span> pace · <span style="color:var(--hard)">—</span> heart rate</p>':'');
 }
 function resultMeta(l){ // the quiet second line under the result chips
   const b=[];
@@ -1515,7 +1510,7 @@ function runSheetContent(i){
       +'<button data-action="paintmode" data-v="hr" aria-pressed="'+(mode==='hr')+'" class="'+(mode==='hr'?'selb':'')+'">Heart</button>'
       +'<button data-action="paintmode" data-v="pace" aria-pressed="'+(mode==='pace')+'" class="'+(mode==='pace'?'selb':'')+'">Pace</button></div>'
     :'';
-  const paintNote=(stream&&l.poly)?'<p class="mini" style="margin:6px 2px 0">The line is the road; the colour is '+(mode==='pace'?'speed':'effort')+' — <span style="color:var(--accent)">cool</span> → <span style="color:var(--long)">working</span> → <span style="color:var(--hard)">hot</span>.</p>':'';
+  const paintNote=(stream&&l.poly)?'<p class="mini" style="margin:6px 2px 0">The line is the road; the colour is '+(mode==='pace'?'speed':'effort')+' — <span style="color:var(--accent-text)">cool</span> → <span style="color:var(--long)">working</span> → <span style="color:var(--hard)">hot</span>.</p>':'';
   let bp='';
   const bpr=(e.zone==='Long'||e.zone==='Marathon')?breakpointOf(l):null;
   if(bpr)bp='<p class="note" style="margin:10px 0 0">'+(bpr.held
@@ -2576,7 +2571,6 @@ const TAB_ICONS={
   today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>',
   train:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>',
   nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
-  wt:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>',
 };
 const BERLIN={
   defaultTab:'today',
@@ -2636,7 +2630,7 @@ function paceLine(e){
 }
 function rebalLine(e){
   if(!e.kmAdj)return '';
-  return '<div class="mini" style="margin-top:3px;color:var(--accent)">Plan '+fmtKm(e.planKm)+' km · '
+  return '<div class="mini" style="margin-top:3px;color:var(--accent-text)">Plan '+fmtKm(e.planKm)+' km · '
     +(e.kmAdj>0?'+':'−')+fmtKm(Math.abs(e.kmAdj))+' km rebalanced from this week</div>';
 }
 function nutAdjChip(e){
@@ -3200,7 +3194,7 @@ function wDeficit(){
     :'Burned '+fmtKcal(b.burned)+' so far. Eat up to <b>'+fmtKcal(Math.max(0,b.burned-goal))+'</b> for a −'+fmtKcal(goal)+' day.';
   // demoted Resting+Active split, behind a tap
   const split=b.resting!=null?(ui.showBurnSplit
-    ?'<p class="mini" style="margin:8px 2px 0">Resting '+fmtKcal(b.resting)+' + Active '+fmtKcal(b.active)+' = '+fmtKcal(b.burned)+' · <button class="btn3" data-action="burnsplit" aria-expanded="true" style="padding:0;color:var(--accent)">hide</button></p>'
+    ?'<p class="mini" style="margin:8px 2px 0">Resting '+fmtKcal(b.resting)+' + Active '+fmtKcal(b.active)+' = '+fmtKcal(b.burned)+' · <button class="btn3" data-action="burnsplit" aria-expanded="true" style="padding:0;color:var(--accent-text)">hide</button></p>'
     :'<p class="mini" style="margin:8px 2px 0"><button class="btn3" data-action="burnsplit" aria-expanded="false" style="padding:0;color:var(--sub)">breakdown ›</button></p>'):'';
   let yest='';
   if(todayIdx>0){
@@ -3253,7 +3247,7 @@ function wHrvTrend(){
     +'<div class="svgwrap"><svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block" role="img" aria-label="HRV and resting heart rate trend">'
     +line('hrv','var(--accent)')+line('rhr','var(--hard)')
     +'</svg></div>'
-    +'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent)">—</span> HRV (up = adapting) · <span style="color:var(--hard)">—</span> resting HR (down = fitter)</p>'
+    +'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent-text)">—</span> HRV (up = adapting) · <span style="color:var(--hard)">—</span> resting HR (down = fitter)</p>'
     +'</section>';
 }
 
@@ -3517,23 +3511,25 @@ function wrappedImage(){ // canvas render of the week summary for sharing
   const w=clamp(Math.floor(rawT/7),0,15),st=weekStats(w);
   const c=document.createElement('canvas');c.width=1080;c.height=1350;
   const x=c.getContext('2d');
-  x.fillStyle='#0a0d15';x.fillRect(0,0,1080,1350);
-  x.fillStyle='#5b9bff';x.fillRect(80,120,140,10);
+  const cs=getComputedStyle(document.documentElement),tok=(n,f)=>{const v=cs.getPropertyValue(n).trim();return v||f;};
+  const BG=tok('--card','#FFFFFF'),AC=tok('--accent','#007AFF'),INK=tok('--ink','#000000'),T2=tok('--txt2','#545458'),SUB=tok('--sub','#646469');
+  x.fillStyle=BG;x.fillRect(0,0,1080,1350);
+  x.fillStyle=AC;x.fillRect(80,120,140,10);
   const T=(t,y,size,color,weight)=>{x.fillStyle=color;x.font=(weight||'800')+' '+size+'px -apple-system,system-ui,sans-serif';x.fillText(t,80,y);};
-  T('BERLIN 2026 — WEEK '+(w+1)+' OF 16',200,40,'#7e8ca3','700');
-  T(fmtKm(st.act)+' / '+fmtKm(st.tgt)+' km',330,110,'#ecf1f8');
-  T(st.pct+'% of target · '+st.done+' sessions logged',410,42,'#bac5d7','600');
-  T('Biggest: '+(st.bigName?st.bigName:'—'),530,46,'#ecf1f8','700');
-  if(st.fuel!=null)T('Fuelling: '+st.fuel+' g/hr',610,46,'#ecf1f8','700');
+  T('BERLIN 2026 — WEEK '+(w+1)+' OF 16',200,40,SUB,'700');
+  T(fmtKm(st.act)+' / '+fmtKm(st.tgt)+' km',330,110,INK);
+  T(st.pct+'% of target · '+st.done+' sessions logged',410,42,T2,'600');
+  T('Biggest: '+(st.bigName?st.bigName:'—'),530,46,INK,'700');
+  if(st.fuel!=null)T('Fuelling: '+st.fuel+' g/hr',610,46,INK,'700');
   const narr=trendNarration();
-  x.font='600 36px -apple-system,system-ui,sans-serif';x.fillStyle='#bac5d7';
+  x.font='600 36px -apple-system,system-ui,sans-serif';x.fillStyle=T2;
   let line='',yy=720;
   narr.split(' ').forEach(word=>{
     if(x.measureText(line+' '+word).width>920){x.fillText(line,80,yy);yy+=52;line=word;}
     else line=line?line+' '+word:word;
   });
   x.fillText(line,80,yy);
-  T(WEEKS[w].phase.toUpperCase()+' PHASE · '+(RACE_IDX-todayIdx)+' DAYS TO BERLIN',1240,36,'#5b9bff','700');
+  T(WEEKS[w].phase.toUpperCase()+' PHASE · '+(RACE_IDX-todayIdx)+' DAYS TO BERLIN',1240,36,AC,'700');
   return new Promise(res=>c.toBlob(res,'image/png'));
 }
 
@@ -3725,7 +3721,7 @@ function vTrain(){
   }
 
   return '<div>'+appleNav('Training','')
-    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0 2px;text-align:left;cursor:pointer;color:var(--accent);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
+    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0 2px;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -3929,7 +3925,7 @@ function openPlanSheet(){
     +cutCard()
     +cutPayingCard()
     +'<section class="card"><h2>Deficit banked</h2><div class="svgwrap">'+deficitChart()+'</div>'
-    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
+    +'<p class="mini" style="margin:8px 2px 0"><span style="color:var(--accent-text)">—</span> actual · <span style="color:var(--sub)">┄</span> plan</p></section>'
     +'<h2 style="margin:18px 0 4px;font-size:15px">Daily calories across the block</h2><div class="svgwrap">'+calorieChart()+'</div>'
     +'<p class="mini" style="margin:6px 2px 10px">Spikes = long-run fuelling, troughs = rest days. The curve drifts down as weight falls.</p>'
     +'<div style="margin-top:8px"><select data-action="nutweekfilter" aria-label="Filter by week">'+wkOpts+'</select></div>'
@@ -3946,7 +3942,7 @@ function nutTableBody(){
     rows+='<tr id="nrow-'+i+'"'+(i===rawT?' style="background:var(--bg)"':'')+'>'
       +'<td class="num">'+(e.w+1)+'</td><td style="white-space:nowrap">'+shortDate(i)+(e.moved?' <span class="pill tag-moved">moved</span>':'')+'</td>'
       +'<td><span class="dot" style="background:var(--'+DAYTYPE[e.type].c+')"></span><span class="sr">'+DAYTYPE[e.type].label+'</span></td>'
-      +'<td class="num right"><b>'+fmtKcal(e.kcal)+'</b>'+((e.nutEdited||e.nutAdj)?'<span style="color:var(--accent)">*</span>':'')+'</td><td class="num right">'+e.p+'</td><td class="num right">'+e.carbs+'</td>'
+      +'<td class="num right"><b>'+fmtKcal(e.kcal)+'</b>'+((e.nutEdited||e.nutAdj)?'<span style="color:var(--accent-text)">*</span>':'')+'</td><td class="num right">'+e.p+'</td><td class="num right">'+e.carbs+'</td>'
       +'<td class="num right">'+e.fat+'</td><td class="num right">'+fmtKcal(e.burn)+'</td>'
       +'<td class="num right">'+fmtKcal(e.deficit)+'</td><td class="num right">'+fmtLb(e.planWt)+'</td></tr>';
   }
@@ -3970,7 +3966,7 @@ function weekStrap(w){
   if(behindRecoverable&&lg.eatTarget!=null&&lg.eatTarget>=800)
     s+='<p class="mini" style="margin:4px 2px 0">Eat ≤'+fmtKcal(lg.eatTarget)+'/day the rest of the week to still land on −'+fmtKcal(lg.weekPlanTot)+'.</p>';
   if(Math.abs(lg.ahead)>500&&lg.futureN&&lg.achievable)
-    s+='<button class="btn3" data-action="rebalweek" data-w="'+w+'" style="margin-top:4px;color:var(--accent)">Rebalance the rest →</button>';
+    s+='<button class="btn3" data-action="rebalweek" data-w="'+w+'" style="margin-top:4px;color:var(--accent-text)">Rebalance the rest →</button>';
   if(isPast)
     s+=weekLocked(w)
       ?'<p class="mini" style="margin:6px 2px 0">Locked as fact ✓ · <button class="btn3" data-action="unlockweek" data-w="'+w+'" style="padding:0;color:var(--sub)">unlock</button></p>'
@@ -4068,7 +4064,7 @@ function nutDayHero(i){
   }else{
     actions='<button class="btn" style="width:100%;margin-top:14px" data-action="foodlog" data-i="'+i+'">'+(real?'Ate '+fmtKcal(ea.kcal)+' · edit foods':(isToday?'Log food':'Log food that day'))+'</button>';
   }
-  return '<section class="card" style="border-color:var(--accent)">'
+  return '<section class="card" style="border-color:var(--accent-text)">'
     +'<div class="spread" style="align-items:flex-start"><div><div class="mini" style="text-transform:uppercase;letter-spacing:.08em;color:'+tagCol+';font-weight:700">'+tag+'</div><b style="font-size:15px">'+longDate(i)+'</b></div>'
     +'<span class="chip c-'+DAYTYPE[e.type].c+'">'+esc(headline(e))+'</span></div>'
     +(moved?'<div class="row" style="margin-top:7px">'+moved+'<span class="mini" style="color:var(--sub)">fuel moved with the session</span></div>':'')
@@ -4136,7 +4132,7 @@ function nutGoalSheetHTML(){
     +'<div class="shsec"><label class="f" for="nutdfv">Daily deficit target</label><div class="ifield"><input class="stepin" id="nutdfv" data-action="nutdfv" type="number" inputmode="numeric" min="200" max="1200" step="10" value="'+df+'" aria-label="Daily deficit in kcal per day"><span class="stepu">kcal/day</span></div>'
     +'<p class="mini" style="margin:8px 2px 0">= '+fmtKcal(wk)+' kcal/week · about <b>'+fmtLb(lbwk)+' lb/week</b></p></div>'
     +(wks>0?'<p class="mini" style="margin:8px 2px 0">At −'+fmtKcal(df)+'/day from '+fmtLb(cur)+' lb, you’d reach '+fmtLb(gw)+' in about <b>'+wks+' weeks</b> — around '+goalDateLbl(rawT+wks*7)+'.</p>':'')
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:700;border:none;margin-top:16px">Done</button>';
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent-text);font-weight:700;border:none;margin-top:16px">Done</button>';
 }
 function openNutGoalSheet(){openSheet(nutGoalSheetHTML());}
 function nutGoalRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=nutGoalSheetHTML();}
@@ -4205,7 +4201,7 @@ function foodSheetHTML(){
         +'<div class="loggrid" style="margin-top:8px"><input id="foodmn" type="text" placeholder="Name" autocomplete="off"><input id="foodmk" type="number" inputmode="numeric" placeholder="kcal"></div>'
         +'<button class="btn2" style="width:100%;margin-top:8px" data-action="foodquick">Add to '+esc(mlabel)+'</button></section>';
     }
-    return '<div class="spread" style="align-items:center"><button class="btn3" data-action="foodback" style="color:var(--accent)">‹ '+esc(mlabel)+'</button>'+headTotal+'</div>'+body
+    return '<div class="spread" style="align-items:center"><button class="btn3" data-action="foodback" style="color:var(--accent-text)">‹ '+esc(mlabel)+'</button>'+headTotal+'</div>'+body
       +'<button class="sheetrow" data-action="foodclose" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:12px">Done</button>';
   }
   let meals='';
@@ -4215,7 +4211,7 @@ function foodSheetHTML(){
       rows+='<div class="sheetrow" style="cursor:default"><span class="t" style="flex:1;color:var(--ink)">'+esc(f.n)+'</span><span class="mini">'+fmtKcal(f.k)+'</span><button class="del" data-action="foodrm" data-i="'+i+'" data-ix="'+ix+'" aria-label="Remove '+esc(f.n)+'">✕</button></div>';});
     const sub=mealTotal(i,m[0]);
     meals+='<div class="spread" style="margin:18px 2px 0;align-items:baseline"><b>'+m[1]+'</b>'+(sub?'<span class="mini">'+fmtKcal(sub)+' kcal</span>':'')+'</div>'+rows
-      +'<button class="btn3" data-action="foodadd" data-i="'+i+'" data-meal="'+m[0]+'" style="margin-top:6px;color:var(--accent)">+ Add food</button>';
+      +'<button class="btn3" data-action="foodadd" data-i="'+i+'" data-meal="'+m[0]+'" style="margin-top:6px;color:var(--accent-text)">+ Add food</button>';
   });
   return '<div class="spread" style="align-items:center"><h2 style="margin:0">'+isoShort(isoAt(i))+' · food</h2>'+headTotal+'</div>'
     +'<p class="mini" style="margin:6px 2px 0">Search foods and they add up to your day’s total.</p>'+meals
@@ -4302,7 +4298,7 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
       +'<div style="flex:1;text-align:center;background:var(--inset);border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div class="num" style="'+num+';color:'+defCol+'">'+defVal+'</div><div class="mini" style="'+lbl+';color:'+(defVal==='—'?'var(--sub)':defCol)+'">DEFICIT</div></div>'
     +'</div>'
     +(hint?'<p class="mini" style="margin:11px 2px 0;color:var(--sub)">'+hint+'</p>':'')
-    +'<button class="btn3" style="margin-top:12px;color:var(--accent)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
+    +'<button class="btn3" style="margin-top:12px;color:var(--accent-text)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
     +'</section>';
 }
 function vNut(){
@@ -4334,7 +4330,7 @@ function vNut(){
   return '<div>'+appleNav('Nutrition','Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin')
     +weightCard
     +nutTodayBalance(i)
-    +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
+    +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent-text)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
     +(hist?'<details style="margin-top:6px"><summary class="mini" style="cursor:pointer;color:var(--sub);padding:6px 2px;list-style:none">Weigh-in history</summary><ul class="weights" style="list-style:none;margin:8px 0 0;padding:0">'+hist+'</ul></details>':'')
     +'<div class="footlinks" style="margin-top:14px"><button class="btn3" data-action="export">Back up data</button>'
     +'<button class="btn3" data-action="importpick">Restore backup</button>'
@@ -4360,7 +4356,7 @@ function openMoveSheet(i){
   openSheet('<h2 style="margin:0">Move '+DOW[e.pos]+'’s session</h2>'
     +'<p class="note" style="margin:6px 0 2px">'+esc(headline(e))+' — pick a day to swap with. Training <b>and fuelling</b> both follow the move.</p>'
     +rows
-    +(weekMoved(w)?'<button class="sheetrow" data-action="resetweek" data-w="'+w+'" style="justify-content:center;color:var(--accent);font-weight:700">Reset week '+(w+1)+' to plan</button>':'')
+    +(weekMoved(w)?'<button class="sheetrow" data-action="resetweek" data-w="'+w+'" style="justify-content:center;color:var(--accent-text);font-weight:700">Reset week '+(w+1)+' to plan</button>':'')
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
 }
 let sheetTimer=null,sheetOpener=null;
@@ -4373,7 +4369,7 @@ function openSheet(html,morphEl,onReady,label){
       +'<div class="panel" role="dialog" aria-modal="true" aria-label="'+esc(label||'Dialog')+'" tabindex="-1">'+html+'</div>';
     s.hidden=false;
     if(!label){ // no explicit label → name the dialog after its own visible heading (accessible name = visible title)
-      const p=s.querySelector('.panel'),h=p&&p.querySelector('h2,.aTitle,.wtitle,.wcaps');
+      const p=s.querySelector('.panel'),h=p&&p.querySelector('h2,.aTitle');
       if(h){const t=h.textContent.trim();if(t)p.setAttribute('aria-label',t);}
     }
     document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
@@ -4448,7 +4444,7 @@ function appleRow(glyph,color,name,value,unit,action){
 /* Apple large-title header. avatarAction (optional) shows the round profile/edit
    button on the right — used only on Today, matching Apple Health's Summary tab. */
 function appleNav(title,sub,avatarAction){
-  return '<div class="aNav"><div><div class="aTitle">'+title+'</div>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
+  return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
     +(avatarAction?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>':'')+'</div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
@@ -4663,9 +4659,6 @@ document.addEventListener('click',ev=>{
   else if(a==='wmove'){
     const cfg=widgetConfig(),i=cfg.findIndex(x=>x.id===el.dataset.id),j=i+Number(el.dataset.dir);
     if(i>=0&&j>=0&&j<cfg.length){const t=cfg[i];cfg[i]=cfg[j];cfg[j]=t;S.widgets=cfg;save();rerenderKeepScroll();openWidgetSheet();}
-  }
-  else if(a==='settheme'){
-    S.theme=el.dataset.v;save();applyTheme();rerenderKeepScroll();openWidgetSheet();
   }
   else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();}
   else if(a==='resetweek'){openResetSheet(Number(el.dataset.w));}
