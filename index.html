@@ -511,7 +511,28 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
   .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
   .rtrack{scroll-behavior:auto}
+  .skel-bar{animation:none;background:var(--track)} /* loading rests static under reduced motion */
 }
+
+/* ---- async / a11y state-component kit ---------------------------------- */
+/* visually-hidden but reachable by screen readers — host for the live regions */
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+/* skeleton loading — token-only shimmer, reflows to any sheet width, no layout shift */
+.skel{display:block}
+.skel-bar{height:14px;border-radius:7px;margin-top:10px;
+  background:linear-gradient(90deg,var(--track) 25%,var(--line) 37%,var(--track) 63%);
+  background-size:400% 100%;animation:skelsh 1.4s ease infinite}
+.skel-bar:first-child{margin-top:0}
+.skel-bar:nth-child(2){width:78%} .skel-bar:nth-child(3){width:90%} .skel-bar:nth-child(4){width:84%}
+@keyframes skelsh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+/* empty/error state block — leans on .card/.note, tone via tokens only */
+.state{display:block}
+.state .glyph{font-size:clamp(20px,5vw,26px);display:block;margin-bottom:4px;line-height:1}
+.state .st-t{display:block;font-weight:700}
+.state.err .st-t{color:var(--hard)}
+/* error-tone toast accent (info toasts unchanged) — token only */
+.snackin.err{box-shadow:inset 3px 0 0 var(--hard),0 8px 28px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -727,16 +748,74 @@ const REDUCE=matchMedia('(prefers-reduced-motion: reduce)');
 function haptic(strong){if(navigator.vibrate)try{navigator.vibrate(strong?16:6);}catch(e){}}
 
 let snackTimer=null,snackUndoFn=null;
-function snack(msg,undoFn){
+function snack(msg,undoFn,opts){
+  opts=opts||{};
+  const err=opts.tone==='error';
   let s=document.getElementById('snack');
-  if(!s){s=document.createElement('div');s.id='snack';document.body.appendChild(s);}
+  // the toast itself is aria-hidden — it's spoken once through the live region, never doubled
+  if(!s){s=document.createElement('div');s.id='snack';s.setAttribute('aria-hidden','true');document.body.appendChild(s);}
   snackUndoFn=undoFn||null;
-  s.innerHTML='<div class="snackin"><span>'+esc(msg)+'</span>'+(undoFn?'<button data-action="snackundo">Undo</button>':'')+'</div>';
+  s.innerHTML='<div class="snackin'+(err?' err':'')+'"><span>'+esc(msg)+'</span>'+(undoFn?'<button data-action="snackundo">Undo</button>':'')+'</div>';
   s.classList.add('show');
+  announce(msg,{assertive:err}); // toasts used to be silent to screen readers — now they speak
   clearTimeout(snackTimer);
-  snackTimer=setTimeout(()=>{s.classList.remove('show');snackUndoFn=null;},4500);
+  snackTimer=setTimeout(()=>{s.classList.remove('show');snackUndoFn=null;},opts.dur||4500);
 }
 function hideSnack(){const s=document.getElementById('snack');if(s)s.classList.remove('show');snackUndoFn=null;}
+
+/* ---- async / a11y state-component kit -------------------------------------
+   Pure HTML-string components (token-driven → they theme across all 4 skins for
+   free) wired only through the global data-action router. The async wrapper +
+   persistent live regions replace the food search's hand-rolled, silent state
+   ladder, and give every async surface one accessible contract. */
+function dataAttrs(d){return d?Object.keys(d).map(k=>' data-'+k+'="'+esc(String(d[k]))+'"').join(''):'';}
+/* {loading,err,results} bag → canonical discriminant. results==null = never run
+   (idle); [] = ran, nothing back (empty). */
+function statusOf(s){return s.loading?'loading':s.err?'error':!s.results?'idle':s.results.length?'ready':'empty';}
+/* Two persistent visually-hidden live regions on document.body — NOT inside
+   #app/#sheet, which get innerHTML-swapped. Many screen readers only announce
+   mutations to a region that already existed, so the region must outlive the swap. */
+function liveRegion(id,role,live){
+  let n=document.getElementById(id);
+  if(!n){n=document.createElement('div');n.id=id;n.className='sr-only';
+    n.setAttribute('role',role);n.setAttribute('aria-live',live);n.setAttribute('aria-atomic','true');
+    document.body.appendChild(n);}
+  return n;
+}
+function announce(msg,opts){
+  const assertive=!!(opts&&opts.assertive);
+  const n=liveRegion(assertive?'live-alert':'live-polite',assertive?'alert':'status',assertive?'assertive':'polite');
+  const t=esc(msg);
+  // clear first, then set on a later task so the empty→text change is actually observed — otherwise a
+  // same-task clear+set coalesces (and re-announcing identical text is swallowed). setTimeout (not rAF)
+  // so it still fires when the tab isn't painting. Timer is per-region so polite/alert never cancel each other.
+  n.textContent='';
+  clearTimeout(n._t);
+  n._t=setTimeout(()=>{n.textContent=t;},60);
+}
+/* Loading placeholder — purely decorative (aria-hidden); the live region speaks. */
+function Skeleton(opts){opts=opts||{};return '<div class="skel" aria-hidden="true" style="margin-top:'+(opts.mt||'12px')+'">'+'<div class="skel-bar"></div>'.repeat(opts.rows||3)+'</div>';}
+/* Empty + Error share one prop model; Error only differs by --hard title tone. */
+function stateBlock(o,isErr){
+  const tag=o.card?'section':'div',cls='state'+(isErr?' err':'')+(o.card?' card':'');
+  const act=o.action||o.retry;
+  return '<'+tag+' class="'+cls+'" style="margin-top:'+(o.mt||'12px')+'">'
+    +(o.glyph?'<span class="glyph" aria-hidden="true">'+o.glyph+'</span>':'')
+    +(o.title?'<b class="st-t">'+esc(o.title)+'</b>':'')
+    +(o.note?'<p class="note" style="margin:'+(o.title?'6px':'0')+' 0 0">'+esc(o.note)+'</p>':'')
+    +(act?'<button class="btn2" style="width:100%;margin-top:10px" data-action="'+esc(act.name)+'"'+dataAttrs(act.data)+'>'+esc(act.label||'Try again')+'</button>':'')
+    +'</'+tag+'>';
+}
+function EmptyState(opts){return stateBlock(opts||{},false);}
+function ErrorState(opts){return stateBlock(opts||{},true);}
+/* State machine: render exactly one lazy branch; flag aria-busy while loading.
+   Announcement is NOT owned here — the imperative re-render calls announce(). */
+function AsyncSection(state,branches,opts){
+  opts=opts||{};
+  const fallback={loading:()=>Skeleton(),empty:()=>EmptyState({title:'Nothing here'}),error:()=>ErrorState({title:'Something went wrong'}),idle:()=>'',ready:()=>''};
+  const pick=(branches&&branches[state])||fallback[state]||(()=>'');
+  return '<div data-async aria-busy="'+(state==='loading')+'">'+pick()+'</div>';
+}
 
 function rollNum(el,from,to,dec,suffix){ // numbers never teleport
   if(!el)return;
@@ -1456,8 +1535,8 @@ function stravaApply(list){
 function stravaCard(){
   const st=stravaState();
   if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2><span class="chip neutral">Not connected</span></div>'
-    +'<p class="note" style="margin:8px 0 0">Connect once and finished runs land here ready to confirm. Strava is the record for distance and pace; RPE and notes stay yours, and you can disconnect any time.</p>'
-    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="stravaconnect">Connect Strava</button></section>';
+    +EmptyState({note:'Connect once and finished runs land here ready to confirm. Strava is the record for distance and pace; RPE and notes stay yours, and you can disconnect any time.',action:{label:'Connect Strava',name:'stravaconnect'},mt:'8px'})
+    +'</section>';
   const who=st.athlete?((st.athlete.firstname||'')+' '+(st.athlete.lastname||'')).trim():'';
   return '<section class="card"><div class="spread"><h2 style="margin:0">Strava</h2>'
     +(st.needsAuth?'<span class="chip c-hard">Reconnect</span>':'<span class="chip c-easy">Connected</span>')+'</div>'
@@ -1770,8 +1849,8 @@ function openOuraSheet(){
 function ouraCard(){
   const st=ouraState();
   if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Oura</h2><span class="chip neutral">Not connected</span></div>'
-    +'<p class="note" style="margin:8px 0 0">Sleep, readiness, HRV and burn land beside your runs — recovery for the body Strava can’t see.</p>'
-    +'<button class="btn2" style="width:100%;margin-top:10px" data-action="ouraconnect">Connect Oura</button></section>';
+    +EmptyState({note:'Sleep, readiness, HRV and burn land beside your runs — recovery for the body Strava can’t see.',action:{label:'Connect Oura',name:'ouraconnect'},mt:'8px'})
+    +'</section>';
   return '<section class="card"><div class="spread"><h2 style="margin:0">Oura</h2>'
     +(st.needsAuth?'<span class="chip c-hard">Reconnect</span>':'<span class="chip c-easy">Connected</span>')+'</div>'
     +'<p class="mini" style="margin:8px 2px 0">'+(st.lastSync?'Last sync: '+fmtSyncTime(st.lastSync):'Not synced yet')+'</p>'
@@ -4378,12 +4457,13 @@ function foodSheetHTML(){
         +'<div style="margin-left:auto;text-align:right"><div class="big num" id="foodkc">'+fmtKcal(kc)+'</div><span class="mini">kcal · '+fs.pick.k100+'/100g</span></div></div>'
         +'<div class="loggrid" style="margin-top:14px"><button class="btn2" data-action="foodpickcancel">Back</button><button class="btn" data-action="foodaddpick">Add to '+esc(mlabel)+'</button></div></section>';
     }else{
-      let res;
-      if(fs.loading)res='<p class="note" style="margin:12px 2px">Searching…</p>';
-      else if(fs.results&&fs.results.length)res=fs.results.map((r,ix)=>'<button class="sheetrow" data-action="foodpick" data-ix="'+ix+'" style="text-align:left"><span class="t" style="flex:1"><b style="color:var(--ink)">'+esc(r.name)+'</b>'+(r.brand?'<br><span class="mini">'+esc(r.brand)+'</span>':'')+'</span><span class="mini" style="white-space:nowrap">'+r.k100+' /100g ›</span></button>').join('');
-      else if(fs.err)res='<p class="note" style="margin:12px 2px">Couldn’t reach the food database. Add it manually below.</p>';
-      else if(fs.results)res='<p class="note" style="margin:12px 2px">No matches — add it manually below.</p>';
-      else res='<p class="mini" style="margin:12px 2px;color:var(--sub)">Search by name (e.g. “porridge”, “banana”, a brand). Calories are per 100 g — you set the portion next.</p>';
+      const res=AsyncSection(statusOf(fs),{
+        idle:   ()=>'<p class="mini" style="margin:12px 2px;color:var(--sub)">Search by name (e.g. “porridge”, “banana”, a brand). Calories are per 100 g — you set the portion next.</p>',
+        loading:()=>Skeleton({rows:4}),
+        empty:  ()=>EmptyState({title:'No matches',note:'Add it manually below.'}),
+        error:  ()=>ErrorState({title:'Couldn’t reach the food database',note:'Add it manually below.',retry:{label:'Try again',name:'foodsearch'}}),
+        ready:  ()=>fs.results.map((r,ix)=>'<button class="sheetrow" data-action="foodpick" data-ix="'+ix+'" style="text-align:left"><span class="t" style="flex:1"><b style="color:var(--ink)">'+esc(r.name)+'</b>'+(r.brand?'<br><span class="mini">'+esc(r.brand)+'</span>':'')+'</span><span class="mini" style="white-space:nowrap">'+r.k100+' /100g ›</span></button>').join('')
+      });
       body='<div class="shsec"><input id="foodq" type="text" placeholder="Search foods…" value="'+esc(fs.q||'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="search"><button class="btn2" data-action="foodsearch" style="width:100%;margin-top:8px">Search</button></div>'
         +res
         +'<section class="card" style="margin-top:14px"><b class="mini" style="text-transform:uppercase;letter-spacing:.06em;color:var(--sub)">Can’t find it? Add manually</b>'
@@ -4407,13 +4487,27 @@ function foodSheetHTML(){
     +'<button class="sheetrow" data-action="foodclose" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:18px">Done</button>';
 }
 function foodFocus(){const fs=ui.food;if(fs&&fs.view==='search'&&!fs.pick&&!fs.results&&!fs.loading){const q=document.getElementById('foodq');if(q)q.focus();}}
-function foodRefresh(){const p=document.querySelector('#sheet .panel');if(p){p.innerHTML=foodSheetHTML();foodFocus();}}
+function foodRefresh(){
+  const p=document.querySelector('#sheet .panel');
+  if(!p)return;
+  p.innerHTML=foodSheetHTML();
+  foodFocus();
+  // the panel innerHTML swap is silent to screen readers — speak the result through the live region
+  const fs=ui.food;
+  if(fs&&fs.view==='search'&&!fs.pick){
+    const st=statusOf(fs);
+    if(st==='loading')     announce('Searching foods');
+    else if(st==='error')  announce('Couldn’t reach the food database. Add it manually below.',{assertive:true});
+    else if(st==='ready')  announce(fs.results.length+' result'+(fs.results.length===1?'':'s')+' found');
+    else if(st==='empty')  announce('No matches. Add it manually below.');
+  }
+}
 function openFoodSheet(i){
   i=clamp(i,0,RACE_IDX);
   // bring a pre-existing quick-logged total in as an editable item
   if((!S.food||!S.food[i])&&S.ate&&S.ate[i]!=null){if(!S.food)S.food={};S.food[i]=[{n:'Logged earlier',k:Math.round(S.ate[i]),m:'s'}];}
   ui.food={i:i,view:'list',meal:'b',q:'',results:null,loading:false,pick:null,grams:100,err:false};
-  openSheet(foodSheetHTML(),null,foodFocus);
+  openSheet(foodSheetHTML(),null,foodFocus,'Food log');
 }
 
 /* ====================================================================
@@ -4536,14 +4630,18 @@ function openMoveSheet(i){
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Cancel</button>');
 }
 let sheetTimer=null,sheetOpener=null;
-function openSheet(html,morphEl,onReady){
+function openSheet(html,morphEl,onReady,label){
   clearTimeout(sheetTimer);
   sheetOpener=document.activeElement;
   const s=document.getElementById('sheet');
   const build=()=>{
     s.innerHTML='<div class="scrim" data-action="closesheet"></div>'
-      +'<div class="panel" role="dialog" aria-modal="true" aria-label="Move session" tabindex="-1">'+html+'</div>';
+      +'<div class="panel" role="dialog" aria-modal="true" aria-label="'+esc(label||'Dialog')+'" tabindex="-1">'+html+'</div>';
     s.hidden=false;
+    if(!label){ // no explicit label → name the dialog after its own visible heading (accessible name = visible title)
+      const p=s.querySelector('.panel'),h=p&&p.querySelector('h2,.aTitle,.wtitle,.wcaps');
+      if(h){const t=h.textContent.trim();if(t)p.setAttribute('aria-label',t);}
+    }
     document.getElementById('app').inert=true; // keep background out of tab/VoiceOver order
     if(onReady)onReady(); // sheet-content wiring MUST wait for build — in the VT path build runs async
   };
