@@ -152,6 +152,11 @@ select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http
 .worder{display:flex;gap:4px}
 .worder button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--txt2);font-size:15px;font-weight:700}
 .worder button:disabled{opacity:.3}
+/* drag-to-reorder handle + lifted row (Edit home screen) */
+.wgrip{flex:none;width:34px;align-self:stretch;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--chevron);cursor:grab;touch-action:none;-webkit-touch-callout:none;margin-left:-2px}
+.wdragrow{transition:transform .18s var(--ease-out);-webkit-user-select:none;user-select:none}
+.wdragrow.wdragging{transition:none;position:relative;z-index:5;box-shadow:0 12px 30px rgba(0,0,0,.18);cursor:grabbing}
+.wdragrow.wdragging .wgrip{color:var(--accent-text);cursor:grabbing}
 .bar{height:8px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;border-radius:99px;background:var(--easy)}
 .bar i.warn{background:var(--long)} .bar i.bad{background:var(--hard)}
@@ -3583,17 +3588,94 @@ function openWidgetSheet(){
   let rows='';
   cfg.forEach((w,i)=>{
     const d=WIDGET_DEFS.find(x=>x.id===w.id);
-    rows+='<div class="sheetrow" style="cursor:default">'
+    rows+='<div class="sheetrow wdragrow" data-wid="'+w.id+'">'
       +'<button class="switch" role="switch" aria-pressed="'+w.on+'" data-action="wtoggle" data-id="'+w.id+'" aria-label="'+esc(d.label)+'"></button>'
       +'<span class="t" style="color:var(--ink);font-weight:600">'+esc(d.label)+'</span>'
       +'<span class="worder">'
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="-1" aria-label="Move '+esc(d.label)+' up" '+(i===0?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 4-5 4 5"/></svg></button>'
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="1" aria-label="Move '+esc(d.label)+' down" '+(i===cfg.length-1?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 5 4 5 4-5"/></svg></button>'
-      +'</span></div>';
+      +'</span>'
+      +'<button class="wgrip" data-wdrag aria-label="Drag to reorder '+esc(d.label)+'" tabindex="-1"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 7h10M5 10h10M5 13h10"/></svg></button>'
+      +'</div>';
   });
   openSheet('<h2 style="margin:0">Edit home screen</h2>'
-    +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today.</p>'+rows
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>');
+    +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today — drag the grip ☰, or use the arrows.</p>'
+    +'<div id="wdraglist">'+rows+'</div>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>',
+    null, bindWidgetDrag, 'Edit home screen');
+}
+
+/* Drag-to-reorder for the Edit-home-screen list. Grip-only press-drag with animated
+   gap-shifting; commits the new order through the same S.widgets seam as the ▲▼ arrows
+   (which stay as the keyboard/AT fallback). Uniform row height → index-by-offset. */
+let wDrag=null;
+function bindWidgetDrag(){
+  const list=document.getElementById('wdraglist');
+  if(!list)return;
+  list.querySelectorAll('.wgrip[data-wdrag]').forEach(h=>{
+    if(h._wd)return;h._wd=1;
+    h.addEventListener('pointerdown',e=>startWidgetDrag(e,list));
+  });
+}
+function startWidgetDrag(e,list){
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  const row=e.target.closest('.wdragrow');
+  if(!row)return;
+  e.preventDefault();
+  const rows=[...list.querySelectorAll('.wdragrow')];
+  const startIndex=rows.indexOf(row);
+  const rects=rows.map(r=>r.getBoundingClientRect());
+  const centers=rects.map(r=>r.top+r.height/2);   // original slot centres — robust to variable row heights
+  const draggedH=rects[startIndex].height+8;       // + the .sheetrow top margin = gap to open
+  wDrag={list,row,rows,startIndex,curIndex:startIndex,centers,draggedH,y0:e.clientY};
+  row.classList.add('wdragging');
+  document.body.classList.add('dragactive');
+  try{row.setPointerCapture(e.pointerId);}catch(_){}
+  haptic(true);
+  document.addEventListener('pointermove',widgetDragMove,{passive:false});
+  document.addEventListener('pointerup',widgetDragEnd);
+  document.addEventListener('pointercancel',widgetDragEnd);
+}
+function widgetDragMove(e){
+  if(!wDrag)return;
+  e.preventDefault();
+  const dy=e.clientY-wDrag.y0;
+  wDrag.row.style.transform='translateY('+dy+'px)';
+  const dc=wDrag.centers[wDrag.startIndex]+dy;   // dragged row's live centre
+  let ti=wDrag.startIndex;
+  while(ti<wDrag.rows.length-1&&dc>wDrag.centers[ti+1])ti++;
+  while(ti>0&&dc<wDrag.centers[ti-1])ti--;
+  if(ti!==wDrag.curIndex){
+    wDrag.curIndex=ti;
+    haptic(false);
+    wDrag.rows.forEach((rw,idx)=>{
+      if(rw===wDrag.row)return;
+      let shift=0;
+      if(wDrag.startIndex<ti&&idx>wDrag.startIndex&&idx<=ti)shift=-wDrag.draggedH;
+      else if(wDrag.startIndex>ti&&idx<wDrag.startIndex&&idx>=ti)shift=wDrag.draggedH;
+      rw.style.transform=shift?'translateY('+shift+'px)':'';
+    });
+  }
+}
+function widgetDragEnd(){
+  if(!wDrag)return;
+  document.removeEventListener('pointermove',widgetDragMove);
+  document.removeEventListener('pointerup',widgetDragEnd);
+  document.removeEventListener('pointercancel',widgetDragEnd);
+  const {startIndex,curIndex,rows}=wDrag;
+  rows.forEach(rw=>{rw.style.transform='';rw.classList.remove('wdragging');});
+  document.body.classList.remove('dragactive');
+  wDrag=null;
+  if(curIndex!==startIndex){
+    const cfg=widgetConfig();
+    if(startIndex<cfg.length&&curIndex<cfg.length){
+      const moved=cfg.splice(startIndex,1)[0];
+      cfg.splice(curIndex,0,moved);
+      S.widgets=cfg;save();haptic(true);
+      rerenderKeepScroll();
+      openWidgetSheet();
+    }
+  }
 }
 
 function vToday(){
