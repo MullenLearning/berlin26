@@ -18,7 +18,9 @@
      system blue. Category + zone hues are semantic only (Activity rings, glyphs, chips,
      chart bars), never decoration. Surfaces are white cards on #F2F2F7 with hairlines. */
   color-scheme:light;
-  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA; --ink:#000000; --txt2:rgba(60,60,67,.6); --sub:rgba(60,60,67,.3);
+  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA; --ink:#000000;
+  /* secondary/tertiary text darkened from Apple's .6/.3 alphas to solid greys that clear WCAG AA (4.5:1) on white, #F2F2F7 and #E5E5EA — .mini/.note body text relies on --sub */
+  --txt2:#545458; --sub:#646469;
   --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
   --accent:#007AFF; --accent-ink:#fff; --chevron:#C7C7CC; --signal:#FF9500;
   /* Activity-ring stops */
@@ -3627,10 +3629,8 @@ function vToday(){
     widgets+=d.render();
   });
 
-  return '<div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
-    +'<div><h1>'+longDate(todayIdx)+'</h1>'
-    +'<div class="sub">Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY')+'</div></div>'
-    +'<button class="btn3" data-action="editwidgets" aria-haspopup="dialog" style="margin-top:6px">Edit</button></div>'
+  return '<div><div class="todayhead">'
+    +appleNav(longDate(todayIdx),'Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY'),'editwidgets')
     /* the blue line: position along the 112-day course to Berlin — taps open the city */
     +'<button class="course" data-action="cityopen" aria-label="Day '+(todayIdx+1)+' of 112 — open the Berlin course" style="display:block;width:100%;border:none;padding:0;cursor:pointer"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></button></div>'
     +(morningLine()?'<p class="note" style="margin:10px 2px 0">'+morningLine()+'</p>':'')
@@ -3724,8 +3724,8 @@ function vTrain(){
       +'<td class="num right">'+fmtKm(effLong(j))+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
 
-  return '<div><h1>Training</h1>'
-    +'<button class="sub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0;text-align:left;cursor:pointer;color:var(--sub);font:inherit">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
+  return '<div>'+appleNav('Training','')
+    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0 2px;text-align:left;cursor:pointer;color:var(--accent);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -4331,8 +4331,7 @@ function vNut(){
       +nutWeightLog()
       +'</section>';
   }
-  return '<div><h1>Nutrition</h1>'
-    +'<div class="sub">Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin</div>'
+  return '<div>'+appleNav('Nutrition','Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin')
     +weightCard
     +nutTodayBalance(i)
     +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
@@ -4446,9 +4445,11 @@ function appleRow(glyph,color,name,value,unit,action){
     +'<span class="aVal">'+value+(unit?' <span class="aUnit">'+unit+'</span>':'')+'</span>'
     +'<span class="aChev">'+APL.chev+'</span></button>';
 }
-function appleNav(title,sub){
+/* Apple large-title header. avatarAction (optional) shows the round profile/edit
+   button on the right — used only on Today, matching Apple Health's Summary tab. */
+function appleNav(title,sub,avatarAction){
   return '<div class="aNav"><div><div class="aTitle">'+title+'</div>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
-    +'<button class="aAvatar" data-action="editwidgets" aria-label="Profile">L</button></div>';
+    +(avatarAction?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>':'')+'</div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
 
