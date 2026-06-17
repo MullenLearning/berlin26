@@ -14,220 +14,40 @@
 <title>Berlin 2026 — Train + Fuel</title>
 <style>
 :root{
-  /* Dark-first system, Oura/Whoop register: depth from surface levels, not shadows.
-     ONE accent — the painted blue line on the Berlin course. Zone/day-type hues are
-     semantic category colours only (chips, dots, chart bars), never decoration. */
-  color-scheme:dark;
-  --bg:#070a11; --card:#0f1420; --raised:#171e2c; --inset:#0a0e18; --ink:#eef3fb; --txt2:#aeb9cd; --sub:#6f7e98;
-  --line:#1f2942; --line-soft:#18203a; --bord:#33405e; --grid:#141d33; --tick:#33405e;
-  --accent:#5b9bff; --accent-ink:#06122a; --signal:#f3b73f;
-  --rec:#5ec9f5;  --rec-bg:#0e2a3b;
-  --easy:#46d585; --easy-bg:#0e2e1d;
-  --long:#f3b73f; --long-bg:#33260c;
-  --hard:#f87171; --hard-bg:#391518;
-  --rest:#94a3b8; --rest-bg:#1b2436;
-  --blue:#5b9bff; --blue-bg:#13233f;
-  --track:#141d33; --shadow:none;
-  --disp:ui-monospace,"SF Mono","SFMono-Regular",Menlo,"Roboto Mono",monospace;
+  /* Apple Health, light-locked: the app's single design language. ONE accent — iOS
+     system blue. Category + zone hues are semantic only (Activity rings, glyphs, chips,
+     chart bars), never decoration. Surfaces are white cards on #F2F2F7 with hairlines. */
+  color-scheme:light;
+  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA; --ink:#000000; --txt2:rgba(60,60,67,.6); --sub:rgba(60,60,67,.3);
+  --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
+  --accent:#007AFF; --accent-ink:#fff; --chevron:#C7C7CC; --signal:#FF9500;
+  /* Activity-ring stops */
+  --move-a:#FF0436; --move-b:#FA114F; --ex-a:#A2FF00; --ex-b:#66E300; --st-a:#00B9C8; --st-b:#1AEBFF;
+  /* health category glyph colours */
+  --c-activity:#FA114F; --c-heart:#FF2D55; --c-sleep:#5E5CE6; --c-nutrition:#34C759; --c-energy:#FF9500; --c-body:#AF52DE; --c-mind:#5AC8FA;
+  /* training zone semantic colours (+ tint backgrounds) */
+  --rec:#5AC8FA; --rec-bg:#e1f4fd; --easy:#34C759; --easy-bg:#e3f9e9; --long:#FF9500; --long-bg:#fff0db;
+  --hard:#FF3B30; --hard-bg:#ffe5e3; --rest:#8E8E93; --rest-bg:#eceef2; --blue:#007AFF; --blue-bg:#e4eeff;
+  --track:#E5E5EA; --shadow:0 1px 2px rgba(0,0,0,.04);
+  --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
   /* the one motion system: fast snap for acknowledgements, soft settle for sheets/cards */
   --snap:cubic-bezier(.3,1.5,.45,1); --dur-snap:280ms;
   --settle:cubic-bezier(.22,1,.36,1); --dur-settle:420ms;
-  --statusbar:var(--bg);
-}
-/* Light theme — the WCAG-checked palette; selected via the theme toggle (S.theme) */
-html[data-theme="light"]{
-  color-scheme:light;
-  --bg:#eef1f6; --card:#ffffff; --raised:#e8edf4; --inset:#e3e8f1; --ink:#101828; --txt2:#3a4756; --sub:#5b6b80;
-  --line:#dfe5ee; --line-soft:#ebeff5; --bord:#8593a6; --grid:#e6ebf2; --tick:#9aa8c0;
-  --accent:#0f4fa8; --accent-ink:#ffffff; --signal:#92400e;
-  --rec:#075985;  --rec-bg:#e3f1fb;
-  --easy:#166534; --easy-bg:#e5f5ea;
-  --long:#92400e; --long-bg:#fcefd8;
-  --hard:#b91c1c; --hard-bg:#fbe9e9;
-  --rest:#52606f; --rest-bg:#eceff3;
-  --blue:#1d4ed8; --blue-bg:#e6ecfb;
-  --track:#e8ecf2;
-  /* installed app's status bar is frozen translucent w/ white clock — keep it on blue */
-  --statusbar:#0f4fa8;
-}
-
-/* ======================================================================
-   SKIN: WHOOP — dark OLED, ring-led "performance instrument". Hue = meaning;
-   edges by hairline borders, never shadow; ALL-CAPS labels + tabular heroes.
-   ====================================================================== */
-html[data-skin="whoop"]{
-  color-scheme:dark;
-  --bg:#0A0A0A; --card:#16171C; --raised:#1F2128; --inset:#0A0A0A;
-  --ink:#FFFFFF; --txt2:#7BA1BB; --sub:#6c7480;
-  --line:#252525; --line-soft:#1c1d22; --bord:#33363f; --grid:#23252b; --tick:#33363f;
-  --accent:#00F19F; --accent-ink:#06231a; --signal:#FFDE00;
-  --track:#2A2A2A; --shadow:none;
-  --rec-green:#16EC06; --rec-yellow:#FFDE00; --rec-red:#FF0026;
-  --strain:#0093E7; --strain-2:#4FB8FF; --sleep:#7BA1BB; --rec-blue:#67AEE6;
-  --sleep-deep:#5A778A; --sleep-light:#7BA1BB; --sleep-rem:#67AEE6; --sleep-awake:#FFDE00;
-  --disp:'Barlow','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
-  --statusbar:#0A0A0A;
-  /* semantic chips, tuned for OLED legibility */
-  --rec:#67AEE6; --rec-bg:#0e2230; --easy:#16EC06; --easy-bg:#0c2a12;
-  --long:#FFDE00; --long-bg:#2e2806; --hard:#FF5A6E; --hard-bg:#2e1014;
-  --rest:#7BA1BB; --rest-bg:#1a1d24; --blue:#0093E7; --blue-bg:#0b2030;
-  font-family:var(--disp);
-}
-html[data-skin="whoop"] .card{box-shadow:none;border:1px solid var(--line);border-radius:16px;background:var(--card)}
-html[data-skin="whoop"] h1{font-family:var(--disp);font-weight:700;letter-spacing:-.4px;text-transform:none}
-html[data-skin="whoop"] h2{color:var(--txt2);letter-spacing:.12em;font-size:12px}
-html[data-skin="whoop"] #tabbar{background:color-mix(in srgb,#16171C 94%,transparent);border-top:1px solid var(--line)}
-html[data-skin="whoop"] #tabbar .tlbl{text-transform:uppercase;letter-spacing:.09em;font-size:10px}
-html[data-skin="whoop"] #tabbar button{font-weight:700;gap:4px}
-html[data-skin="whoop"] #tabbar button.sel::after{background:var(--accent)}
-html[data-skin="whoop"] .skinseg{background:#16171C;border-color:var(--line)}
-/* WHOOP signature components */
-.wcaps{text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:700;color:var(--txt2);font-family:var(--disp)}
-.wtitle{font-size:26px;font-weight:700;color:#fff;letter-spacing:-.4px;font-family:var(--disp)}
-.whero{font-weight:800;color:#fff;line-height:.98;font-variant-numeric:tabular-nums;letter-spacing:-.02em;font-family:var(--disp)}
-.wdials{display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;justify-items:center;gap:6px;margin:4px 0 2px}
-.wring{position:relative;display:inline-flex;align-items:center;justify-content:center;line-height:0}
-.wring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;line-height:1}
-.wdial .wcaps{font-size:10px;letter-spacing:.1em;margin-top:7px;text-align:center}
-.wdial{display:flex;flex-direction:column;align-items:center}
-.wstrip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:14px;border-top:1px solid var(--line);padding-top:13px}
-.wstrip>div{text-align:center;padding:0 2px}
-.wstrip>div+div{border-left:1px solid var(--line)}
-.wstrip b{display:block;font-size:19px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.wstrip i{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--txt2);margin-top:4px;font-style:normal}
-.wbar{height:10px;border-radius:99px;background:var(--track);position:relative;overflow:visible}
-.wbar>i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--strain),var(--strain-2));transition:width .7s var(--ease-out)}
-.wbar .wtick{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px;background:#fff;opacity:.85}
-.wdot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;flex:none}
-.wcta{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:99px;padding:13px 20px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;font-size:13px;font-family:var(--disp);cursor:pointer;width:100%}
-.wcta.ghost{background:transparent;border:1.5px solid var(--accent);color:var(--accent)}
-.whyp{display:flex;height:34px;border-radius:6px;overflow:hidden;background:var(--track)}
-.whyp>span{display:block;height:100%}
-.wlegend{display:flex;flex-wrap:wrap;gap:12px;margin-top:9px}
-.wlegend span{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--txt2);text-transform:uppercase;letter-spacing:.06em}
-.wheat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
-.wheat .hd{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--sub);text-align:center;padding-bottom:2px}
-.wheat .cell{aspect-ratio:1;border-radius:5px;background:var(--track);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
-.wbars{display:flex;align-items:flex-end;gap:4px;height:90px}
-.wbars .b{flex:1;border-radius:3px 3px 0 0;background:var(--strain);min-height:2px}
-.wcoach{display:flex;gap:11px;align-items:flex-start}
-.wzbar{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--track)}
-.wzbar>span{display:block;height:100%}
-
-/* ======================================================================
-   SKIN: FITBIT (Google Health era) — light, teal, Material-3 rounded tiles.
-   Per-metric accent lives only on icon/ring/trend; card bodies stay white.
-   ====================================================================== */
-html[data-skin="fitbit"]{
-  color-scheme:light;
-  --bg:#F4F6F8; --card:#FFFFFF; --raised:#EEF1F3; --inset:#EEF1F3;
-  --ink:#1A1C1E; --txt2:#5F6368; --sub:#9AA0A6;
-  --line:#E3E6E8; --line-soft:#EEF1F3; --bord:#C9CDD2; --grid:#E3E6E8; --tick:#C9CDD2;
-  --accent:#00B0B9; --accent-ink:#FFFFFF; --accent-press:#008C95; --accent-tint:#E0F5F6; --navy:#002A3A; --signal:#E8710A;
-  --track:#EEF1F3; --shadow:0 1px 2px rgba(0,0,0,.05);
-  --m-steps:#FF7A3D; --m-azm:#E0218A; --m-hr:#F0354B; --m-sleep:#7B61FF; --m-ready:#34C759; --m-cal:#FFB300;
-  --sleep-awake:#FF8A65; --sleep-rem:#4FC3DC; --sleep-light:#4F8EF7; --sleep-deep:#3A3A8E;
-  --rec:#00B0B9; --rec-bg:#E0F5F6; --easy:#1E8E3E; --easy-bg:#E6F4EA; --long:#E8710A; --long-bg:#FCEFD8;
-  --hard:#D93025; --hard-bg:#FCE8E6; --rest:#5F6368; --rest-bg:#EEF1F3; --blue:#1A73E8; --blue-bg:#E8F0FE;
-  --statusbar:#F4F6F8;
-  --disp:'Google Sans','Product Sans','Roboto Flex',Roboto,'Helvetica Neue',Arial,sans-serif;
-  font-family:var(--disp);
-}
-html[data-skin="fitbit"] .card{border-radius:24px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.05);background:#fff;padding:18px;margin-top:14px}
-html[data-skin="fitbit"] h1{font-family:var(--disp);font-weight:700;text-transform:none;letter-spacing:-.4px}
-html[data-skin="fitbit"] h2{text-transform:none;letter-spacing:0;font-size:17px;font-weight:600;color:var(--ink)}
-html[data-skin="fitbit"] #tabbar{background:#fff;border-top:1px solid var(--line);-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-skin="fitbit"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
-html[data-skin="fitbit"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:12px;font-weight:500}
-html[data-skin="fitbit"] #tabbar button{color:var(--txt2);font-weight:500}
-html[data-skin="fitbit"] #tabbar button.sel{color:var(--accent)}
-html[data-skin="fitbit"] #tabbar button.sel::after{display:none}
-html[data-skin="fitbit"] #tabbar button>svg,html[data-skin="fitbit"] #tabbar button .tlbl{position:relative;z-index:1}
-html[data-skin="fitbit"] #tabbar button.sel::before{content:"";position:absolute;top:3px;left:50%;transform:translateX(-50%);width:58px;height:30px;border-radius:16px;background:var(--accent-tint);z-index:0}
-html[data-skin="fitbit"] .skinseg{background:#fff;border:1px solid var(--line)}
-html[data-skin="fitbit"] .skinseg button{color:var(--txt2)}
-html[data-skin="fitbit"] .skinseg button.on{background:var(--accent);color:#fff}
-/* Fitbit components */
-.fbar{display:flex;align-items:center;justify-content:space-between;margin:2px 2px 12px}
-.fbar h1{margin:0;font-size:27px}
-.fbar .fsub{font-size:13px;color:var(--txt2);margin-top:2px;font-weight:500}
-.favatar{width:40px;height:40px;border-radius:50%;background:var(--accent-tint);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--accent-press);font-size:16px;border:none;cursor:pointer;flex:none}
-.fchips{display:flex;gap:10px;margin-bottom:2px}
-.fchip{flex:1;min-width:0;background:#fff;border-radius:18px;padding:12px 6px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.05)}
-.fchip .fci{width:22px;height:22px;margin:0 auto 5px;display:flex;align-items:center;justify-content:center}
-.fchip b{display:block;font-size:20px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-.fchip span{display:block;font-size:11px;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ftile-h{display:flex;align-items:center;gap:12px}
-.ftile-h h3{margin:0;font-size:17px;font-weight:600;color:var(--ink);flex:1}
-.firing{position:relative;flex:none}
-.firing>div{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-.fbig{font-size:44px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.02}
-.funit{font-size:14px;color:var(--txt2);font-weight:500}
-.finsight{font-size:14px;color:var(--txt2);line-height:1.45;margin:13px 0 0}
-.finsight .spk{color:var(--accent);font-weight:700}
-.ftrend{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;border-radius:99px;padding:3px 10px;flex:none}
-.ftrend.up{background:rgba(30,142,62,.12);color:#1E8E3E}
-.ftrend.down{background:rgba(217,48,37,.12);color:#D93025}
-.ftrend.flat{background:var(--raised);color:var(--txt2)}
-.fdonut{position:relative;display:inline-flex}
-.fdonut>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.fstages{display:flex;height:32px;border-radius:8px;overflow:hidden;gap:2px;margin-top:12px}
-.fstages>span{display:block;border-radius:3px}
-.flegend{display:flex;gap:14px;margin-top:9px;flex-wrap:wrap}
-.flegend span{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)}
-.flegend i{width:8px;height:8px;border-radius:2px;display:inline-block}
-.fcta{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--accent);color:#fff;border:none;border-radius:99px;padding:13px 22px;font-weight:600;font-size:15px;cursor:pointer;font-family:var(--disp)}
-.fcta.tonal{background:var(--accent-tint);color:var(--accent-press)}
-.fmacro{display:flex;gap:8px;margin-top:12px}
-.fmacro .mb{flex:1}
-.fmacro .mb .bar{height:7px;border-radius:99px;background:var(--track);overflow:hidden}
-.fmacro .mb .bar i{display:block;height:100%;border-radius:99px}
-.fmacro .mb .lbl{font-size:11px;color:var(--txt2);margin-top:5px;text-align:center}
-.fseg{display:inline-flex;background:var(--raised);border-radius:99px;padding:3px;gap:2px}
-.fseg button{border:none;background:none;color:var(--txt2);font-size:13px;font-weight:600;padding:6px 14px;border-radius:99px;cursor:pointer}
-.fseg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.fnavy{background:var(--navy);color:#fff;border-radius:24px;padding:20px;margin-top:14px}
-.fnavy h3,.fnavy .fbig{color:#fff}
-.fnavy .funit{color:rgba(255,255,255,.7)}
-.flist{background:#fff;border-radius:24px;box-shadow:0 1px 2px rgba(0,0,0,.05);overflow:hidden;margin-top:14px}
-.flist .lrow{display:flex;align-items:center;gap:13px;padding:15px 18px;border-bottom:1px solid var(--line);width:100%;text-align:left;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer}
-.flist .lrow:last-child{border-bottom:none}
-.flist .lrow .li{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}
-.flist .lrow .lt{flex:1;font-weight:600;color:var(--ink);font-size:15px}
-.flist .lrow .lv{color:var(--txt2);font-size:15px;font-variant-numeric:tabular-nums}
-.fchev{color:var(--bord)}
-
-/* ======================================================================
-   SKIN: APPLE HEALTH — light-locked grouped-list dashboard. Big SF Pro
-   large title, white rounded cards on #F2F2F7, hairline rows + grey chevrons,
-   the three concentric Activity rings, rounded pill-cap bar charts.
-   ====================================================================== */
-html[data-skin="apple"]{
-  color-scheme:light;
-  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA;
-  --ink:#000000; --txt2:rgba(60,60,67,.6); --sub:rgba(60,60,67,.3);
-  --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
-  --accent:#007AFF; --accent-ink:#fff; --chevron:#C7C7CC; --signal:#FF9500;
-  --track:#E5E5EA; --shadow:0 1px 2px rgba(0,0,0,.04);
-  --move-a:#FF0436; --move-b:#FA114F; --ex-a:#A2FF00; --ex-b:#66E300; --st-a:#00B9C8; --st-b:#1AEBFF;
-  --c-activity:#FA114F; --c-heart:#FF2D55; --c-sleep:#5E5CE6; --c-nutrition:#34C759; --c-energy:#FF9500; --c-body:#AF52DE; --c-mind:#5AC8FA;
-  --rec:#5AC8FA; --rec-bg:#e1f4fd; --easy:#34C759; --easy-bg:#e3f9e9; --long:#FF9500; --long-bg:#fff0db; --hard:#FF3B30; --hard-bg:#ffe5e3; --rest:#8E8E93; --rest-bg:#eceef2; --blue:#007AFF; --blue-bg:#e4eeff;
   --statusbar:#F2F2F7;
-  --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
-  font-family:var(--disp);
 }
-html[data-skin="apple"] .card{border-radius:13px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;padding:16px;margin-top:0}
-html[data-skin="apple"] h1{font-weight:700;letter-spacing:.37px;text-transform:none}
-html[data-skin="apple"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
-html[data-skin="apple"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
-html[data-skin="apple"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
-html[data-skin="apple"] #tabbar button{color:#8E8E93}
-html[data-skin="apple"] #tabbar button.sel{color:var(--accent)}
-html[data-skin="apple"] #tabbar button.sel::after{display:none}
-html[data-skin="apple"] #tabbar svg{width:26px;height:26px}
-html[data-skin="apple"] .skinseg{background:#fff;border:1px solid var(--line)}
-html[data-skin="apple"] .skinseg button.on{background:var(--accent);color:#fff}
+
+html[data-skin="berlin"] .card{border-radius:13px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;padding:16px;margin-top:0}
+html[data-skin="berlin"] h1{font-weight:700;letter-spacing:.37px;text-transform:none}
+html[data-skin="berlin"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
+html[data-skin="berlin"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
+html[data-skin="berlin"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
+html[data-skin="berlin"] #tabbar button{color:#8E8E93}
+html[data-skin="berlin"] #tabbar button.sel{color:var(--accent)}
+html[data-skin="berlin"] #tabbar button.sel::after{display:none}
+html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
+html[data-skin="berlin"] .skinseg{background:#fff;border:1px solid var(--line)}
+html[data-skin="berlin"] .skinseg button.on{background:var(--accent);color:#fff}
 /* Apple components */
 .aNav{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 2px 0}
 .aTitle{font-size:34px;font-weight:700;letter-spacing:.37px;color:#000;line-height:1.1}
@@ -2699,18 +2519,10 @@ function scheduledSoFar(w,todayPos){
 
 /* ---------------- Theme ---------------- */
 const mqLight=matchMedia('(prefers-color-scheme: light)');
-function applyTheme(){
-  /* Each skin locks its canonical appearance: WHOOP is OLED-dark, Fitbit and
-     Apple Health are light-first. (No skin → honour the S.theme toggle.) */
-  const sk=(typeof currentSkin==='function')?currentSkin():'whoop';
-  let light;
-  if(sk==='whoop')light=false;
-  else if(sk==='fitbit'||sk==='apple')light=true;
-  else {const t=S.theme||'dark';light=t==='light'||(t==='auto'&&mqLight.matches);}
-  document.documentElement.dataset.theme=light?'light':'dark';
-  const bar={whoop:'#0A0A0A',fitbit:'#F4F6F8',apple:'#F2F2F7'}[sk]||(light?'#f1f3f6':'#0a0d15');
+function applyTheme(){ // light-locked Apple Health palette — one fixed appearance
+  document.documentElement.dataset.theme='light';
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m)m.setAttribute('content',bar);
+  if(m)m.setAttribute('content','#F2F2F7');
 }
 mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme();});
 
@@ -2719,22 +2531,13 @@ mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme(
    S.skin and scopes ALL skin CSS via html[data-skin]. Each skin owns its own
    navigation model + screen set; every skin reuses the same engine selectors
    above (eff/berlinForecast/stravaSync/ouraSync/nutrition/weight…). */
-const SKINS=['berlin','whoop','fitbit','apple'];
+const SKINS=['berlin'];
 function currentSkin(){return SKINS.indexOf(S.skin)>=0?S.skin:'berlin';}
 function applySkin(){document.documentElement.dataset.skin=currentSkin();}
-function skinReg(){return SKIN_REG[currentSkin()]||SKIN_REG.whoop;}
+function skinReg(){return SKIN_REG[currentSkin()]||SKIN_REG.berlin;}
 function skinTabs(){return skinReg().tabs;}
 function skinDefaultTab(){return skinReg().defaultTab;}
 function skinHasTab(t){return skinTabs().some(x=>x.id===t);}
-function setSkin(v){
-  if(SKINS.indexOf(v)<0||v===currentSkin())return;
-  if(typeof closeSheet==='function')closeSheet();   // don't carry a sheet across skins
-  S.skin=v;save();applySkin();applyTheme();
-  ui.scroll={};                                   // disjoint tab ids → drop stale scroll
-  if(!skinHasTab(ui.tab))ui.tab=skinDefaultTab();
-  haptic(true);
-  render(false);                                  // skip the View Transition on a full skin swap
-}
 /* The nav is rebuilt only when the tab set changes; otherwise we just retag the
    active button (keeps the original cheap in-place behaviour). A skin may declare
    a center FAB (skin.fab) which floats over the bar. */
@@ -2766,14 +2569,6 @@ function renderTabBar(skin){
     if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');
   });
 }
-/* The segmented Whoop/Fitbit/Apple control — lives in each skin's header and in
-   the settings sheet, so the user can flip the whole app's look from anywhere. */
-const SKIN_LABEL={berlin:'Berlin',whoop:'Whoop',fitbit:'Fitbit',apple:'Apple'};
-function skinSwitcher(){
-  const cur=currentSkin();
-  return '<div class="skinseg" role="group" aria-label="App style">'+SKINS.map(v=>
-    '<button data-action="setskin" data-v="'+v+'" class="'+(cur===v?'on':'')+'" aria-pressed="'+(cur===v)+'">'+SKIN_LABEL[v]+'</button>').join('')+'</div>';
-}
 /* Tab-bar glyphs (skins may override per tab) */
 const TAB_ICONS={
   today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>',
@@ -2781,57 +2576,6 @@ const TAB_ICONS={
   nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
   wt:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 9.5a4.5 4.5 0 0 1 8 0"/><path d="m12 9.5 2-2.2"/></svg>',
 };
-/* WHOOP: dark OLED, 4 bottom tabs + center FAB; the screen fns live near render(). */
-const WI={
-  overview:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
-  coaching:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1Z"/></svg>',
-  community:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M16.5 5.5a3.2 3.2 0 0 1 0 6"/><path d="M20.5 19.5a5.5 5.5 0 0 0-3.6-5.2"/></svg>',
-  stats:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20v-6M12 20V5M19 20v-9"/><path d="M3 20h18"/></svg>',
-  plus:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-};
-const WHOOP={
-  defaultTab:'overview',
-  fab:{icon:WI.plus,action:'wfab',label:'Quick log'},
-  tabs:[
-    {id:'overview',label:'Overview',icon:WI.overview},
-    {id:'coaching',label:'Coaching',icon:WI.coaching},
-    {id:'community',label:'Community',icon:WI.community},
-    {id:'stats',label:'Stats',icon:WI.stats},
-  ],
-  screens:{overview:()=>whoopOverview(),coaching:()=>whoopCoaching(),community:()=>whoopCommunity(),stats:()=>whoopStats()},
-};
-/* FITBIT: light, 3 bottom tabs, no FAB. */
-const FBI={
-  today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19h12v-8.5"/><circle cx="12" cy="14.5" r="1.6" fill="currentColor" stroke="none"/></svg>',
-  coach:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a7.5 7.5 0 0 1-10.9 6.7L4 20l1.8-6.1A7.5 7.5 0 1 1 21 11.5Z"/><path d="m12 8 1 2.4 2.4.9-2.4 1L12 15l-1-2.7-2.4-1 2.4-.9Z" fill="currentColor" stroke="none"/></svg>',
-  you:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.6"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
-};
-const FITBIT={
-  defaultTab:'today',
-  tabs:[
-    {id:'today',label:'Today',icon:FBI.today},
-    {id:'coach',label:'Coach',icon:FBI.coach},
-    {id:'you',label:'You',icon:FBI.you},
-  ],
-  screens:{today:()=>fitToday(),coach:()=>fitCoach(),you:()=>fitYou()},
-};
-/* APPLE HEALTH: light-locked, 3 bottom tabs (large-title nav), no FAB. */
-const API={
-  summary:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 16.5s-3.6-2.2-3.6-4.7c0-1.2 1-2 2-2 .9 0 1.3.5 1.6 1 .3-.5.7-1 1.6-1 1 0 2 .8 2 2 0 2.5-3.6 4.7-3.6 4.7Z" fill="currentColor" stroke="none"/></svg>',
-  plan:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>',
-  browse:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>',
-};
-const APPLE={
-  defaultTab:'summary',
-  tabs:[
-    {id:'summary',label:'Summary',icon:API.summary},
-    {id:'plan',label:'Plan',icon:API.plan},
-    {id:'browse',label:'Browse',icon:API.browse},
-  ],
-  screens:{summary:()=>appleSummary(),plan:()=>applePlan(),browse:()=>appleBrowse()},
-};
-/* BERLIN: the app's own "Flight Cluster" design — the original 4 screens, native
-   theme (honours the dark/light/auto toggle). Default skin. */
 const BERLIN={
   defaultTab:'today',
   tabs:[
@@ -2841,7 +2585,7 @@ const BERLIN={
   ],
   screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut()},
 };
-const SKIN_REG={berlin:BERLIN,whoop:WHOOP,fitbit:FITBIT,apple:APPLE};
+const SKIN_REG={berlin:BERLIN};
 
 applySkin();
 applyTheme(); // before first render — no theme/skin flash
@@ -3844,17 +3588,8 @@ function openWidgetSheet(){
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="1" aria-label="Move '+esc(d.label)+' down" '+(i===cfg.length-1?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 5 4 5 4-5"/></svg></button>'
       +'</span></div>';
   });
-  const skinRow='<h2 style="margin:18px 0 0">App style</h2>'+skinSwitcher()
-    +'<p class="mini" style="margin:6px 2px 0">Rebuilds the whole app — navigation, layout and look — in Whoop, Fitbit, or Apple Health style.</p>';
-  const th=S.theme||'dark';
-  const themeRow='<h2 style="margin:18px 0 0">Theme</h2>'
-    +'<div class="seg">'+['dark','light','auto'].map(v=>
-      '<button data-action="settheme" data-v="'+v+'" aria-pressed="'+(th===v)+'" class="'+(th===v?'selb':'')+'" style="text-transform:capitalize">'+v+'</button>').join('')+'</div>'
-    +'<p class="mini" style="margin:6px 2px 0">Auto follows your iPhone’s appearance setting.</p>';
   openSheet('<h2 style="margin:0">Edit home screen</h2>'
     +'<p class="note" style="margin:6px 0 2px">Choose and order the widgets on Today.</p>'+rows
-    +skinRow
-    +themeRow
     +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Done</button>');
 }
 
@@ -3892,7 +3627,7 @@ function vToday(){
     widgets+=d.render();
   });
 
-  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
+  return '<div><div class="todayhead"><div class="spread" style="align-items:flex-start">'
     +'<div><h1>'+longDate(todayIdx)+'</h1>'
     +'<div class="sub">Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY')+'</div></div>'
     +'<button class="btn3" data-action="editwidgets" aria-haspopup="dialog" style="margin-top:6px">Edit</button></div>'
@@ -3989,7 +3724,7 @@ function vTrain(){
       +'<td class="num right">'+fmtKm(effLong(j))+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
 
-  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Training</h1>'
+  return '<div><h1>Training</h1>'
     +'<button class="sub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0;text-align:left;cursor:pointer;color:var(--sub);font:inherit">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
@@ -4596,7 +4331,7 @@ function vNut(){
       +nutWeightLog()
       +'</section>';
   }
-  return '<div><div style="margin-bottom:12px">'+skinSwitcher()+'</div><h1>Nutrition</h1>'
+  return '<div><h1>Nutrition</h1>'
     +'<div class="sub">Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin</div>'
     +weightCard
     +nutTodayBalance(i)
@@ -4671,382 +4406,13 @@ function closeSheet(){
   sheetOpener=null;
 }
 
-/* ======================================================================
-   WHOOP skin — screens + signature components. Reuses the engine selectors
-   (eff/berlinForecast/ouraBase/formNow/trimpOf/weightChart/dayCard/runVisual).
-   ====================================================================== */
-let _wgrad=0;
-function whoopBand(pct){return pct==null?'var(--track)':pct>=67?'var(--rec-green)':pct>=34?'var(--rec-yellow)':'var(--rec-red)';}
-/* Open-top traffic-light donut. Hue encodes the score unless opts.color forces one. */
-function whoopRing(pct,opts){
-  opts=opts||{};
-  const size=opts.size||108,stroke=opts.stroke||(opts.hero?12:7);
-  const r=(size-stroke)/2-1,cx=size/2,cy=size/2,C=2*Math.PI*r;
-  const gap=opts.gap!=null?opts.gap:14,span=(360-gap)/360,arc=C*span;
-  const has=pct!=null&&isFinite(pct),p=has?clamp(pct,0,100)/100:0,fill=arc*p;
-  const rot=-90+gap/2;
-  let c1,c2;
-  if(opts.color){c1=c2=opts.color;}
-  else if(!has){c1=c2='var(--track)';}
-  else if(pct>=67){c1='#FFDE00';c2='#16EC06';}
-  else if(pct>=34){c1='#FF0026';c2='#FFDE00';}
-  else {c1=c2='#FF0026';}
-  const id='wg'+(++_wgrad);
-  return '<div class="wring" style="width:'+size+'px;height:'+size+'px">'
-    +'<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate('+rot+'deg)">'
-    +'<defs><linearGradient id="'+id+'" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="'+c1+'"/><stop offset="1" stop-color="'+c2+'"/></linearGradient></defs>'
-    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+arc.toFixed(1)+' '+(C-arc).toFixed(1)+'"/>'
-    +(has?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="url(#'+id+')" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'"/>':'')
-    +'</svg><div class="wring-c">'+(opts.center||'')+'</div></div>';
-}
-/* Map a session to WHOOP's 0–21 strain scale (easy~8 tempo~14 long~17 race~20). */
-function whoopStrainOf(e,km){
-  if(!e||e.zone==='Rest'||(km!=null?km:e.km)<=0)return 0.6;
-  const base={Recovery:5,Easy:8,Long:13,Marathon:18,Threshold:13,Interval:14}[e.zone]||8;
-  return clamp(base+clamp(((km!=null?km:e.km)-6)*0.35,0,7.5),1,21);
-}
-function whoopRecovery(){
-  const h=(healthRef().d[todayISO()])||{};
-  if(h.rs!=null)return {pct:h.rs,real:true};
-  const f=formNow();
-  if(f)return {pct:clamp(Math.round(66+f.tsb*1.2),18,97),real:false};
-  return {pct:null,real:false};
-}
-function whoopSleepData(iso){
-  const h=(healthRef().d[iso||todayISO()])||{};
-  if(h.slp==null)return {real:false};
-  const total=h.slp,deep=h.deep||0,rem=h.rem||0,light=Math.max(0,total-deep-rem-(h.awk||0)),awake=h.awk||Math.round(total*0.06);
-  return {real:true,total:total,deep:deep,rem:rem,light:light,awake:awake,score:h.ss!=null?h.ss:null,eff:h.eff};
-}
-function fmtSleepShort(s){const h=Math.floor(s/3600),m=Math.round(s%3600/60);return h+'h'+(m<10?'0':'')+m;}
-function whoopHypnogram(d){
-  const segs=[['Awake',d.awake,'var(--sleep-awake)'],['REM',d.rem,'var(--sleep-rem)'],['Light',d.light,'var(--sleep-light)'],['Deep',d.deep,'var(--sleep-deep)']];
-  const tot=segs.reduce((s,x)=>s+x[1],0)||1;
-  let bar='',leg='';
-  segs.forEach(s=>{bar+='<span style="width:'+(s[1]/tot*100).toFixed(1)+'%;background:'+s[2]+'"></span>';
-    leg+='<span><i class="wdot" style="background:'+s[2]+'"></i>'+s[0]+' '+Math.round(s[1]/60)+'m</span>';});
-  return '<div class="whyp">'+bar+'</div><div class="wlegend">'+leg+'</div>';
-}
-function whoopDials(){
-  const rec=whoopRecovery(),e=eff(todayIdx),strain=whoopStrainOf(e),sl=whoopSleepData();
-  const sleepPct=sl.real?(sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100)):null;
-  const sleepCenter='<div class="whero" style="font-size:17px;color:var(--sleep)">'+(sl.real?fmtSleepShort(sl.total):'—')+'</div>';
-  const recCenter='<div class="whero" style="font-size:38px">'+(rec.pct!=null?rec.pct:'—')+(rec.pct!=null?'<span style="font-size:15px;font-weight:700;vertical-align:6px">%</span>':'')+'</div>';
-  const strainCenter='<div class="whero" style="font-size:24px;color:#fff">'+strain.toFixed(1)+'</div>';
-  return '<div class="wdials">'
-    +'<button class="wdial" data-action="wsleep" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(sleepPct,{size:92,stroke:6,color:'var(--sleep)',center:sleepCenter})+'<span class="wcaps">Sleep</span></button>'
-    +'<button class="wdial" data-action="wrecov" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(rec.pct,{size:124,stroke:9,center:recCenter})+'<span class="wcaps">Recovery</span></button>'
-    +'<button class="wdial" data-action="wstrain" style="background:none;border:none;padding:0;cursor:pointer">'+whoopRing(strain/21*100,{size:92,stroke:6,color:'var(--strain)',center:strainCenter})+'<span class="wcaps">Strain</span></button>'
-    +'</div>';
-}
-function whoopHeader(title){
-  return '<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
-    +'<div class="spread" style="align-items:flex-end;margin:2px 2px 12px"><div class="wtitle">'+title+'</div>'
-    +'<span class="wcaps" style="font-size:11px">'+shortDate(todayIdx).toUpperCase()+'</span></div>';
-}
-function whoopOverview(){
-  const e=eff(todayIdx),rec=whoopRecovery(),isRest=e.zone==='Rest'&&e.km<=0;
-  const band=whoopBand(rec.pct);
-  const verdict=rec.pct==null?'Connect Oura for a recovery-led read on today.'
-    :isRest?'Rest day — let recovery climb. Easy mobility only.'
-    :rec.pct>=67?'Green — recovered. Hit '+esc(headline(e))+' as planned.'
-    :rec.pct>=34?'Yellow — hold something back. Keep '+esc(headline(e))+' controlled.'
-    :'Red — back off. Swap for easy or rest; the session keeps.';
-  // coaching insights
-  const ins=[];const ml=morningLine();if(ml)ins.push({raw:ml});
-  const ps=patternScan();if(ps&&ps.eff)ins.push({txt:ps.text});
-  const flags=ouraConnected()?ouraFlags(todayISO()):[];
-  if(flags.length>=2)ins.push({txt:'Overnight signals off: '+flags.join(', ')+' vs your week — favour rest.'});
-  const w=Math.floor(todayIdx/7),tgt=effWeekTarget(w),act=weekActualKm(w);
-  return '<div>'+whoopHeader('Overview')
-    +'<section class="card" style="padding:18px 12px 14px">'+whoopDials()
-      +(rec.real?'':'<p class="wcaps" style="font-size:10px;text-align:center;color:var(--sub);margin-top:12px;letter-spacing:.08em">Recovery estimated from training load · connect Oura for live readiness</p>')+'</section>'
-    +'<section class="card">'
-      +'<div class="spread"><span class="wcaps">Today · '+DOW[todayIdx%7].toUpperCase()+'</span><span class="wcaps" style="color:var(--accent)">Strain '+whoopStrainOf(e).toFixed(1)+'</span></div>'
-      +'<div class="wtitle" style="font-size:22px;margin:9px 0 2px">'+(isRest?'REST DAY':esc(headline(e)).toUpperCase())+'</div>'
-      +(paceLine(e)?'<div class="wcaps" style="color:var(--txt2);font-size:12px;letter-spacing:.03em;text-transform:none">'+paceLine(e)+'</div>':'')
-      +'<div class="wcoach" style="margin-top:13px"><span class="wdot" style="background:'+band+';margin-top:4px"></span><p style="margin:0;color:#F5F5F7;font-size:14px;line-height:1.45">'+verdict+'</p></div>'
-      +(isRest?'':'<button class="wcta" style="margin-top:15px" data-action="logsheet" data-i="'+todayIdx+'">'+(sessLog(e.id)&&sessLog(e.id).status?'Edit run':'Start run')+'</button>')
-      +'</section>'
-    +(ins.length?'<section class="card"><span class="wcaps">Coach</span>'+ins.map(x=>'<p style="margin:9px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+(x.raw?x.raw:esc(x.txt))+'</p>').join('')+'</section>':'')
-    +'<section class="card"><div class="spread"><span class="wcaps">Weekly Plan · W'+(w+1)+'</span><span class="wcaps" style="color:var(--txt2)">'+esc(WEEKS[w].phase)+'</span></div>'
-      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="whero" style="font-size:34px">'+fmtKm(act)+'</span><span class="wcaps" style="font-size:12px">/ '+fmtKm(tgt)+' KM</span></div>'
-      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(tgt?act/tgt*100:0,0,100)+'%;background:linear-gradient(90deg,var(--rec-yellow),var(--rec-green))"></i></div>'
-      +'<button class="wcta ghost" style="margin-top:14px" data-action="tab" data-tab="coaching">View training</button></section>'
-    +'</div>';
-}
-/* Coaching = the training plan, recovery-led. */
-function whoopCoaching(){
-  const w=ui.week!=null?ui.week:Math.floor(todayIdx/7);
-  const rec=whoopRecovery(),e=eff(todayIdx),band=whoopBand(rec.pct);
-  const reco=rec.pct==null?'Connect Oura and the plan adapts to your readiness each morning.'
-    :rec.pct>=67?'Recovery is green — you’re cleared for the hard work in the plan this week.'
-    :rec.pct>=34?'Recovery is amber — keep easy days easy and don’t chase paces on quality days.'
-    :'Recovery is red — move today’s quality session and bank an easy day instead.';
-  let strip='';for(let d=0;d<7;d++){const ee=eff(w*7+d),s=whoopStrainOf(ee);
-    strip+='<div class="cell" style="background:color-mix(in srgb,var(--'+(ZONECLR[ee.zone]||'rest')+') '+(ee.zone==='Rest'?14:Math.round(28+s*2.6))+'%,var(--card))" title="'+esc(headline(ee))+'">'+(ee.km>0?Math.round(s):'·')+'</div>';}
-  let heads='';['M','T','W','T','F','S','S'].forEach(d=>heads+='<div class="hd">'+d+'</div>');
-  let chips='<div class="weekchips">';for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';chips+='</div>';
-  let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
-  return '<div>'+whoopHeader('Coaching')
-    +'<section class="card"><div class="wcoach"><span class="wdot" style="background:'+band+';margin-top:4px"></span><div><span class="wcaps">Today’s guidance</span><p style="margin:6px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+reco+'</p></div></div></section>'
-    +'<section class="card"><div class="spread"><span class="wcaps">Week '+(w+1)+' · strain map</span><span class="wcaps" style="color:var(--txt2)">'+esc(WEEKS[w].phase)+'</span></div>'
-      +'<div class="wheat" style="margin-top:10px">'+heads+strip+'</div></section>'
-    +chips+days
-    +'</div>';
-}
-/* Community = the activity feed (Strava runs) + season stats. */
-function whoopRunTile(i,e,l){
-  const strip=[['Pace',l.pace?l.pace:'—'],['Avg HR',l.hrA?Math.round(l.hrA):'—'],['Elev',l.elev?Math.round(l.elev)+'m':'—'],['Time',l.secs?fmtDur(l.secs):'—']];
-  return '<section class="card">'
-    +'<div class="spread"><span class="wcaps">'+shortDate(i).toUpperCase()+'</span><span class="chip c-'+(ZONECLR[e.zone]||'rest')+'">'+e.zone+'</span></div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:6px"><span class="whero" style="font-size:44px">'+fmtKm(l.km)+'</span><span class="wcaps" style="font-size:13px">KM</span></div>'
-    +'<div class="wstrip">'+strip.map(s=>'<div><b>'+s[1]+'</b><i>'+s[0]+'</i></div>').join('')+'</div>'
-    +runVisual(l,i)
-    +'</section>';
-}
-function whoopCommunity(){
-  const runs=[];const top=clamp(rawT,0,RACE_IDX);
-  for(let i=top;i>=0&&runs.length<24;i--){const e=eff(i),l=sessLog(e.id);if(l&&(l.status==='done'||l.status==='partial')&&l.km>0)runs.push([i,e,l]);}
-  let totKm=0;runs.forEach(r=>totKm+=Number(r[2].km)||0);
-  const stat=(v,l)=>'<div><b>'+v+'</b><i>'+l+'</i></div>';
-  let body='';
-  if(!stravaConnected()&&!runs.length)body=stravaCard();
-  else if(!runs.length)body='<section class="card"><span class="wcaps">No runs yet</span><p style="margin:8px 0 0;font-size:14px;color:#F5F5F7;line-height:1.45">Runs imported from Strava land here as they happen.</p></section>';
-  else body=runs.map(r=>whoopRunTile(r[0],r[1],r[2])).join('');
-  return '<div>'+whoopHeader('Community')
-    +'<section class="card"><span class="wcaps">This season</span><div class="wstrip" style="border-top:none;padding-top:10px">'
-      +stat(doneCount(),'Sessions')+stat(streak(),'Streak')+stat(fmtKm(totKm),'KM run')+stat((RACE_IDX-rawT>0?RACE_IDX-rawT:0),'To Berlin')+'</div></section>'
-    +body+'</div>';
-}
-/* Stats = trends, forecast, recovery history. */
-function whoopStats(){
-  const f=berlinForecast(),finish=fmtFinishT(f.secs),days=RACE_IDX-rawT;
-  // weekly volume bars
-  let mx=1;for(let j=0;j<16;j++)mx=Math.max(mx,effWeekTarget(j));
-  let bars='';for(let j=0;j<16;j++){const cur=j===Math.floor(clamp(rawT,0,RACE_IDX)/7);
-    bars+='<div class="b" title="W'+(j+1)+' '+fmtKm(effWeekTarget(j))+'km" style="height:'+Math.round(effWeekTarget(j)/mx*100)+'%;background:'+(cur?'var(--accent)':'var(--strain)')+';opacity:'+(cur?1:.7)+'"></div>';}
-  // recovery heat-grid, last 28 days
-  let heat='';const H=healthRef().d;
-  for(let k=27;k>=0;k--){const idx=rawT-k;if(idx<0||idx>RACE_IDX){heat+='<div class="cell" style="background:transparent"></div>';continue;}
-    const rs=(H[isoAt(idx)]||{}).rs;
-    heat+='<div class="cell" style="background:'+(rs!=null?'color-mix(in srgb,'+whoopBand(rs)+' 70%,var(--card))':'var(--track)')+';color:'+(rs!=null&&rs>=34&&rs<67?'#0A0A0A':'#fff')+'">'+(rs!=null?rs:'')+'</div>';}
-  const eaten0=eaten(todayIdx),b=dayBurn(todayIdx);
-  let energy='';
-  if(b.burned!=null){const def=b.burned-eaten0.kcal;
-    energy='<section class="card"><div class="spread"><span class="wcaps">Energy balance</span><span class="wcaps" style="color:'+(def>=e0Deficit(def)?'var(--rec-green)':'var(--rec-yellow)')+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+'</span></div>'
-      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:9px"><span class="whero" style="font-size:30px">'+fmtKcal(eaten0.kcal)+'</span><span class="wcaps" style="font-size:11px">/ '+fmtKcal(b.burned)+' KCAL BURNED</span></div>'
-      +'<div class="wbar" style="margin-top:11px"><i style="width:'+clamp(eaten0.kcal/b.burned*100,0,100)+'%;background:linear-gradient(90deg,var(--accent),var(--strain-2))"></i></div>'
-      +'<div class="wcaps" style="font-size:10px;color:var(--txt2);margin-top:9px;letter-spacing:.06em">TARGET −'+fmtKcal(deficitGoal())+' / DAY</div></section>';}
-  return '<div>'+whoopHeader('Stats')
-    +'<section class="card"><div class="spread"><span class="wcaps">Berlin 2026</span><span class="wcaps" style="color:var(--accent)">'+(days>0?'D−'+days:'RACE DAY')+'</span></div>'
-      +'<div class="row" style="align-items:center;gap:18px;margin-top:8px">'
-      +'<div style="flex:1"><span class="wcaps" style="font-size:11px">Projected finish</span><div class="whero" style="font-size:46px;margin-top:3px">'+finish+'</div>'
-      +'<div class="wcaps" style="font-size:11px;color:var(--txt2);margin-top:5px;text-transform:none;letter-spacing:.02em">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div></div>'
-      +whoopRing(f.state==='early'?null:clamp(100-Math.abs(f.secs-f.goalT)/f.goalT*900,20,99),{size:84,stroke:7,center:'<span class="wcaps" style="font-size:9px">FORM</span>'})
-      +'</div><p style="margin:13px 0 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+esc(forecastMover(f))+'</p></section>'
-    +'<section class="card"><span class="wcaps">Weekly load · 16-week block</span><div class="wbars" style="margin-top:12px">'+bars+'</div></section>'
-    +'<section class="card"><span class="wcaps">Recovery · last 28 days</span><div class="wheat" style="grid-template-columns:repeat(14,1fr);margin-top:10px">'+heat+'</div></section>'
-    +energy
-    +'<section class="card"><span class="wcaps">Weight</span><div class="svgwrap" style="margin-top:8px">'+weightChart()+'</div></section>'
-    +ouraCard()+stravaCard()
-    +'</div>';
-}
-function e0Deficit(){return deficitGoal();} // chip turns green once you hit your deficit target
-/* Deep-dive sheets (tap a dial) */
-function whoopRecovSheet(){
-  const rec=whoopRecovery(),h=(healthRef().d[todayISO()])||{},iso=todayISO();
-  const rb=ouraBase('rhr',iso),hb=ouraBase('hrv',iso);
-  const strip=[['HRV',h.hrv!=null?h.hrv:'—'],['Resting HR',h.rhr!=null?h.rhr:'—'],['Resp',h.rr!=null?h.rr.toFixed(1):'—'],['Skin temp',h.tmp!=null?(h.tmp>=0?'+':'')+h.tmp.toFixed(1)+'°':'—']];
-  openSheet('<div style="text-align:center;padding:6px 0 4px">'+whoopRing(rec.pct,{size:204,stroke:14,center:'<span class="wcaps" style="font-size:12px">RECOVERY</span><div class="whero" style="font-size:64px;margin-top:2px">'+(rec.pct!=null?rec.pct:'—')+(rec.pct!=null?'<span style="font-size:22px;font-weight:700;vertical-align:10px">%</span>':'')+'</div>'})+'</div>'
-    +'<div class="wstrip" style="border-top:none">'+strip.map(s=>'<div><b>'+s[1]+'</b><i>'+s[0]+'</i></div>').join('')+'</div>'
-    +'<p style="margin:16px 2px 0;font-size:14px;line-height:1.45;color:#F5F5F7">'+(rec.real?'Readiness from your Oura ring vs your 7-day baseline'+(rb?' (RHR '+(h.rhr-rb>=0?'+':'−')+Math.abs(Math.round(h.rhr-rb)):'')+(rb?')':'')+'.':'Estimated from training load — connect Oura for a measured recovery score.')+'</p>'
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');
-}
-function whoopStrainSheet(){
-  const e=eff(todayIdx),s=whoopStrainOf(e),tgt=s;const l=sessLog(e.id);
-  openSheet('<div style="text-align:center;padding:4px 0"><span class="wcaps">STRAIN</span><div class="whero" style="font-size:64px;margin-top:2px">'+s.toFixed(1)+'</div><span class="wcaps" style="font-size:11px;color:var(--txt2)">of 21 today</span></div>'
-    +'<div class="wbar" style="margin:14px 4px 0;height:12px"><i style="width:'+(s/21*100)+'%"></i><span class="wtick" style="left:'+(tgt/21*100)+'%"></span></div>'
-    +'<section class="card" style="margin-top:16px"><div class="spread"><span class="wcaps">'+esc(headline(e)).toUpperCase()+'</span><span class="chip c-'+(ZONECLR[e.zone]||'rest')+'">'+e.zone+'</span></div>'
-    +(paceLine(e)?'<div class="wcaps" style="text-transform:none;color:var(--txt2);font-size:12px;margin-top:6px">'+paceLine(e)+'</div>':'')
-    +(l&&l.hrA?'<div class="wstrip" style="margin-top:12px"><div><b>'+Math.round(l.hrA)+'</b><i>Avg HR</i></div><div><b>'+(l.hrM?Math.round(l.hrM):'—')+'</b><i>Max HR</i></div><div><b>'+fmtKm(l.km)+'</b><i>KM</i></div><div><b>'+(l.secs?fmtDur(l.secs):'—')+'</b><i>Time</i></div></div>':'')
-    +'</section>'
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');
-}
-function whoopSleepSheet(){
-  const sl=whoopSleepData();
-  if(!sl.real){openSheet('<div style="text-align:center;padding:6px 0"><span class="wcaps">SLEEP</span><div class="whero" style="font-size:40px;margin-top:6px;color:var(--sleep)">—</div></div><p style="margin:14px 2px 0;font-size:14px;color:#F5F5F7;line-height:1.45">No sleep recorded for last night. Connect Oura and sync to see your sleep stages here.</p><button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:8px">Close</button>');return;}
-  const perf=sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100);
-  openSheet('<div style="text-align:center;padding:4px 0"><span class="wcaps">SLEEP</span><div class="whero" style="font-size:48px;margin-top:2px;color:var(--sleep)">'+fmtSleep(sl.total)+'</div></div>'
-    +'<div style="text-align:center;margin-top:10px">'+whoopRing(perf,{size:120,stroke:9,color:'var(--sleep)',center:'<div class="whero" style="font-size:30px;color:var(--sleep)">'+perf+'</div><span class="wcaps" style="font-size:9px">PERF</span>'})+'</div>'
-    +'<div style="margin-top:16px">'+whoopHypnogram(sl)+'</div>'
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>');
-}
-function whoopFabSheet(){
-  openSheet('<h2 style="margin:0 0 2px;letter-spacing:.12em">QUICK LOG</h2>'
-    +'<button class="wcta" style="margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log today’s run</button>'
-    +'<button class="wcta ghost" style="margin-top:10px" data-action="foodlog" data-i="'+todayIdx+'">Log food</button>'
-    +'<button class="wcta ghost" style="margin-top:10px" data-action="addweight">Log weight</button>'
-    +(stravaConnected()?'<button class="wcta ghost" style="margin-top:10px" data-action="stravasync">Sync Strava</button>':'')
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:10px">Cancel</button>');
-}
-
-/* ======================================================================
-   FITBIT (Google Health) skin — light, teal, rounded Material tiles.
-   ====================================================================== */
-const FIC={
-  run:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="5" r="1.7" fill="currentColor" stroke="none"/><path d="M13.5 8.5 11 10l-3 1.5"/><path d="m13.5 8.5 1.7 3.2L18 13"/><path d="m11 10 .8 4-2.3 4"/><path d="m11.8 14 2.7 1 .8 3.5"/></svg>',
-  moon:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M21 12.9A8.5 8.5 0 1 1 11.1 3 6.7 6.7 0 0 0 21 12.9Z"/></svg>',
-  ready:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.4 12 2.4 2.4 4.8-5"/></svg>',
-  flame:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3c1.1 3 4.3 4.6 4.3 8.2A4.3 4.3 0 0 1 12 15.5a4.3 4.3 0 0 1-4.3-4.3c0-1.6.9-2.8 1.8-3.9C10.4 6 11.3 4.6 12 3Z" opacity=".25"/><path d="M12 21a5 5 0 0 0 5-5c0-3.8-3.2-5.5-4.3-8.6-.8 1.8-1.9 2.9-2.9 4.1-1 1.2-1.8 2.3-1.8 4.5a5 5 0 0 0 4 5Z"/></svg>',
-  bolt:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M13 2 4.5 13.2c-.3.4 0 1 .5 1H10l-1 7c-.1.7.8 1.1 1.2.5L19 11c.3-.4 0-1-.5-1H13l1-7.5c.1-.7-.6-1.1-1-.5Z"/></svg>',
-  heart:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 20s-7-4.6-9-9.2C1.6 7.3 3.6 4.5 6.6 4.5c1.9 0 3.1 1 4.4 2.6 1.3-1.6 2.5-2.6 4.4-2.6 3 0 5 2.8 3.6 6.3C19 15.4 12 20 12 20Z"/></svg>',
-  scale:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 2-2.2"/></svg>',
-  trophy:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0Z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 20h6M12 13v3"/></svg>',
-  chev:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
-};
-function fitRing(pct,color,opts){
-  opts=opts||{};
-  const size=opts.size||52,stroke=opts.stroke||6,r=(size-stroke)/2-1,cx=size/2,cy=size/2,C=2*Math.PI*r;
-  const has=pct!=null,p=has?clamp(pct,0,100)/100:0,fill=C*p;
-  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="transform:rotate(-90deg)">'
-    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="'+stroke+'"/>'
-    +(has?'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="'+stroke+'" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'"/>':'')
-    +'</svg>';
-}
-function fitIconRing(icon,pct,color,size){
-  size=size||54;
-  return '<div class="firing" style="width:'+size+'px;height:'+size+'px">'+fitRing(pct,color,{size:size,stroke:5})+'<div style="color:'+color+'">'+icon+'</div></div>';
-}
-function fitDonut(pct,color,center,size){
-  size=size||128;
-  return '<div class="fdonut" style="width:'+size+'px;height:'+size+'px">'+fitRing(pct,color,{size:size,stroke:13})+'<div>'+center+'</div></div>';
-}
-function fitStages(sl){
-  const segs=[['Deep',sl.deep,'var(--sleep-deep)'],['Light',sl.light,'var(--sleep-light)'],['REM',sl.rem,'var(--sleep-rem)'],['Awake',sl.awake,'var(--sleep-awake)']];
-  const tot=segs.reduce((s,x)=>s+x[1],0)||1;let bar='',leg='';
-  segs.forEach(s=>{bar+='<span style="flex:'+Math.max(s[1],tot*0.01)+';background:'+s[2]+'"></span>';
-    leg+='<span><i style="background:'+s[2]+'"></i>'+s[0]+'</span>';});
-  return '<div class="fstages">'+bar+'</div><div class="flegend">'+leg+'</div>';
-}
-function fitFocusChip(icon,color,value,label){
-  return '<div class="fchip"><div class="fci" style="color:'+color+'">'+icon+'</div><b>'+value+'</b><span>'+label+'</span></div>';
-}
-function fitLastRun(){
-  for(let i=clamp(rawT,0,RACE_IDX);i>=0;i--){const e=eff(i),l=sessLog(e.id);if(l&&(l.status==='done'||l.status==='partial')&&l.km>0)return {i:i,e:e,l:l};}
-  return null;
-}
-function fitBar(){
-  const hr=new Date().getHours(),g=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
-  return '<div class="fbar"><div><h1>'+g+'</h1><div class="fsub">'+longDate(todayIdx)+' · '+(RACE_IDX-rawT>0?(RACE_IDX-rawT)+' days to Berlin':'Race day')+'</div></div>'
-    +'<button class="favatar" data-action="editwidgets" aria-label="Profile and settings">L</button></div>';
-}
-function fitToday(){
-  const e=eff(todayIdx),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx);
-  const isRest=e.zone==='Rest'&&e.km<=0;
-  const lr=fitLastRun();
-  const sleepPct=sl.real?(sl.score!=null?sl.score:clamp(Math.round(sl.total/(8*3600)*100),0,100)):null;
-  // focus chips
-  const chips='<div class="fchips">'
-    +fitFocusChip(FIC.run,'var(--accent)',isRest?'Rest':fmtKm(e.km)+'k','Today')
-    +fitFocusChip(FIC.ready,'var(--m-ready)',rd.pct!=null?rd.pct:'—','Readiness')
-    +fitFocusChip(FIC.moon,'var(--m-sleep)',sleepPct!=null?sleepPct:'—','Sleep')
-    +fitFocusChip(FIC.flame,'var(--m-cal)',fmtKcal(e.kcal),'Fuel kcal')
-    +'</div>';
-  // today session tile
-  const fuel='<span class="spk">✦</span> Fuel ~'+fmtKcal(e.kcal)+' kcal · '+e.carbs+'g carbs for '+(isRest?'a rest day':esc(e.zone.toLowerCase())+' effort');
-  const sessionTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.run,isRest?0:whoopStrainOf(e)/21*100,'var(--accent)')
-    +'<h3>'+(isRest?'Rest day':'Today’s session')+'</h3>'
-    +(isRest?'<span class="ftrend flat">recover</span>':'<span class="ftrend up">'+esc(e.zone)+'</span>')+'</div>'
-    +'<div style="margin-top:8px"><span class="fbig">'+(isRest?'Rest':fmtKm(e.km))+'</span>'+(isRest?'':'<span class="funit"> km · '+(paceLine(e)||'easy')+'</span>')+'</div>'
-    +'<p class="finsight">'+fuel+'</p>'
-    +(isRest?'':'<button class="fcta" style="margin-top:14px;width:100%" data-action="logsheet" data-i="'+todayIdx+'">'+(sessLog(e.id)&&sessLog(e.id).status?'Edit run':'Start workout')+'</button>')
-    +'</section>';
-  // readiness tile
-  const rv=rd.pct==null?'Connect Oura for a daily readiness score.':rd.pct>=67?'You’re recovered — good to push today’s plan.':rd.pct>=34?'Moderate — keep easy days easy.':'Low — consider easing or resting today.';
-  const readyTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.ready,rd.pct,'var(--m-ready)')
-    +'<h3>Daily readiness</h3><span class="ftrend '+(rd.pct!=null&&rd.pct>=67?'up':'flat')+'">'+(rd.real?'measured':'estimate')+'</span></div>'
-    +'<div style="margin-top:8px"><span class="fbig">'+(rd.pct!=null?rd.pct:'—')+'</span><span class="funit"> / 100</span></div>'
-    +'<p class="finsight">'+rv+'</p></section>';
-  // sleep tile
-  let sleepTile;
-  if(sl.real){
-    sleepTile='<section class="card"><div class="ftile-h"><h3>Sleep</h3><span class="ftrend flat">last night</span></div>'
-      +'<div style="display:flex;align-items:center;gap:18px;margin-top:10px"><div style="text-align:center">'+fitDonut(sleepPct,'var(--m-sleep)','<div style="font-size:28px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums">'+sleepPct+'</div><div style="font-size:11px;color:var(--txt2)">score</div>',120)+'</div>'
-      +'<div><div class="fbig" style="font-size:34px">'+fmtSleep(sl.total)+'</div><div class="funit" style="margin-top:4px">'+(sl.eff?sl.eff+'% efficient':'')+'</div></div></div>'
-      +fitStages(sl)+'</section>';
-  }else{
-    sleepTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.moon,null,'var(--m-sleep)')+'<h3>Sleep</h3></div>'
-      +'<p class="finsight">Connect Oura and last night’s sleep score and stages appear here.</p></section>';
-  }
-  // last run tile
-  let runTile='';
-  if(lr){const l=lr.l;
-    runTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.run,100,'var(--accent)')+'<h3>Last run · '+shortDate(lr.i).slice(0,3)+' '+shortDate(lr.i).split(' ').slice(1).join(' ')+'</h3><span class="ftrend up">'+lr.e.zone+'</span></div>'
-      +'<div style="margin-top:8px"><span class="fbig">'+fmtKm(l.km)+'</span><span class="funit"> km'+(l.pace?' · '+l.pace+'/km':'')+(l.secs?' · '+fmtDur(l.secs):'')+'</span></div>'
-      +runVisual(l,lr.i)+'</section>';
-  }
-  // active zone minutes (weekly load → minutes)
-  const w=Math.floor(todayIdx/7);let wkMin=0;for(let d=0;d<7;d++){const ll=sessLog('w'+(w+1)+'d'+d);if(ll&&ll.secs)wkMin+=ll.secs/60;}
-  const azmGoal=Math.max(150,Math.round(effWeekTarget(w)*5));
-  const azmTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.bolt,clamp(wkMin/azmGoal*100,0,100),'var(--m-azm)')+'<h3>Active Zone Minutes</h3><span class="ftrend flat">this week</span></div>'
-    +'<div style="margin-top:8px"><span class="fbig">'+Math.round(wkMin)+'</span><span class="funit"> / '+azmGoal+' min</span></div>'
-    +'<p class="finsight">Training load across your runs this week — keep it climbing toward the weekly goal.</p></section>';
-  // nutrition tile — eaten vs your soft daily budget (no prescriptive plan)
-  const tw=trendWeight(),gw=goalWeightVal(),bud=budgetAt(todayIdx),proj=raceProjection();
-  const ringPct=bud?clamp(ea.kcal/bud*100,0,100):0,left=bud!=null?bud-ea.kcal:null;
-  const insight=proj&&proj.confident
-    ?'On your current trend, about '+fmtLb(proj.projLb)+' lb on race day (goal '+fmtLb(proj.goal)+').'
-    :(tw?'Weight '+fmtLb(tw.lb)+' lb → goal '+fmtLb(gw)+' lb. Your budget scales with today’s '+esc(e.zone.toLowerCase())+' load.'
-       :'Your budget scales with today’s session — more on hard days, less on easy.');
-  const nutTile='<section class="card"><div class="ftile-h">'+fitIconRing(FIC.flame,ringPct,'var(--m-cal)')+'<h3>Nutrition</h3><span class="ftrend '+(left!=null&&left<0?'down':'flat')+'">'+(ateLogged(todayIdx)?'logged':'today')+'</span></div>'
-    +'<div style="margin-top:8px"><span class="fbig">'+fmtKcal(ea.kcal)+'</span><span class="funit"> / '+(bud!=null?fmtKcal(bud)+' kcal budget':'— kcal')+'</span></div>'
-    +(left!=null?'<div class="funit" style="margin-top:4px;color:'+(left<0?'var(--m-hr)':'var(--txt2)')+'">'+(left>=0?fmtKcal(left)+' kcal left for a −'+fmtKcal(deficitGoal())+' day':fmtKcal(-left)+' over today’s budget — one day’s fine')+'</div>':'')
-    +'<p class="finsight"><span class="spk">✦</span> '+insight+'</p>'
-    +'<button class="fcta tonal" style="width:100%;margin-top:12px" data-action="foodlog" data-i="'+todayIdx+'">'+(ateLogged(todayIdx)?'Edit food':'Log food')+'</button></section>';
-  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'+fitBar()+chips+sessionTile+readyTile+sleepTile+runTile+azmTile+nutTile+'</div>';
-}
-function fitCoach(){
-  const w=ui.week!=null?ui.week:Math.floor(todayIdx/7),rd=whoopRecovery();
-  const rec=rd.pct==null?'Connect Oura and your plan adapts to readiness each morning.'
-    :rd.pct>=67?'Readiness is high — you’re cleared for this week’s quality sessions.'
-    :rd.pct>=34?'Readiness is moderate — protect your easy days and don’t force paces.'
-    :'Readiness is low — swap today’s hard session for easy and recover.';
-  let chips='<div class="weekchips">';for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';chips+='</div>';
-  let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
-  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
-    +'<div class="fbar"><div><h1>Coach</h1><div class="fsub">Your Berlin 2026 plan</div></div><button class="favatar" data-action="editwidgets" aria-label="Settings">L</button></div>'
-    +'<div class="fnavy"><div class="ftile-h"><h3 style="color:#fff">Coach</h3></div><p style="margin:8px 0 0;color:rgba(255,255,255,.86);font-size:14px;line-height:1.45">'+rec+'</p>'
-      +'<button class="fcta" style="margin-top:14px;background:#fff;color:var(--navy)" data-action="plancenter">Adjust plan</button></div>'
-    +'<div class="card" style="margin-top:14px"><div class="ftile-h"><h3>Week '+(w+1)+' · '+esc(WEEKS[w].phase)+'</h3><span class="ftrend flat">'+fmtKm(effWeekTarget(w))+' km</span></div>'
-      +'<div style="margin-top:6px">'+chips+'</div></div>'
-    +days+'</div>';
-}
-function fitYou(){
-  const f=berlinForecast(),tw=trendWeight(),gw=goalWeightVal();
-  let totKm=0;for(const k in S.sessions){const l=S.sessions[k];if(l&&l.status&&l.km)totKm+=Number(l.km)||0;}
-  const longest=(function(){let m=0;for(const k in S.sessions){const l=S.sessions[k];if(l&&l.status==='done'&&l.km>m)m=l.km;}return m;})();
-  const stat=(v,l)=>'<div style="flex:1;text-align:center"><div class="fbig" style="font-size:30px">'+v+'</div><div class="funit">'+l+'</div></div>';
-  const ach=[];if(longest>=21)ach.push('Half-marathon');if(longest>=30)ach.push('30 km run');if(streak()>=7)ach.push(streak()+'-day streak');if(doneCount()>=20)ach.push(doneCount()+' sessions');
-  const days=RACE_IDX-rawT;
-  return '<div>'+'<div style="margin-bottom:12px">'+skinSwitcher()+'</div>'
-    +'<div class="fbar"><div><h1>You</h1><div class="fsub">luke.mullen1</div></div><button class="favatar" style="width:48px;height:48px;font-size:19px" data-action="editwidgets" aria-label="Settings">L</button></div>'
-    +'<div class="card"><div style="display:flex;gap:8px">'+stat(fmtKm(totKm),'Total km')+stat(doneCount(),'Sessions')+stat(streak(),'Streak')+'</div></div>'
-    +'<div class="fnavy"><div class="ftile-h"><h3 style="color:#fff">Berlin race day</h3><span class="ftrend" style="background:rgba(255,255,255,.16);color:#fff">'+(days>0?days+' days':'today')+'</span></div>'
-      +'<div style="display:flex;align-items:center;gap:16px;margin-top:10px"><div style="flex:1"><div class="funit" style="color:rgba(255,255,255,.7)">Projected finish</div><div class="fbig" style="font-size:42px">'+fmtFinishT(f.secs)+'</div><div class="funit" style="color:rgba(255,255,255,.7);margin-top:4px">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div></div>'
-      +'<div style="text-align:center">'+fitDonut(f.state==='early'?12:clamp(100-Math.abs(f.secs-f.goalT)/f.goalT*900,15,99),'#fff','<div style="font-size:11px;color:rgba(255,255,255,.8)">form</div>',86)+'</div></div>'
-      +'<p style="margin:12px 0 0;color:rgba(255,255,255,.86);font-size:14px;line-height:1.45">'+esc(forecastMover(f))+'</p></div>'
-    +(ach.length?'<div class="card"><div class="ftile-h">'+fitIconRing(FIC.trophy,null,'var(--m-cal)')+'<h3>Achievements</h3></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">'+ach.map(a=>'<span class="ftrend up">'+esc(a)+'</span>').join('')+'</div></div>':'')
-    +'<div class="card" style="padding:8px"><div class="svgwrap" style="padding:10px">'+weightChart()+'</div></div>'
-    +ouraCard()+stravaCard()
-    +'</div>';
-}
-
-/* ======================================================================
-   APPLE HEALTH skin — Summary / Plan / Browse, grouped lists, Activity rings.
-   ====================================================================== */
+let _wgrad=0; // gradient-id counter for appleRings (relocated here from the deleted WHOOP block)
 const APL={
-  run:FIC.run,heart:FIC.heart,flame:FIC.flame,scale:FIC.scale,chev:FIC.chev,
+  run:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15.5" cy="5" r="1.7" fill="currentColor" stroke="none"/><path d="M13.5 8.5 11 10l-3 1.5"/><path d="m13.5 8.5 1.7 3.2L18 13"/><path d="m11 10 .8 4-2.3 4"/><path d="m11.8 14 2.7 1 .8 3.5"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 20s-7-4.6-9-9.2C1.6 7.3 3.6 4.5 6.6 4.5c1.9 0 3.1 1 4.4 2.6 1.3-1.6 2.5-2.6 4.4-2.6 3 0 5 2.8 3.6 6.3C19 15.4 12 20 12 20Z"/></svg>',
+  flame:'<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3c1.1 3 4.3 4.6 4.3 8.2A4.3 4.3 0 0 1 12 15.5a4.3 4.3 0 0 1-4.3-4.3c0-1.6.9-2.8 1.8-3.9C10.4 6 11.3 4.6 12 3Z" opacity=".25"/><path d="M12 21a5 5 0 0 0 5-5c0-3.8-3.2-5.5-4.3-8.6-.8 1.8-1.9 2.9-2.9 4.1-1 1.2-1.8 2.3-1.8 4.5a5 5 0 0 0 4 5Z"/></svg>',
+  scale:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="M8 9a4 4 0 0 1 8 0"/><path d="m12 9 2-2.2"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
   bed:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6h18v6"/><path d="M3 20v-2M21 20v-2"/><path d="M5 12V9.5A2.5 2.5 0 0 1 7.5 7h9A2.5 2.5 0 0 1 19 9.5V12"/><path d="M8.5 12v-.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v.5"/></svg>',
   fork:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a2 2 0 0 0 4 0V3M8 9v12M16.5 3C15 3 14 5.2 14 8s1 4 2.5 4 2.5-1.2 2.5-4-1-5-2.5-5Z"/><path d="M16.5 12v9"/></svg>',
   search:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>',
@@ -5081,116 +4447,12 @@ function appleRow(glyph,color,name,value,unit,action){
     +'<span class="aChev">'+APL.chev+'</span></button>';
 }
 function appleNav(title,sub){
-  return '<div style="margin-bottom:10px">'+skinSwitcher()+'</div>'
-    +'<div class="aNav"><div><div class="aTitle">'+title+'</div>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
+  return '<div class="aNav"><div><div class="aTitle">'+title+'</div>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
     +'<button class="aAvatar" data-action="editwidgets" aria-label="Profile">L</button></div>';
 }
-function appleSummary(){
-  const e=eff(todayIdx),w=Math.floor(todayIdx/7),rd=whoopRecovery(),sl=whoopSleepData(),ea=eaten(todayIdx),bud=budgetAt(todayIdx);
-  const lt=sessLog(e.id),doneKm=(lt&&lt.status&&lt.km)?Number(lt.km):0;
-  const movePct=e.km>0?doneKm/e.km*100:0, exPct=effWeekTarget(w)>0?weekActualKm(w)/effWeekTarget(w)*100:0, standPct=rd.pct||0;
-  const H=healthRef().d[todayISO()]||{};
-  // favorites rows
-  let fav='';
-  fav+=appleRow(APL.bed,'var(--c-sleep)','Sleep',sl.real?fmtSleep(sl.total):'No Data','','data-action="applecat" data-c="sleep"');
-  fav+=appleRow(APL.heart,'var(--c-heart)','Heart Rate Variability',H.hrv!=null?H.hrv:'—','ms','data-action="applecat" data-c="recovery"');
-  fav+=appleRow(APL.heart,'var(--c-heart)','Resting Heart Rate',H.rhr!=null?H.rhr:'—','BPM','data-action="applecat" data-c="heart"');
-  fav+=appleRow(APL.flame,'var(--c-energy)','Energy eaten',fmtKcal(ea.kcal),(bud!=null?'/ '+fmtKcal(bud)+' kcal':'kcal'),'data-action="applecat" data-c="nutrition"');
-  const lw=latestWeight();
-  fav+=appleRow(APL.scale,'var(--c-body)','Weight',lw?fmtLb(lw.lb):'—','lb','data-action="applecat" data-c="body"');
-  // highlights — last 7 logged runs
-  const r7=[],l7=[];for(let i=clamp(rawT,0,RACE_IDX);i>=0&&r7.length<7;i--){const ee=eff(i),ll=sessLog(ee.id);if(ll&&ll.status&&ll.km>0){r7.unshift(Number(ll.km));l7.unshift(['M','T','W','T','F','S','S'][i%7]);}}
-  const wk=[],wl=[];for(let j=0;j<=Math.floor(clamp(rawT,0,RACE_IDX)/7)&&j<16;j++){wk.push(weekActualKm(j));wl.push(j+1);}
-  const f=berlinForecast(),days=RACE_IDX-rawT;
-  return '<div>'+appleNav('Summary',longDate(todayIdx))
-    +'<section class="card aActivity">'+appleRings(movePct,exPct,standPct)
-      +'<div class="aAct-stats">'
-      +'<div class="aAct-row"><span class="lab" style="color:#FA114F">Run</span><span class="val">'+fmtKm(doneKm)+'<span class="vu">/'+fmtKm(e.km)+' KM</span></span></div>'
-      +'<div class="aAct-row"><span class="lab" style="color:#A2FF00">Week</span><span class="val">'+fmtKm(weekActualKm(w))+'<span class="vu">/'+fmtKm(effWeekTarget(w))+' KM</span></span></div>'
-      +'<div class="aAct-row"><span class="lab" style="color:#1AEBFF">Recovery</span><span class="val">'+(rd.pct!=null?rd.pct:'—')+'<span class="vu">%</span></span></div>'
-      +'</div></section>'
-    +'<div class="aSec">Favorites <span class="lnk" data-action="editwidgets">Edit</span></div><div class="aGroup">'+fav+'</div>'
-    +'<div class="aSec">Highlights</div>'
-    +(r7.length?'<section class="card"><div class="aHi">'+APL.run+'&nbsp;Recent runs</div><div class="aHiSub">Last '+r7.length+' logged runs · distance</div>'+appleBars(r7,l7,'var(--move-b)')+'</section>':'')
-    +(wk.length>1?'<section class="card" style="margin-top:10px"><div class="aHi">'+APL.run+'&nbsp;Weekly distance</div><div class="aHiSub">Kilometres per week, this block</div>'+appleBars(wk,wl.map(String),'var(--accent)')+'</section>':'')
-    +'<section class="card" style="margin-top:10px"><div class="aHi">🏁&nbsp;Berlin Race-Day Forecast</div><div class="aHiSub">'+(days>0?days+' days to go':'Race day')+' · evolving prediction</div>'
-      +'<div style="margin-top:10px"><span class="aBig" style="font-size:34px">'+fmtFinishT(f.secs)+'</span><span class="aUnit" style="font-size:15px"> projected finish</span></div>'
-      +'<div class="aHiSub" style="margin-top:4px">± '+Math.max(1,Math.round(f.band/60))+' min · goal '+fmtFinishT(f.goalT)+'</div>'
-      +'<p style="margin:10px 0 0;font-size:15px;color:#000;line-height:1.4">'+esc(forecastMover(f))+'</p></section>'
-    +'<div class="aGroup" style="margin-top:24px"><button class="aRow" data-action="tab" data-tab="browse"><span class="aName" style="color:var(--accent)">Show All Health Data</span><span class="aChev">'+APL.chev+'</span></button></div>'
-    +'</div>';
-}
-function applePlan(){
-  let h='<div>'+appleNav('Plan','16-week block · Berlin 2026');
-  const cw=Math.floor(clamp(rawT,0,RACE_IDX)/7);
-  for(let j=0;j<16;j++){
-    const wk=WEEKS[j];
-    h+='<div class="aSec" style="font-size:20px">Week '+(j+1)+' — '+esc(wk.phase)+(j===cw?' <span class="lnk" style="font-size:13px;color:var(--txt2)">this week</span>':'')+'</div><div class="aGroup">';
-    for(let d=0;d<7;d++){const i=j*7+d,ee=eff(i),zg=appleZoneGlyph(ee.zone),isRest=ee.zone==='Rest'&&ee.km<=0;
-      h+=appleRow(zg.g,zg.c,shortDate(i)+' · '+esc(isRest?'Rest':ee.zone),isRest?'Rest':fmtKm(ee.km),isRest?'':'km','data-action="appleday" data-i="'+i+'"');}
-    h+='</div>';
-  }
-  return h+'</div>';
-}
-function appleBrowse(){
-  const cats=[
-    ['running','Running',APL.run,'var(--c-activity)'],
-    ['sleep','Sleep',APL.bed,'var(--c-sleep)'],
-    ['recovery','Recovery & Readiness',APL.heart,'var(--c-heart)'],
-    ['nutrition','Nutrition',APL.fork,'var(--c-nutrition)'],
-    ['body','Body & Weight',APL.scale,'var(--c-body)'],
-    ['heart','Heart',APL.heart,'var(--c-heart)'],
-  ];
-  let rows='';cats.forEach(c=>rows+=appleRow(c[2],c[3],c[1],'','','data-action="applecat" data-c="'+c[0]+'"'));
-  return '<div>'+appleNav('Browse','')
-    +'<div class="aSearch">'+APL.search+' Search</div>'
-    +'<div class="aSec" style="font-size:20px;margin-top:6px">Health Categories</div><div class="aGroup">'+rows+'</div>'
-    +'</div>';
-}
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
-function appleDaySheet(i){
-  const e=eff(i),isRest=e.zone==='Rest'&&e.km<=0,l=sessLog(e.id);
-  openSheet('<div class="aTitle" style="font-size:26px;margin:0 2px">'+esc(headline(e))+'</div>'
-    +'<div class="aSub" style="margin:2px 2px 12px">'+longDate(i)+' · Week '+(e.w+1)+' '+esc(e.wk.phase)+'</div>'
-    +(isRest?'<p style="font-size:15px;color:#000;line-height:1.4">Rest day — recovery is the session. Easy mobility only.</p>'
-      :'<div class="aGroup">'+appleRow(appleZoneGlyph(e.zone).g,appleZoneGlyph(e.zone).c,'Distance',fmtKm(e.km),'km')
-        +(paceLine(e)?appleRow(APL.run,'var(--accent)','Target pace',esc(paceLine(e).replace(/<[^>]+>/g,'')),''):'')
-        +appleRow(APL.flame,'var(--c-energy)','Fuel',fmtKcal(e.kcal),'kcal')
-        +appleRow(APL.fork,'var(--c-nutrition)','Carbs',e.carbs,'g')+'</div>'
-      +'<p style="font-size:14px;color:var(--txt2);margin:10px 2px;line-height:1.4">'+esc(e.text)+'</p>'
-      +'<button class="fcta" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px;font-size:16px;font-weight:600;cursor:pointer" data-action="logsheet" data-i="'+i+'">'+(l&&l.status?'Edit run':'Log run')+'</button>')
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:600;border:none;margin-top:10px">Done</button>');
-}
-function appleCatSheet(cat){
-  const titles={running:'Running',sleep:'Sleep',recovery:'Recovery & Readiness',nutrition:'Nutrition',body:'Body & Weight',heart:'Heart'};
-  let body='';
-  if(cat==='running'){
-    const r=[],lab=[];for(let i=clamp(rawT,0,RACE_IDX);i>=0&&r.length<10;i--){const ee=eff(i),ll=sessLog(ee.id);if(ll&&ll.status&&ll.km>0){r.unshift(Number(ll.km));lab.unshift(shortDate(i).slice(4,6));}}
-    body=(r.length?'<section class="card"><div class="aHi">Distance · recent runs</div>'+appleBars(r,lab,'var(--move-b)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">No runs logged yet.</p></section>');
-  }else if(cat==='sleep'){
-    const sl=whoopSleepData();
-    body=sl.real?'<section class="card"><div class="aHi">Last night · '+fmtSleep(sl.total)+'</div><div style="margin-top:10px">'+fitStages(sl)+'</div></section>'
-      :'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura (in Browse → device sync) to see sleep stages.</p></section>';
-  }else if(cat==='recovery'){
-    const rd=whoopRecovery();body='<section class="card"><div class="aHi">Readiness</div><div style="margin-top:8px"><span class="aBig">'+(rd.pct!=null?rd.pct:'—')+'</span><span class="aUnit"> / 100</span></div><p style="margin:8px 0 0;font-size:14px;color:var(--txt2);line-height:1.4">'+(rd.real?'From your Oura ring vs your 7-day baseline.':'Estimated from training load — connect Oura for a measured score.')+'</p></section>';
-  }else if(cat==='nutrition'){
-    const bal=[],lab=[];for(let k=6;k>=0;k--){const idx=rawT-k;if(idx<0||idx>RACE_IDX)continue;const b=dayBurn(idx);if(b.burned!=null){bal.push(Math.max(0,b.burned-eaten(idx).kcal));lab.push(['M','T','W','T','F','S','S'][idx%7]);}}
-    body=(bal.length?'<section class="card"><div class="aHi">Daily deficit · last 7 days</div>'+appleBars(bal,lab,'var(--c-nutrition)')+'</section>':'<section class="card"><p style="margin:0;font-size:15px;color:var(--txt2)">Connect Oura for energy-balance tracking.</p></section>')
-      +'<button class="fcta" style="width:100%;margin-top:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;padding:13px;font-size:16px;font-weight:600;cursor:pointer" data-action="foodlog" data-i="'+todayIdx+'">'+(ateLogged(todayIdx)?'Edit today’s food':'Log food')+'</button>';
-  }else if(cat==='body'){
-    body='<section class="card" style="padding:10px"><div class="svgwrap" style="padding:8px">'+weightChart()+'</div></section>';
-  }else if(cat==='heart'){
-    const H=healthRef().d[todayISO()]||{};
-    body='<div class="aGroup">'+appleRow(APL.heart,'var(--c-heart)','Resting Heart Rate',H.rhr!=null?H.rhr:'—','BPM')+appleRow(APL.heart,'var(--c-heart)','HRV',H.hrv!=null?H.hrv:'—','ms')+'</div>'+(H.rhr==null?'<p style="margin:12px 2px;font-size:14px;color:var(--txt2)">Connect Oura to populate heart data.</p>':'');
-  }
-  openSheet('<div class="aTitle" style="font-size:28px;margin:0 2px 12px">'+titles[cat]+'</div>'
-    +appleSeg(['D','W','M','6M','Y'])
-    +'<div style="margin-top:14px">'+body+'</div>'
-    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--accent);font-weight:600;border:none;margin-top:12px">Done</button>');
-}
 
 /* ---------------- 10. Router & events ---------------- */
-
 const view=document.getElementById('view');
 function render(anim){ // anim=true only on navigation — entrances must not replay on in-place updates
   const doRender=()=>{
@@ -5280,13 +4542,6 @@ document.addEventListener('click',ev=>{
   }
   const a=el.dataset.action;
   if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
-  else if(a==='setskin'){setSkin(el.dataset.v);}
-  else if(a==='wfab'){haptic(true);whoopFabSheet();}
-  else if(a==='wsleep'){whoopSleepSheet();}
-  else if(a==='wrecov'){whoopRecovSheet();}
-  else if(a==='wstrain'){whoopStrainSheet();}
-  else if(a==='appleday'){appleDaySheet(Number(el.dataset.i));}
-  else if(a==='applecat'){appleCatSheet(el.dataset.c);}
   else if(a==='status'){
     const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
     if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
