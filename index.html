@@ -1901,7 +1901,7 @@ function gcalDiffers(have,want){
 /* The reconciler. Pure-ish: reads eff()/Health/Oura + the live calendar, then converges the
    calendar to the plan (patch if exists, insert if not, delete ours if no longer wanted).
    Never touches an untagged event. No-ops cleanly when disconnected / offline / out of block. */
-let gcalBusy=false,gcalLastTry=0,gcalReconTimer=null,gcalPlanToday=null,gcalReconPending=false;
+let gcalBusy=false,gcalLastTry=0,gcalReconTimer=null,gcalPlanToday=null,gcalReconPending=false,gcalAgenda=null;
 function gcalReconcileSoon(){ // after an in-app edit that changes a day
   if(!gcalConnected())return;
   clearTimeout(gcalReconTimer);
@@ -1921,21 +1921,34 @@ function gcalReconcile(opts){
   const timeMin=localMidnightISO(isoAt(lo)),timeMax=localMidnightISO(isoAt(Math.min(RACE_IDX+1,hi+1)));
   gcalToken().then(token=>Promise.all([gcalListWindow(token,timeMin,timeMax),gcalListTagged(token,timeMin,timeMax)]).then(r=>({token,items:r[0],ours:r[1]}))).then(res=>{
     const token=res.token,items=res.items||[],ours=res.ours||[];
-    // our blocks come from the authoritative tagged query (never re-inserted as duplicates);
-    // meetings (busy, untagged, timed) come from the window list.
-    const busyByDate={},oursByKey={};
-    ours.forEach(ev=>{const priv=ev.extendedProperties&&ev.extendedProperties.private;if(priv)oursByKey[(priv.dayId||'')+':'+(priv.kind||'')+':'+(priv.slot||'0')]=ev;});
+    // OUR blocks: gather from BOTH the window list (immediate — events fetched by time carry their
+    // extendedProperties inline, no index lag) AND the privateExtendedProperty query (a backstop for
+    // anything past the window-list page cap). Google's extended-property SEARCH index lags after an
+    // insert, so relying on the tagged query alone made re-syncs re-insert everything → duplicates.
+    // Group by composite key; keep one per key and mark any extras as leftover dupes to delete.
+    const busyByDate={},meetingsByDate={},oursByKey={},seenId={},dupes=[];
+    const collectOurs=ev=>{
+      const priv=ev.extendedProperties&&ev.extendedProperties.private;
+      if(!priv||priv.berlin26!=='1'||!ev.id||seenId[ev.id])return;
+      seenId[ev.id]=1;
+      const key=(priv.dayId||'')+':'+(priv.kind||'')+':'+(priv.slot||'0');
+      if(oursByKey[key])dupes.push(ev);else oursByKey[key]=ev; // extras = duplicates from earlier syncs
+    };
+    items.forEach(collectOurs);
+    ours.forEach(collectOurs);
+    // meetings (untagged, timed) → busy intervals + agenda. Transparent events show in the agenda
+    // but never block placement.
     items.forEach(ev=>{
       const priv=ev.extendedProperties&&ev.extendedProperties.private;
-      if(priv&&priv.berlin26==='1')return; // ours — handled via the tagged list above
+      if(priv&&priv.berlin26==='1')return; // ours
       if(ev.status==='cancelled')return;
-      if(ev.transparency==='transparent')return; // free events never block
       const sdt=ev.start&&ev.start.dateTime;if(!sdt)return; // skip all-day
       const sd=new Date(sdt),ed=new Date((ev.end&&ev.end.dateTime)||sdt);
       const key=localDateKey(sd);
       const sm=sd.getHours()*60+sd.getMinutes();
       const em=localDateKey(ed)===key?(ed.getHours()*60+ed.getMinutes()):1440;
-      (busyByDate[key]||(busyByDate[key]=[])).push([sm,Math.max(sm+5,em)]);
+      (meetingsByDate[key]||(meetingsByDate[key]=[])).push({sm:sm,em:Math.max(sm+5,em),title:ev.summary||'Busy'});
+      if(ev.transparency!=='transparent')(busyByDate[key]||(busyByDate[key]=[])).push([sm,Math.max(sm+5,em)]);
     });
 
     const desired={},keep={};let nRun=0,nWalk=0,nStr=0;const blocked=[];
@@ -2010,7 +2023,19 @@ function gcalReconcile(opts){
       }
     }
 
-    // converge: patch/insert wanted, delete ours that are no longer wanted
+    // snapshot for the in-app calendar view: meetings + the blocks we just wrote, per day
+    const agenda=[];
+    for(let i=lo;i<=hi;i++){
+      const ds=isoAt(i),its=[];
+      (meetingsByDate[ds]||[]).forEach(m=>its.push({sm:m.sm,em:m.em,title:m.title,mine:false,kind:'meeting'}));
+      for(const key in desired){const ev=desired[key];if((ev.start.dateTime||'').indexOf(ds)!==0)continue;
+        its.push({sm:hhmmToMin(ev.start.dateTime.slice(11,16)),em:hhmmToMin(ev.end.dateTime.slice(11,16)),title:ev.summary,mine:true,kind:ev.extendedProperties.private.kind});}
+      its.sort((a,b)=>a.sm-b.sm);
+      agenda.push({i:i,items:its});
+    }
+    gcalAgenda={days:agenda};
+
+    // converge: patch/insert wanted, delete ours that are no longer wanted, and sweep duplicates
     const ops=[];let nIns=0,nPat=0,nDel=0;
     for(const key in desired){
       const want=desired[key],have=oursByKey[key];
@@ -2018,6 +2043,7 @@ function gcalReconcile(opts){
       else ops.push(gcalInsert(token,want).then(()=>{nIns++;}).catch(()=>{}));
     }
     for(const key in oursByKey){if(!desired[key]&&!keep[key])ops.push(gcalDeleteEvent(token,oursByKey[key].id).then(()=>{nDel++;}).catch(()=>{}));}
+    dupes.forEach(ev=>ops.push(gcalDeleteEvent(token,ev.id).then(()=>{nDel++;}).catch(()=>{}))); // clean up earlier duplicates
     return Promise.all(ops).then(()=>({nRun,nWalk,nStr,nIns,nPat,nDel,blocked}));
   }).then(r=>{
     gcalBusy=false;
@@ -2070,8 +2096,35 @@ function gcalCard(){
     +(st.needsAuth
       ?'<button class="btn2" style="width:100%;margin-top:10px" data-action="gcalconnect">Reconnect Google Calendar</button>'
       :'<button class="btn2" style="width:100%;margin-top:10px" data-action="gcalsync">Sync now</button>')
+    +(st.needsAuth?'':'<button class="btn2" style="width:100%;margin-top:8px" data-action="gcalagenda">View calendar</button>')
     +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="gcaldisconnect">Disconnect</button>'
     +'</section>';
+}
+/* in-app agenda: the next two weeks as the app sees them — your meetings plus the blocks it
+   placed. Built from the last reconcile; opening it kicks a fresh sync when it's empty/stale. */
+function gcalAgendaSheet(){
+  const a=gcalAgenda&&gcalAgenda.days;
+  let body='<div class="spread"><h2 style="margin:0">Your next 2 weeks</h2>'
+    +'<button class="btn3" data-action="gcalsync" style="color:var(--accent-text)">Sync</button></div>'
+    +'<p class="mini" style="margin:2px 2px 8px">Meetings (grey) and the training the app fitted around them. '+(gcalMeta().lastSync?'Synced '+fmtSyncTime(gcalMeta().lastSync):'Not synced yet')+'.</p>';
+  if(!a||!a.length){
+    body+='<p class="note" style="margin:8px 0">Nothing loaded yet — tap Sync, then reopen.</p>';
+    if(gcalConnected())gcalReconcile({manual:true});
+  }else{
+    a.forEach(d=>{
+      const dd=dAt(d.i),isTd=d.i===rawTodayIdx();
+      body+='<div style="margin-top:13px"><div class="mini" style="font-weight:700;color:var(--ink)">'+DOW[d.i%7]+' '+dd.getUTCDate()+' '+MON[dd.getUTCMonth()]+(isTd?' · today':'')+'</div>';
+      if(!d.items.length)body+='<p class="mini" style="margin:3px 2px 0">— nothing scheduled</p>';
+      d.items.forEach(it=>{
+        body+='<div class="row" style="gap:8px;align-items:baseline;margin-top:4px;justify-content:space-between">'
+          +'<span style="font-size:13px;'+(it.mine?'font-weight:600':'color:var(--sub)')+'">'+(it.mine?'':'<span aria-hidden="true">📅</span> ')+esc(it.title)+'</span>'
+          +'<span class="mini" style="flex:none">'+minToHHMM(it.sm)+'–'+minToHHMM(it.em)+'</span></div>';
+      });
+      body+='</div>';
+    });
+  }
+  body+='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>';
+  openSheet(body);
 }
 function fitCard(){
   const f=fitCfg();
@@ -5410,6 +5463,7 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='gcalconnect'){gcalConnect();}
   else if(a==='gcalsync'){gcalReconcile({manual:true,announce:true});}
+  else if(a==='gcalagenda'){gcalAgendaSheet();}
   else if(a==='gcaldisconnect'){gcalDisconnect();}
   else if(a==='fittoggle'){const f=fitCfg(),k=el.dataset.k;f[k]=!f[k];save();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
