@@ -1750,7 +1750,7 @@ function ouraCard(){
    localStorage key (never in S, never in backups), exactly like Strava/Oura.
    Only OAuth token exchange/refresh go through the Worker; calendar reads and
    writes are CORS-open and go browser → www.googleapis.com directly. */
-const GCAL_CLIENT_ID=(storageOK&&localStorage.getItem('berlin2026.gcalClientId'))||'PASTE-GOOGLE-CLIENT-ID.apps.googleusercontent.com';
+const GCAL_CLIENT_ID=(storageOK&&localStorage.getItem('berlin2026.gcalClientId'))||'1058074305482-udd7p32g3km8sknk6va0mg07jnbcnujo.apps.googleusercontent.com';
 const GCAL_KEY='berlin2026.gcal';
 const GCAL_PROXY=STRAVA_PROXY; // same Worker; /gcal/token + /gcal/refresh
 const GCAL_REDIRECT=location.origin+location.pathname; // resolves to the GitHub Pages URL
