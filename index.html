@@ -1783,18 +1783,45 @@ function gcalToken(){
     .then(r=>{if(r.status===400||r.status===401||r.status===403)throw{auth:1};if(!r.ok)throw{net:1};return r.json();})
     .then(d=>{if(!d.access_token)throw{auth:1};gcalPatchTok({access:d.access_token,expiresAt:d.expires_at});return d.access_token;});
 }
-/* Calendar v3 helper. 401 = re-auth; 403/429/other = transient (quiet); DELETE of an
-   already-gone event is a success (idempotent). */
+/* Calendar v3 helper. 401 = re-auth; 409 = id already exists (→ upsert patches); 403/429/other =
+   transient (quiet); DELETE of an already-gone event is a success (idempotent). */
 function gcalApi(method,path,token,body){
   const opt={method:method,headers:{Authorization:'Bearer '+token}};
   if(body!=null){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
   return fetch('https://www.googleapis.com/calendar/v3'+path,opt).then(r=>{
     if(method==='DELETE'&&(r.status===404||r.status===410||r.status===200||r.status===204))return {};
     if(r.status===401)throw{auth:1};
+    if(r.status===409)throw{conflict:1};
     if(r.status===410)throw{gone:1};
     if(!r.ok)throw{net:1,status:r.status};
     if(r.status===204)return {};
     return r.json();
+  });
+}
+/* Deterministic event id from a block's slot key (dayId:kind:slot), hex-encoded into the
+   base32hex alphabet Google requires (0-9 a-v). Because the id is fixed per slot, Google enforces
+   uniqueness server-side: two racing syncs can't both create the same block, and a re-sync that
+   hasn't yet seen a freshly-inserted event gets a 409 instead of making a duplicate. */
+function gcalDetId(key){let h='b26';for(let i=0;i<key.length;i++)h+=('0'+key.charCodeAt(i).toString(16)).slice(-2);return h;}
+/* run async ops with bounded concurrency so a big delete/upsert batch doesn't trip rate limits */
+function gcalRunOps(fns,conc){
+  conc=conc||4;let i=0;
+  return new Promise(res=>{
+    if(!fns.length)return res();
+    let active=0,started=0;
+    const pump=()=>{
+      while(active<conc&&started<fns.length){const f=fns[started++];active++;
+        Promise.resolve().then(f).catch(()=>{}).then(()=>{active--;i++;if(i>=fns.length)res();else pump();});}
+    };
+    pump();
+  });
+}
+/* upsert by deterministic id: insert, and if the id already exists (live or a deleted tombstone),
+   patch/revive it to the wanted content. Idempotent and duplicate-proof. */
+function gcalUpsert(token,ev){
+  return gcalInsert(token,ev).catch(err=>{
+    if(err&&err.conflict)return gcalPatchEvent(token,ev.id,Object.assign({},ev,{status:'confirmed'}));
+    throw err;
   });
 }
 function gcalCalId(){return encodeURIComponent(gcalMeta().calendarId||'primary');}
@@ -1880,12 +1907,12 @@ function stepsRemaining(i){
     remaining:Math.max(0,f.stepGoal-f.ambientSteps-runCredit),projected:f.ambientSteps+runCredit,covered:(f.stepGoal-f.ambientSteps-runCredit)<=0};
 }
 function gcalEvent(dateStr,startMin,durMin,title,desc,colorId,kind,dayId,slot){
-  const s=minToHHMM(startMin),e=minToHHMM(Math.min(1439,startMin+durMin));
-  return {summary:title,description:desc||'',
+  const s=minToHHMM(startMin),e=minToHHMM(Math.min(1439,startMin+durMin)),sl=String(slot==null?0:slot);
+  return {id:gcalDetId(dayId+':'+kind+':'+sl),summary:title,description:desc||'',
     start:{dateTime:dateStr+'T'+s+':00',timeZone:GCAL_TZ},
     end:{dateTime:dateStr+'T'+e+':00',timeZone:GCAL_TZ},
     colorId:String(colorId),transparency:'transparent',reminders:{useDefault:false,overrides:[]},
-    extendedProperties:{private:{berlin26:'1',kind:kind,dayId:dayId,slot:String(slot==null?0:slot)}}};
+    extendedProperties:{private:{berlin26:'1',kind:kind,dayId:dayId,slot:sl}}};
 }
 /* does a stored event need patching? compare instants (Google echoes an offset; we send a naive
    local time + timeZone, so parse both) plus title/colour. Description is intentionally not diffed. */
@@ -2035,16 +2062,24 @@ function gcalReconcile(opts){
     }
     gcalAgenda={days:agenda};
 
-    // converge: patch/insert wanted, delete ours that are no longer wanted, and sweep duplicates
-    const ops=[];let nIns=0,nPat=0,nDel=0;
+    // converge with deterministic ids: upsert every wanted block (insert-or-patch by fixed id — no
+    // duplicates even under read lag or racing syncs), skipping ones already correct; then delete
+    // every legacy random-id block (the duplicate backlog) and any canonical block no longer wanted.
+    // Bounded concurrency keeps the delete sweep under Google's rate limits.
+    const upserts=[],deletes=[],seenDel={};let nUp=0,nDel=0;
     for(const key in desired){
       const want=desired[key],have=oursByKey[key];
-      if(have){if(gcalDiffers(have,want))ops.push(gcalPatchEvent(token,have.id,want).then(()=>{nPat++;}).catch(()=>{}));}
-      else ops.push(gcalInsert(token,want).then(()=>{nIns++;}).catch(()=>{}));
+      if(have&&have.id===want.id&&!gcalDiffers(have,want))continue; // already on the calendar, unchanged
+      upserts.push(()=>gcalUpsert(token,want).then(()=>{nUp++;}));
     }
-    for(const key in oursByKey){if(!desired[key]&&!keep[key])ops.push(gcalDeleteEvent(token,oursByKey[key].id).then(()=>{nDel++;}).catch(()=>{}));}
-    dupes.forEach(ev=>ops.push(gcalDeleteEvent(token,ev.id).then(()=>{nDel++;}).catch(()=>{}))); // clean up earlier duplicates
-    return Promise.all(ops).then(()=>({nRun,nWalk,nStr,nIns,nPat,nDel,blocked}));
+    Object.values(oursByKey).concat(dupes).forEach(ev=>{
+      const priv=ev.extendedProperties&&ev.extendedProperties.private;if(!priv||!ev.id||seenDel[ev.id])return;
+      const k=(priv.dayId||'')+':'+(priv.kind||'')+':'+(priv.slot||'0');
+      if(ev.id===gcalDetId(k)&&(desired[k]||keep[k]))return; // canonical + still wanted → keep
+      seenDel[ev.id]=1;
+      deletes.push(()=>gcalDeleteEvent(token,ev.id).then(()=>{nDel++;}));
+    });
+    return gcalRunOps(upserts,4).then(()=>gcalRunOps(deletes,4)).then(()=>({nRun,nWalk,nStr,nUp,nDel,blocked}));
   }).then(r=>{
     gcalBusy=false;
     if(gcalReconPending){gcalReconPending=false;gcalReconcileSoon();} // an edit arrived mid-sync — catch it up
@@ -2053,7 +2088,7 @@ function gcalReconcile(opts){
     if(r.nWalk)parts.push(r.nWalk+' walk'+(r.nWalk===1?'':'s'));
     if(r.nStr)parts.push(r.nStr+' strength');
     let note=parts.length?parts.join(', '):'nothing to place';
-    if(r.nIns||r.nPat||r.nDel)note+=' · '+r.nIns+' new, '+r.nPat+' re-timed'+(r.nDel?', '+r.nDel+' cleared':'');
+    if(r.nUp||r.nDel)note+=' · '+r.nUp+' synced'+(r.nDel?', '+r.nDel+' cleared':'');
     if(r.blocked.length)note+=' · '+r.blocked.join('/')+' run boxed in — move from the day card';
     gcalMeta().lastSync=new Date().toISOString();gcalMeta().note=note;save();
     gcalPatchTok({needsAuth:0,err:null});
