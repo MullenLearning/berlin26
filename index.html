@@ -2240,7 +2240,7 @@ function wSteps(){
     +'<div class="big num" style="font-size:24px;line-height:1">'+big+'</div><div class="mini">/ '+fmtKcal(sr.goal)+'</div></div></div>'
     +'<div style="flex:1;min-width:0">'+(sub?'<p class="mini" style="margin:0 0 2px">'+esc(sub)+'</p>':'')+list+'</div>'
     +'</div>'
-    +'<button class="btn2" style="width:100%;margin-top:12px" data-action="pasteingest">Update steps from Health</button>'
+    +'<button class="btn2" style="width:100%;margin-top:12px" data-action="stepsentry">Update today’s steps</button>'
     +'</section>';
 }
 
@@ -5454,6 +5454,19 @@ document.addEventListener('click',ev=>{
   else if(a==='export'){doExport(JSON.stringify(S,null,1),'berlin2026-backup-'+todayISO()+'.json','application/json',true);}
   else if(a==='exportcsv'){doExport(buildCSV(),'berlin2026-log-'+todayISO()+'.csv','text/csv',false);}
   else if(a==='hideinstalltip'){S.hideInstallTip=true;save();rerenderKeepScroll();}
+  else if(a==='stepsentry'){
+    // iOS won't reliably let an installed web app read the clipboard, so just ask for the number —
+    // paste it from the Shortcut, or type it straight off the Health/Fitness widget. No permission needed.
+    const day=isoAt(todayIdx),cur=(healthRef().d[day]||{}).steps;
+    const v=prompt('Today’s steps — type the number from Apple Health (or paste it):',cur!=null?String(cur):'');
+    if(v==null)return;
+    const n=parseInt(String(v).replace(/[^0-9]/g,''),10); // tolerate commas/spaces
+    if(!isFinite(n)||n<0||n>100000){snack('Hmm — that didn’t look like a step count.');return;}
+    const h=healthRef().d[day]||(healthRef().d[day]={});
+    h.steps=n;h.stepsSrc='apple-health';save();
+    rerenderKeepScroll();gcalReconcileSoon();
+    snack('Steps updated · '+fmtKcal(n)+' from Apple Health');
+  }
   else if(a==='pasteingest'){
     if(!navigator.clipboard||!navigator.clipboard.readText){alert('Clipboard access isn’t available here.');}
     else navigator.clipboard.readText().then(t=>{
