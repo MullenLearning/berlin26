@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Berlin 26">
-<meta name="theme-color" content="#F2F2F7">
+<meta name="theme-color" content="#F6F5F2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -18,29 +18,41 @@
      system blue. Category + zone hues are semantic only (Activity rings, glyphs, chips,
      chart bars), never decoration. Surfaces are white cards on #F2F2F7 with hairlines. */
   color-scheme:light;
-  --bg:#F2F2F7; --card:#FFFFFF; --raised:#E5E5EA; --inset:#E5E5EA; --ink:#000000;
-  /* secondary/tertiary text darkened from Apple's .6/.3 alphas to solid greys that clear WCAG AA (4.5:1) on white, #F2F2F7 and #E5E5EA — .mini/.note body text relies on --sub */
-  --txt2:#545458; --sub:#646469;
-  --line:rgba(60,60,67,.18); --line-soft:rgba(60,60,67,.1); --bord:#C6C6C8; --grid:rgba(60,60,67,.14); --tick:rgba(60,60,67,.3);
-  --accent:#007AFF; --accent-ink:#fff; --accent-text:#0a63d6; --chevron:#C7C7CC; --signal:#FF9500;
-  /* Activity-ring stops */
+  /* Berlin26 editorial identity: warm off-white canvas, white cards lifted by 1px
+     hairlines (not shadows), near-black ink. The single accent is INK (--accent) for
+     primary buttons + default chart series; CORAL (--coral) is reserved for the goal —
+     countdown, forecast, goal lines, current week — and for links/active-tab text. */
+  --bg:#F6F5F2; --card:#FFFFFF; --raised:#EFEDE7; --inset:#EFEDE7; --ink:#15171C;
+  /* ink-secondary (body/support) and ink-tertiary (labels/captions) — both clear WCAG AA on the warm canvas + white cards */
+  --txt2:#565B63; --sub:#656A72;
+  --line:#E9E6DF; --line-soft:#F0EEE7; --bord:#E0DCD2; --grid:#EDEAE2; --tick:#C9C4B8;
+  /* --accent is INK (buttons + data series); --accent-text/--coral are coral (links + the goal) */
+  --accent:#15171C; --accent-ink:#fff; --accent-text:#C0381F; --chevron:#C2BDB1; --signal:#E5482E;
+  --coral:#E5482E; --coral-ink:#fff; --coral-bg:#FBE9E4; --coral-text:#C0381F;
+  /* Activity-ring stops (the one dark card) */
   --move-a:#FF0436; --move-b:#FA114F; --ex-a:#A2FF00; --ex-b:#66E300; --st-a:#00B9C8; --st-b:#1AEBFF;
   /* health category glyph colours */
   --c-activity:#FA114F; --c-heart:#FF2D55; --c-sleep:#5E5CE6; --c-nutrition:#34C759; --c-energy:#FF9500; --c-body:#AF52DE; --c-mind:#5AC8FA;
-  /* training zone semantic colours (+ tint backgrounds) */
-  --rec:#0a6e9e; --rec-bg:#e1f4fd; --easy:#1c7d3f; --easy-bg:#e3f9e9; --long:#9a5a00; --long-bg:#fff0db;
-  --hard:#c62a1f; --hard-bg:#ffe5e3; --rest:#52606f; --rest-bg:#eceef2; --blue:#1d4ed8; --blue-bg:#e4eeff;
-  --track:#E5E5EA; --shadow:0 1px 2px rgba(0,0,0,.04);
+  /* training-STATE colours (zones) — pills use the hue as text on a 12% tint, never solid.
+     Easy=green Long=blue Recovery=teal Quality=purple Strength/caution=amber Rest=grey.
+     --hard (red) + --warn (amber) carry STATUS meaning (missed / partial+caution),
+     kept distinct from the zone hues so a Long day (blue) ≠ a "partial" log (amber). */
+  /* hues sit as TEXT on their 12% tint, so each is darkened to clear AA 4.5:1 on its own *-bg */
+  --rec:#0C6E73; --rec-bg:#E2F3F4; --easy:#1C7D3F; --easy-bg:#E8F4EC; --long:#1D4ED8; --long-bg:#E7EEFB;
+  --hard:#C62A1F; --hard-bg:#FBE7E4; --rest:#52606F; --rest-bg:#EEF0F2; --blue:#1D4ED8; --blue-bg:#E7EEFB;
+  --qual:#5A35B0; --qual-bg:#EFEAFC; --warn:#8A5E12; --warn-bg:#F7EFD9;
+  --track:#EAE7DF; --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-hero:0 10px 30px rgba(21,23,28,.10);
   --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
   /* the one motion system: fast snap for acknowledgements, soft settle for sheets/cards */
   --snap:cubic-bezier(.3,1.5,.45,1); --dur-snap:280ms;
   --settle:cubic-bezier(.22,1,.36,1); --dur-settle:420ms;
-  --statusbar:#F2F2F7;
+  --statusbar:#F6F5F2;
 }
 
-html[data-skin="berlin"] .card{border-radius:13px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;padding:16px;margin-top:12px}
-html[data-skin="berlin"] h1{font-weight:700;letter-spacing:.37px;text-transform:none}
+html[data-skin="berlin"] .card{border-radius:20px;border:1px solid var(--line);box-shadow:none;background:#fff;padding:20px;margin-top:12px}
+html[data-skin="berlin"] .card.heroc{box-shadow:var(--shadow-hero)}
+html[data-skin="berlin"] h1{font-weight:700;letter-spacing:-.4px;text-transform:none}
 html[data-skin="berlin"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
 html[data-skin="berlin"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
 html[data-skin="berlin"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
@@ -94,29 +106,31 @@ body{margin:0;background:var(--bg);color:var(--ink);
 #app{max-width:520px;margin:0 auto;}
 main{padding:calc(14px + env(safe-area-inset-top)) 14px calc(86px + env(safe-area-inset-bottom));}
 h1{font-size:24px;margin:6px 2px 2px;letter-spacing:0;font-family:var(--disp);font-weight:600;text-wrap:balance}
-h2{font-size:13px;margin:0 0 10px;letter-spacing:1.1px;text-transform:uppercase;font-weight:700;color:var(--txt2);text-wrap:balance}
+h2{font-size:12px;margin:0 0 10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--sub);text-wrap:balance}
 .sub{color:var(--sub);font-size:13px}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-top:12px;box-shadow:inset 0 1px 0 var(--line-soft)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:12px}
+.card.heroc{box-shadow:var(--shadow-hero)}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .spread{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .num{font-variant-numeric:tabular-nums}
-.hero{font-size:44px;font-weight:600;letter-spacing:0;line-height:1.02;font-family:var(--disp);font-variant-numeric:tabular-nums}
-.big{font-size:26px;font-weight:600;letter-spacing:0;font-family:var(--disp);font-variant-numeric:tabular-nums}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:999px;padding:4px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hero{font-size:44px;font-weight:700;letter-spacing:-1.2px;line-height:1.0;font-family:var(--disp);font-variant-numeric:tabular-nums}
+.big{font-size:26px;font-weight:700;letter-spacing:-.5px;font-family:var(--disp);font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:999px;padding:5px 11px;min-height:22px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .chip.neutral{background:var(--raised);color:var(--txt2)}
 .c-rec{background:var(--rec-bg);color:var(--rec)} .c-easy{background:var(--easy-bg);color:var(--easy)}
 .c-long{background:var(--long-bg);color:var(--long)} .c-hard{background:var(--hard-bg);color:var(--hard)}
 .c-rest{background:var(--rest-bg);color:var(--rest)} .c-blue{background:var(--blue-bg);color:var(--blue)}
+.c-qual{background:var(--qual-bg);color:var(--qual)} .c-warn{background:var(--warn-bg);color:var(--warn)}
 /* zone colour lives in the chip/dots/charts only — cards stay neutral (colour budget) */
 .detail{font-size:14px;line-height:1.5;color:var(--txt2);margin:8px 0 0;text-wrap:pretty}
 .pace{font-size:13px;color:var(--sub);margin-top:2px}
 button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--accent);color:var(--accent-ink);
-  font-weight:700;font-size:14px;border-radius:12px;padding:11px 16px;min-height:44px}
-.btn2{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:1px solid var(--line);
-  color:var(--ink);font-weight:600;font-size:14px;border-radius:12px;padding:10px 14px;min-height:44px}
+  font-weight:700;font-size:15px;border-radius:14px;padding:13px 16px;min-height:48px}
+.btn2{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:1px solid var(--bord);
+  color:var(--ink);font-weight:600;font-size:15px;border-radius:14px;padding:12px 14px;min-height:48px}
 .btn3{color:var(--sub);font-size:13px;font-weight:600;padding:8px 10px;min-height:44px}
 .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:transform .16s var(--ease-press)}
 .btn:active,.btn2:active,.btn3:active,.seg button:active,.sheetrow:active,.daystrip button:active,.weekchips button:active,#tabbar button:active,button.chip:active{transform:scale(.96)}
@@ -124,7 +138,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .seg button{border:1.5px solid var(--line);border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;color:var(--sub);min-height:46px;background:var(--card)}
 .seg button.on-done{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
 .seg button.selb{background:var(--blue-bg);border-color:var(--accent-text);color:var(--accent-text)}
-.seg button.on-partial{background:var(--long-bg);border-color:var(--long);color:var(--long)}
+.seg button.on-partial{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
 .seg button.on-missed{background:var(--hard-bg);border-color:var(--hard);color:var(--hard)}
 .loggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .loggrid .full{grid-column:1/-1}
@@ -159,7 +173,7 @@ select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http
 .wdragrow.wdragging .wgrip{color:var(--accent-text);cursor:grabbing}
 .bar{height:8px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;border-radius:99px;background:var(--easy)}
-.bar i.warn{background:var(--long)} .bar i.bad{background:var(--hard)}
+.bar i.warn{background:var(--warn)} .bar i.bad{background:var(--hard)}
 .kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
 .kpi{background:var(--card);border:1px solid var(--line-soft);border-radius:18px;padding:12px}
 .kpi b{font-size:21px;font-weight:800;display:block;letter-spacing:-.3px;font-family:var(--disp)}
@@ -176,13 +190,18 @@ td{padding:9px 6px;border-bottom:1px solid var(--line-soft);vertical-align:middl
 tr:last-child td{border-bottom:none}
 tr[data-action]:active{background:var(--bg)}
 .pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
-.p-hit{background:var(--easy-bg);color:var(--easy)} .p-partial{background:var(--long-bg);color:var(--long)}
+.p-hit{background:var(--easy-bg);color:var(--easy)} .p-partial{background:var(--warn-bg);color:var(--warn)}
 .p-under{background:var(--hard-bg);color:var(--hard)} .p-prog{background:var(--blue-bg);color:var(--blue)}
 .p-up{background:var(--rest-bg);color:var(--rest)}
 .weekchips{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .weekchips::-webkit-scrollbar{display:none}
 .weekchips button{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:7px 12px;font-size:13px;font-weight:700;color:var(--sub);min-height:44px}
-.weekchips button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* status at a glance: done weeks filled+ticked (ink), current week coral, future outlined */
+.weekchips button.wk-done{color:var(--ink);background:var(--raised);border-color:transparent}
+.weekchips button.wk-now{color:var(--coral-text);background:var(--coral-bg);border-color:var(--coral)}
+.weekchips button.wk-future{color:var(--sub)}
+.weekchips button.sel{box-shadow:inset 0 0 0 2px var(--ink);color:var(--ink)}
+.weekchips button.wk-now.sel{box-shadow:inset 0 0 0 2px var(--coral);color:var(--coral-text)}
 .daystrip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
 .daystrip button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 2px;text-align:center;min-height:58px}
 .daystrip button.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
@@ -204,12 +223,12 @@ body.nutdrag .nbar i{transition:none}
 .dot{width:7px;height:7px;border-radius:99px;display:inline-block;margin-top:4px}
 .tag-moved{background:var(--blue-bg);color:var(--blue)}
 .note{font-size:13px;line-height:1.5;color:var(--sub)}
-.banner{background:var(--long-bg);color:var(--long);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;margin-top:12px}
+.banner{background:var(--warn-bg);color:var(--warn);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;margin-top:12px}
 .svgwrap{margin-top:8px;background:transparent;border:none;border-radius:10px;padding:6px 0 0;box-shadow:none}
 svg{display:block;width:100%;height:auto}
 .gridline{stroke:var(--grid);stroke-width:1}
 .axis{font-size:9px;fill:var(--sub);font-weight:600}
-.f-rec{fill:var(--rec)} .f-easy{fill:var(--easy)} .f-long{fill:var(--long)} .f-hard{fill:var(--hard)} .f-rest{fill:var(--rest)}
+.f-rec{fill:var(--rec)} .f-easy{fill:var(--easy)} .f-long{fill:var(--long)} .f-hard{fill:var(--hard)} .f-rest{fill:var(--rest)} .f-qual{fill:var(--qual)} .f-warn{fill:var(--warn)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--sub);font-weight:600}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
 #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:50;background:color-mix(in srgb,var(--card) 92%,transparent);
@@ -232,17 +251,63 @@ svg{display:block;width:100%;height:auto}
 .sheetrow .d{min-width:44px;font-weight:800;font-size:14px}
 .sheetrow .t{flex:1;font-size:13px;color:var(--sub);line-height:1.3}
 .todayhead{padding:4px 2px 0}
+/* the always-present countdown: a designed coral element + thin 16-week rail */
+.cd{display:flex;align-items:baseline;gap:7px;margin:14px 2px 0;width:100%;background:none;border:none;padding:0;text-align:left;cursor:pointer}
+.cd b{font-size:30px;font-weight:800;color:var(--coral);font-family:var(--disp);letter-spacing:-1px;line-height:.95;font-variant-numeric:tabular-nums}
+.cd .u{font-size:13px;font-weight:700;color:var(--coral-text);letter-spacing:.01em}
+.cd .meta{margin-left:auto;text-align:right;font-size:12px;color:var(--sub);font-weight:600;line-height:1.3;align-self:center}
+.rail{display:flex;gap:3px;align-items:center;margin:9px 2px 2px}
+.rail i{flex:1;height:5px;border-radius:99px;background:var(--track);transition:background .2s var(--ease-out)}
+.rail i.done{background:var(--ink)}
+.rail i.now{height:7px;background:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
+.rail .fin{flex:0 0 8px;height:8px;border-radius:50%;background:var(--coral);margin-left:3px}
+/* hero session card: a state-colour spine + a real title (the screen's one hero) */
+.sesshero{border-left:5px solid var(--rest);padding-left:16px}
+.lblrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.seclbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--sub)}
+.herottl{font-size:30px;font-weight:700;letter-spacing:-.6px;font-family:var(--disp);margin-top:8px;line-height:1.06;text-wrap:balance}
+/* slim weigh-in prompt row (collapses once logged) */
+.prow{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin-top:12px;text-align:left;cursor:pointer}
+.prow .pl{flex:1;min-width:0}
+.prow .pt{font-weight:700;font-size:15px}
+.prow .ps{font-size:13px;color:var(--sub);margin-top:1px}
+.prow .pk{font-weight:800;font-family:var(--disp);font-size:18px;color:var(--coral);font-variant-numeric:tabular-nums}
+/* reconciliation row (demoted catch-up) */
+.recon{display:flex;align-items:center;gap:10px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:12px}
+.recon .rt{flex:1;min-width:0;font-size:14px;color:var(--txt2)}
+.recon .rb{display:flex;gap:6px;flex:none;align-items:center}
+/* calm recovery: three stats, one line, detail behind a tap */
+.rstats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.rstat .mini{display:block}
+.recmore{margin-top:10px}
+.recmore summary{font-size:13px;font-weight:600;color:var(--accent-text);cursor:pointer;list-style:none;padding:6px 0;min-height:44px;display:inline-flex;align-items:center}
+.recmore summary::-webkit-details-marker{display:none}
+.recmore summary::after{content:" ›";margin-left:2px}
+.recmore[open] summary::after{content:" ⌄"}
+.recmore>*:not(summary){margin-top:8px}
+/* forecast range dial + firming-up progress */
+.fdial{margin-top:10px}
+.fconf{display:flex;align-items:center;gap:8px;margin-top:6px}
+.fct{flex:1;height:5px;border-radius:99px;background:var(--track);overflow:hidden}
+.fct i{display:block;height:100%;border-radius:99px;background:var(--coral)}
+/* nutrition balance bar: eaten (ink) against burned, the green remainder = today's deficit */
+.balbar{height:12px;border-radius:99px;background:var(--easy-bg);overflow:hidden;margin-top:14px}
+.balbar.over{background:var(--warn-bg)}
+.balbar .bf{height:100%;background:var(--ink);border-radius:99px;transition:width .25s var(--ease-out)}
+.ballbl{display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--sub);font-weight:600}
+.nmath{margin-top:10px}
+.nmath summary{font-size:13px;font-weight:600;color:var(--accent-text);cursor:pointer;list-style:none;padding:6px 0;min-height:44px;display:inline-flex;align-items:center}
+.nmath summary::-webkit-details-marker{display:none}
+.nmath summary::after{content:" ›";margin-left:2px}
+.nmath[open] summary::after{content:" ⌄"}
 .fade{animation:fade .18s var(--ease-out)}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .hl{animation:hl 2s ease}
 @keyframes hl{0%{background:var(--long-bg)}100%{background:transparent}}
 .pop{animation:pop var(--dur-snap) var(--snap)}
 @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:none;opacity:1}}
-.course{height:4px;border-radius:99px;background:var(--track);margin:12px 2px 2px;overflow:visible}
-.course i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3d7bff,#5b9bff 55%,#8fc0ff);min-width:4px;box-shadow:0 0 7px rgba(91,155,255,.6),0 0 2px rgba(143,192,255,.9)}
 .ringfg{filter:drop-shadow(0 0 3px rgba(91,155,255,.55))}
 /* daylight panel: instruments are read by reflected light, not emission — kill the glow */
-html[data-theme="light"] .course i{box-shadow:none;background:var(--accent)}
 html[data-theme="light"] .ringfg{filter:none}
 .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px}
 .mini{font-size:12px;color:var(--sub)}
@@ -315,11 +380,6 @@ html[data-theme="light"] .ringfg{filter:none}
 body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 .dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(0,0,0,.4);background:var(--raised);color:var(--txt2)}
 .dragpreview{font-size:12.5px;font-weight:700;color:var(--accent-text);margin-top:8px;font-variant-numeric:tabular-nums}
-/* catch-up deck */
-.deck .card{animation:deckup var(--dur-snap) var(--snap)}
-@keyframes deckup{0%{transform:translateY(12px) scale(.97);opacity:.6}100%{transform:none;opacity:1}}
-.deckghost{height:12px;margin:-4px 10px 0;background:var(--card);border:1px solid var(--line-soft);border-top:none;border-radius:0 0 16px 16px;opacity:.65}
-.deckghost.g2{margin:-2px 22px 0;opacity:.35}
 #wchart{touch-action:pan-y}
 /* week wrapped */
 #wrap{position:fixed;inset:0;z-index:90;background:var(--bg);overflow-y:auto;scroll-snap-type:y mandatory;padding:0 20px;-webkit-overflow-scrolling:touch}
@@ -334,7 +394,7 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .tabfab{position:absolute;left:50%;bottom:calc(100% - 26px);transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(0,0,0,.5);cursor:pointer;z-index:2}
 .tabfab svg{width:26px;height:26px}
 @media (prefers-reduced-motion: reduce){
-  .fade,.hl,.pop,.deck .card{animation:none}
+  .fade,.hl,.pop{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
   .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
   .rtrack{scroll-behavior:auto}
@@ -387,7 +447,7 @@ const PACES=[
  ['Marathon','4:55–5:02/km'],['Threshold','4:25–4:38/km'],['Interval','4:05–4:18/km'],['Strides','3:40–4:00/km']];
 const PACE={}; PACES.forEach(p=>PACE[p[0]]=p[1]);
 
-const ZONECLR={Recovery:'rec',Easy:'easy',Long:'long',Marathon:'long',Threshold:'hard',Interval:'hard',Rest:'rest'};
+const ZONECLR={Recovery:'rec',Easy:'easy',Long:'long',Marathon:'long',Threshold:'qual',Interval:'qual',Rest:'rest'};
 const PHASE_DEFICIT={'Base':760,'Build 1':700,'Build 2':640,'Peak/Sharpen':640,'Taper':700,'Race':300};
 
 /* Each week: n, phase, start (Mon), target km, long-run km, focus note,
@@ -546,7 +606,7 @@ const NUTW=[
 /* Expected (plan) weight per week, lb — shown in the nutrition table */
 const WT=[210,208.5,207,205.5,204,202.6,201.1,199.7,198.3,196.8,195.4,194.1,192.7,191.5,190.5,189.6];
 
-const DAYTYPE={E:{label:'Easy fuel',c:'easy'},S:{label:'Session fuel',c:'hard'},L:{label:'Long-run fuel',c:'long'},R:{label:'Rest / low',c:'rest'}};
+const DAYTYPE={E:{label:'Easy fuel',c:'easy'},S:{label:'Session fuel',c:'qual'},L:{label:'Long-run fuel',c:'long'},R:{label:'Rest / low',c:'rest'}};
 
 /* ---------------- 2. Dates & formatting ---------------- */
 
@@ -877,11 +937,10 @@ function payoff(pre,e){
       const dn=document.getElementById('dn');if(dn)rollNum(dn,pre.done,doneCount(),0);
     }
     if(e.zone==='Long'||e.zone==='Marathon'){
-      const ci=document.querySelector('.course i');
+      const ci=document.querySelector('.cd b'); // the countdown number — closer to Berlin
       if(ci){
-        const w=ci.style.width;
-        if(e.w>=9)ci.animate([{width:w},{width:'100%',offset:.45},{width:'100%',offset:.6},{width:w}],{duration:1700,easing:'cubic-bezier(.22,1,.36,1)'}); // the only big celebration: weeks 10-16 long runs
-        else ci.animate([{opacity:.35},{opacity:1}],{duration:550});
+        if(e.w>=9)ci.animate([{transform:'scale(1)'},{transform:'scale(1.16)',offset:.4},{transform:'scale(1)'}],{duration:1100,easing:'cubic-bezier(.22,1,.36,1)'}); // the only big celebration: weeks 10-16 long runs
+        else ci.animate([{opacity:.45},{opacity:1}],{duration:550});
       }
     }
   });
@@ -1497,7 +1556,7 @@ function routeSVG(poly,big,paint,frame){ // the route as a line — optionally p
       const vals=s.filter(v=>v>0).slice().sort((a,b)=>a-b);
       const q1=vals[Math.floor(vals.length*0.45)]||0,q2=vals[Math.floor(vals.length*0.8)]||1e9;
       const flat=!(q2>q1); // a near-constant stream has no real spread — read it cool, don't fake a heat gradient
-      const col=v=>(v<=0||flat)?'var(--accent)':v<q1?'var(--accent)':v<q2?'var(--long)':'var(--hard)';
+      const col=v=>(v<=0||flat)?'var(--accent)':v<q1?'var(--blue)':v<q2?'var(--warn)':'var(--hard)';
       let d='',cur=null;
       for(let k=1;k<pts.length;k++){
         const v=s[Math.min(s.length-1,Math.round((k/(pts.length-1))*(s.length-1)))];
@@ -1594,7 +1653,7 @@ function runSheetContent(i){
       +'<button data-action="paintmode" data-v="hr" aria-pressed="'+(mode==='hr')+'" class="'+(mode==='hr'?'selb':'')+'">Heart</button>'
       +'<button data-action="paintmode" data-v="pace" aria-pressed="'+(mode==='pace')+'" class="'+(mode==='pace'?'selb':'')+'">Pace</button></div>'
     :'';
-  const paintNote=(stream&&l.poly)?'<p class="mini" style="margin:6px 2px 0">The line is the road; the colour is '+(mode==='pace'?'speed':'effort')+' — <span style="color:var(--accent-text)">cool</span> → <span style="color:var(--long)">working</span> → <span style="color:var(--hard)">hot</span>.</p>':'';
+  const paintNote=(stream&&l.poly)?'<p class="mini" style="margin:6px 2px 0">The line is the road; the colour is '+(mode==='pace'?'speed':'effort')+' — <span style="color:var(--blue)">cool</span> → <span style="color:var(--warn)">working</span> → <span style="color:var(--hard)">hot</span>.</p>':'';
   let bp='';
   const bpr=(e.zone==='Long'||e.zone==='Marathon')?breakpointOf(l):null;
   if(bpr)bp='<p class="note" style="margin:10px 0 0">'+(bpr.held
@@ -2301,7 +2360,7 @@ function absorption(i){
   if(h.slp!=null){max++;if(h.slp>=25200)pts++;}
   if(max<2)return null;
   const r=pts/max;
-  return r>=0.75?{label:'absorbed',cls:'c-easy'}:r>=0.5?{label:'mostly absorbed',cls:'c-long'}:{label:'still owing',cls:'c-hard'};
+  return r>=0.75?{label:'absorbed',cls:'c-easy'}:r>=0.5?{label:'mostly absorbed',cls:'c-warn'}:{label:'still owing',cls:'c-hard'};
 }
 
 /* route signature: 32 distance-resampled points + centroid, for loop matching */
@@ -2416,7 +2475,7 @@ function loopShelf(){
     const latest=g.runs[g.runs.length-1],first=g.runs[0];
     const dPace=Math.round(first.l.secs/first.l.km-latest.l.secs/latest.l.km);
     const trend=dPace>=3?'<span class="chip c-easy">'+dPace+' s/km faster</span>'
-      :dPace<=-3?'<span class="chip c-long">'+Math.abs(dPace)+' s/km slower</span>'
+      :dPace<=-3?'<span class="chip c-warn">'+Math.abs(dPace)+' s/km slower</span>'
       :'<span class="chip neutral">holding pace</span>';
     rows+='<div class="looprow" data-action="runsheet" data-i="'+latest.i+'" tabindex="0" role="button" '
       +'style="display:flex;gap:12px;align-items:center;width:100%;padding:10px 0;border-top:1px solid var(--line-soft);cursor:pointer">'
@@ -2571,7 +2630,7 @@ function mountGhost(i,autoplay){
   const fracAt=p=>{const x=p*(v.length-1),k=Math.floor(x),f=x-k,lo=cum[k]||0,hi=cum[k+1]!=null?cum[k+1]:lo;return (lo+f*(hi-lo))/cmax;};
   const hr=l.hrS||[],hv=hr.filter(x=>x>30).slice().sort((a,b)=>a-b);
   const q1=hv.length?hv[Math.floor(hv.length*0.45)]:0,q2=hv.length?hv[Math.floor(hv.length*0.8)]:1e9;
-  const hcol=p=>{if(!hr.length||!(q2>q1))return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--accent)':x<q2?'var(--long)':'var(--hard)';};
+  const hcol=p=>{if(!hr.length||!(q2>q1))return 'var(--accent)';const x=hr[Math.round(p*(hr.length-1))]||0;return x<q1?'var(--blue)':x<q2?'var(--warn)':'var(--hard)';};
   const planSecs=(zoneMid(eff(i).zone)||360)*l.km,R=(l.secs&&planSecs)?l.secs/planSecs:1;
   const setAt=(el,frac)=>{const pt=path.getPointAtLength(Math.max(0,Math.min(1,frac))*total);el.setAttribute('cx',pt.x);el.setAttribute('cy',pt.y);};
   const draw=p=>{setAt(you,fracAt(p));you.setAttribute('fill',hcol(p));setAt(plan,Math.min(1,p*R));};
@@ -2786,7 +2845,7 @@ function cutPaying(){
     const efD=(b.ef-a.ef)/a.ef,hrvD=(a.hrv&&b.hrv)?(b.hrv-a.hrv)/a.hrv:0;
     if(efD<=-0.01&&hrvD>=-0.03){verdict='paying — cheaper kilometres at steady recovery';cls='c-easy';}
     else if(efD>=0.02||hrvD<=-0.08){verdict='costing — aerobic price rising, consider easing the kcal';cls='c-hard';}
-    else{verdict='holding — neither buying speed nor eating recovery yet';cls='c-long';}
+    else{verdict='holding — neither buying speed nor eating recovery yet';cls='c-warn';}
   }
   const first=S.weights.length?S.weights[0]:null,twn=trendWeight(),lwn=latestWeight();
   const lost=first?(first.lb-(twn?twn.lb:(lwn?lwn.lb:first.lb))):0;
@@ -3081,10 +3140,10 @@ function scheduledSoFar(w,todayPos){
 
 /* ---------------- Theme ---------------- */
 const mqLight=matchMedia('(prefers-color-scheme: light)');
-function applyTheme(){ // light-locked Apple Health palette — one fixed appearance
+function applyTheme(){ // light-locked editorial palette — one fixed appearance
   document.documentElement.dataset.theme='light';
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m)m.setAttribute('content','#F2F2F7');
+  if(m)m.setAttribute('content','#F6F5F2');
 }
 mqLight.addEventListener('change',()=>{if((S.theme||'dark')==='auto')applyTheme();});
 
@@ -3210,7 +3269,7 @@ function nutAdjChip(e){
 /* ---------------- 7. Charts (inline SVG) ---------------- */
 
 function volumeChart(){
-  const W=360,H=178,L=24,Rm=6,T=12,B=22,max=90,ih=H-T-B;
+  const W=360,H=190,L=24,Rm=6,T=20,B=28,max=90,ih=H-T-B;
   const iw=(W-L-Rm)/16,bw=Math.min(13,iw*0.58),rad=bw/2;
   let g='';
   [0,30,60,90].forEach(v=>{
@@ -3218,18 +3277,24 @@ function volumeChart(){
     g+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-Rm)+'" y2="'+y.toFixed(1)+'" stroke="var(--grid)" stroke-width="1"/>'
       +'<text x="'+(L-6)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" fill="var(--sub)" font-size="10" font-weight="600">'+v+'</text>';
   });
-  const rawW=Math.floor(rawTodayIdx()/7);
+  const rawW=clamp(Math.floor(rawTodayIdx()/7),0,15);
+  let peakW=0,peakV=0;
+  for(let w=0;w<16;w++){const t=effWeekTarget(w);if(t>peakV){peakV=t;peakW=w;}}
   for(let w=0;w<16;w++){
-    const x=L+iw*w+(iw-bw)/2;
-    const ph=Math.max(bw,ih*effWeekTarget(w)/max);            // planned — faint full-height pill
+    const x=L+iw*w+(iw-bw)/2,isNow=w===rawW;
+    const ph=Math.max(bw,ih*effWeekTarget(w)/max);            // planned — light track behind
     const act=weekActualKm(w);
-    const ah=act>0?Math.max(bw,ih*Math.min(act,max)/max):0;   // actual — solid pill, current week brightest
-    g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ph).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ph.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="var(--track)"/>';
-    if(ah>0)g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ah).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ah.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="var(--accent)" opacity="'+(w===rawW?1:0.55)+'"/>';
-    if((w+1)===1||(w+1)%4===0)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" fill="var(--sub)" font-size="10" font-weight="600">W'+(w+1)+'</text>';
+    const ah=act>0?Math.max(bw,ih*Math.min(act,max)/max):0;   // actual — filled bar in front, gap visible
+    g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ph).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ph.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="'+(isNow?'var(--coral-bg)':'var(--track)')+'"/>';
+    if(ah>0)g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ah).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ah.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="'+(isNow?'var(--coral)':'var(--accent)')+'"/>';
+    if(w===peakW)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(T+ih-ph-6).toFixed(1)+'" text-anchor="middle" fill="var(--sub)" font-size="9.5" font-weight="700">'+Math.round(peakV)+' km</text>';
+    if((w+1)===1||(w+1)%4===0)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" fill="var(--sub)" font-size="10" font-weight="600">W'+(w+1)+'</text>';
   }
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly volume, planned vs actual">'+g+'</svg>'
-    +'<div class="legend"><span><i style="background:var(--track)"></i>Planned</span><span><i style="background:var(--accent)"></i>Actual logged</span></div>';
+  // "you are here" — a coral tick under the current week
+  const nx=L+iw*rawW+iw/2;
+  g+='<path d="M'+(nx-4).toFixed(1)+' '+(H-6)+' L'+(nx+4).toFixed(1)+' '+(H-6)+' L'+nx.toFixed(1)+' '+(H-10)+' Z" fill="var(--coral)"/>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly volume, planned vs actual; peak '+Math.round(peakV)+' km on week '+(peakW+1)+'">'+g+'</svg>'
+    +'<div class="legend"><span><i style="background:var(--track)"></i>Planned</span><span><i style="background:var(--accent)"></i>Actual logged</span><span><i style="background:var(--coral)"></i>This week</span></div>';
 }
 
 function calorieChart(){
@@ -3254,7 +3319,7 @@ function calorieChart(){
     g+='<line x1="'+x+'" y1="'+(T-3)+'" x2="'+x+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>';
   }
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily calorie targets across the block">'+g+'</svg>'
-    +'<div class="legend"><span><i style="background:var(--long)"></i>Long-run</span><span><i style="background:var(--hard)"></i>Session</span><span><i style="background:var(--easy)"></i>Easy</span><span><i style="background:var(--rest)"></i>Rest</span></div>';
+    +'<div class="legend"><span><i style="background:var(--long)"></i>Long-run</span><span><i style="background:var(--qual)"></i>Session</span><span><i style="background:var(--easy)"></i>Easy</span><span><i style="background:var(--rest)"></i>Rest</span></div>';
 }
 
 let scrubData=null;
@@ -3299,6 +3364,10 @@ function weightChart(){
       +'<text class="axis" x="'+(L-5)+'" y="'+(Y(v)+3)+'" text-anchor="end">'+v+'</text>';
   }
   [0,4,8,12,15].forEach(w=>{g+='<text class="axis" x="'+X(w*7)+'" y="'+(H-8)+'" text-anchor="middle">W'+(w+1)+'</text>';});
+  // the goal: a coral reference line at race weight + label
+  {const gw=goalWeightVal(),gy=Y(gw);
+   g+='<line x1="'+L+'" y1="'+gy.toFixed(1)+'" x2="'+(W-Rm)+'" y2="'+gy.toFixed(1)+'" stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="1 4" opacity="0.85"/>'
+     +'<text x="'+(W-Rm)+'" y="'+(gy-4).toFixed(1)+'" text-anchor="end" fill="var(--coral)" font-size="10" font-weight="700">'+fmtLb(gw)+' lb goal</text>';}
   {const bk=Math.min(goalDateIdx(),RACE_IDX),glide=[[0,planWtAt(0)],[bk,planWtAt(bk)],[RACE_IDX,planWtAt(RACE_IDX)]];
    g+='<path d="'+glide.map((q,j)=>(j?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1)).join('')+'" fill="none" stroke="var(--sub)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>';}
   if(rawT>=0&&rawT<=RACE_IDX)g+='<line x1="'+X(rawT)+'" y1="'+T+'" x2="'+X(rawT)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
@@ -3314,6 +3383,15 @@ function weightChart(){
       g+='<path d="'+tr.map((p,j)=>(j?'L':'M')+X(p.x).toFixed(1)+' '+Y(p.y).toFixed(1)).join('')+'" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
     }
     pts.forEach(p=>{g+='<circle cx="'+X(p.x)+'" cy="'+Y(p.y)+'" r="3" fill="var(--accent)" stroke="var(--card)" stroke-width="1.4"/>';});
+    // label the latest reading, and project the 7-day trend to race day at the current rate
+    const lp=pts[pts.length-1],tw=trendWeight(),r=trendRate();
+    if(tw&&r!=null&&lp.x<RACE_IDX){
+      const startV=tw.lb,projV=startV+r*((RACE_IDX-lp.x)/7);
+      g+='<path d="M'+X(lp.x).toFixed(1)+' '+Y(startV).toFixed(1)+' L'+X(RACE_IDX).toFixed(1)+' '+Y(clamp(projV,lo,hi)).toFixed(1)+'" fill="none" stroke="var(--coral)" stroke-width="1.8" stroke-dasharray="3 3" stroke-linecap="round"/>'
+        +'<circle cx="'+X(RACE_IDX).toFixed(1)+'" cy="'+Y(clamp(projV,lo,hi)).toFixed(1)+'" r="3" fill="var(--coral)"/>'
+        +'<text x="'+(X(RACE_IDX)-2).toFixed(1)+'" y="'+(Y(clamp(projV,lo,hi))+(projV>startV-6?14:-6)).toFixed(1)+'" text-anchor="end" fill="var(--coral)" font-size="10" font-weight="700">≈'+fmtLb(projV)+'</text>';
+    }
+    g+='<text x="'+X(lp.x).toFixed(1)+'" y="'+(Y(lp.y)-9).toFixed(1)+'" text-anchor="middle" fill="var(--ink)" font-size="10.5" font-weight="800">'+fmtLb(lp.y)+'</text>';
   }
   /* plan milestones: phase starts as quiet ticks on the glide */
   [[28,'Build 1'],[56,'Build 2'],[84,'Peak'],[91,'Taper'],[105,'Race wk']].forEach(ms=>{
@@ -3326,7 +3404,7 @@ function weightChart(){
     +'<text id="scrubtx" class="axis" text-anchor="middle" style="font-size:11px;font-weight:700;fill:var(--ink)"></text></g>';
   scrubData={pts:pts.map(p=>({cx:X(p.x),cy:Y(p.y),iso:p.iso,lb:p.y,idx:p.x})),T:T};
   return '<svg id="wchart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weight, actual vs plan">'+g+'</svg>'
-    +'<div class="legend"><span><i style="background:var(--sub)"></i>Goal pace 210 → '+fmtLb(goalWeightVal())+' lb</span><span><i style="background:var(--accent)"></i>Logged · thick line = 7-day trend</span></div>';
+    +'<div class="legend"><span><i style="background:var(--accent)"></i>Logged · thick = 7-day trend</span><span><i style="background:var(--sub)"></i>Plan glide</span><span><i style="background:var(--coral)"></i>Goal '+fmtLb(goalWeightVal())+' + projection</span></div>';
 }
 
 /* ---------------- 8. Screens ---------------- */
@@ -3349,7 +3427,7 @@ function logChips(l){
   if(l.hrA)h+='<span class="chip neutral">HR '+l.hrA+(l.hrM?'/'+l.hrM:'')+'</span>';
   if(l.kcal)h+='<span class="chip neutral">'+fmtKcal(l.kcal)+' kcal</span>';
   const fr=fuelRate(l);
-  if(fr!=null)h+='<span class="chip '+(fr>=60?'c-easy':'c-long')+'">'+fr+' g/hr</span>';
+  if(fr!=null)h+='<span class="chip '+(fr>=60?'c-easy':'c-warn')+'">'+fr+' g/hr</span>';
   if(l.note)h+='<span class="chip neutral">'+esc(l.note.slice(0,26))+(l.note.length>26?'…':'')+'</span>';
   if(l.source&&l.source!=='manual')h+='<span class="chip neutral">via '+esc(DATA_SOURCES[l.source]?DATA_SOURCES[l.source].label:l.source)+'</span>';
   return h;
@@ -3359,19 +3437,22 @@ function wSession(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
   const isRest=e.zone==='Rest'&&e.km<=0;
   const imported=!!(l.status&&l.source==='strava');
+  const spine='var(--'+(ZONECLR[e.zone]||'rest')+')';
   if(isRest) // rest days just happen — no logging, no status
-    return '<section class="card">'
-      +'<div class="row">'+zoneChip(e)+movedChip(e)+'</div>'
-      +'<div class="big" style="margin-top:8px">'+headline(e)+'</div>'
+    return '<section class="card sesshero" style="border-left-color:'+spine+'">'
+      +'<div class="lblrow"><span class="seclbl">Today’s session</span>'+zoneChip(e)+'</div>'
+      +'<div class="herottl">'+headline(e)+'</div>'
       +(e.text!==headline(e)?'<p class="detail">'+esc(e.text)+'</p>':'')
       +'</section>';
-  return '<section class="card" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
+  const bud=budgetAt(todayIdx);
+  const fuelChip=bud!=null?'<span class="chip c-'+DAYTYPE[e.type].c+'">'+fmtKcal(bud)+' kcal fuel</span>':'';
+  return '<section class="card heroc sesshero" style="border-left-color:'+spine+'" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
     +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
-    +'<div class="row">'+zoneChip(e)+movedChip(e)
-    +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')
-    +'</div>'
-    +'<div class="big" style="margin-top:8px">'+headline(e)+'</div>'
+    +'<div class="lblrow"><span class="seclbl">Today’s session</span>'
+    +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-warn':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')+'</div>'
+    +'<div class="herottl">'+headline(e)+'</div>'
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
+    +'<div class="row" style="margin-top:10px">'+zoneChip(e)+movedChip(e)+fuelChip+'</div>'
     +rebalLine(e)
     +'<p class="detail">'+esc(e.text)+'</p>'
     +(l.status
@@ -3380,7 +3461,7 @@ function wSession(){
        +(imported?runVisual(l,todayIdx)
          :'<button class="btn2" style="width:100%;margin-top:12px" data-action="logsheet" data-i="'+todayIdx+'">Edit log</button>')
       :'<button class="btn" style="width:100%;margin-top:14px" data-action="logsheet" data-i="'+todayIdx+'">Log session</button>'
-       +(S.hints&&S.hints.sess?'':'<div class="swipe-onboard">or swipe the card right to log as planned</div>'))
+       +(S.hints&&S.hints.sess?'':'<div class="swipe-onboard">or swipe right to log as planned</div>'))
     +'</section>';
 }
 
@@ -3395,24 +3476,16 @@ function unloggedPast(){
   }
   return list; // newest first
 }
-function wCatchup(){ // a deck: clear a three-day backlog in three swipes
+function wCatchup(){ // demoted to a single reconciliation row (swipe or tap the buttons)
   const list=unloggedPast();
   if(!list.length)return '';
   const j=list[0],ce=eff(j);
-  return '<div class="deck">'
-    +'<section class="card" data-swipe="deck" data-i="'+j+'">'
-    +'<span class="swipe-hint r" aria-hidden="true">Done as planned</span><span class="swipe-hint l" aria-hidden="true">Skipped</span>'
-    +'<div class="spread"><h2 style="margin:0">Catch up · '+(j===rawT-1?'yesterday':shortDate(j))+'</h2>'+zoneChip(ce)+'</div>'
-    +'<div style="font-weight:700;font-size:15px;margin-top:6px">'+headline(ce)+'</div>'
-    +(ce.km>0?'<p class="mini" style="margin:4px 2px 0">'+fmtKm(ce.km)+' km planned</p>':'')
-    +'<div class="loggrid" style="margin-top:12px">'
-    +'<button class="btn2" data-action="deckskip" data-i="'+j+'">Skipped</button>'
-    +'<button class="btn" data-action="quickdone" data-i="'+j+'">Done as planned</button></div>'
-    +(S.hints&&S.hints.deck?'':'<p class="mini center" style="margin:8px 0 0">swipe right done · swipe left skipped · tap for details</p>')
-    +'</section>'
-    +(list.length>1?'<div class="deckghost"></div>':'')
-    +(list.length>2?'<div class="deckghost g2"></div>':'')
-    +(list.length>1?'<p class="mini center" style="margin:8px 0 0">'+(list.length-1)+' more after this one</p>':'')
+  const more=list.length-1;
+  return '<div class="recon" data-swipe="deck" data-i="'+j+'">'
+    +'<span class="swipe-hint r" aria-hidden="true">Done</span><span class="swipe-hint l" aria-hidden="true">Skipped</span>'
+    +'<div class="rt"><b style="color:var(--ink)">'+(j===rawT-1?'Yesterday':shortDate(j))+'</b> · '+esc(headline(ce))+(more>0?' · <span style="color:var(--sub)">+'+more+' more</span>':'')+'</div>'
+    +'<div class="rb"><button class="btn3" data-action="deckskip" data-i="'+j+'" style="padding:6px 8px">Skipped</button>'
+    +'<button class="chip c-easy" data-action="quickdone" data-i="'+j+'" style="border:none;font-weight:700;cursor:pointer;min-height:44px;padding:0 14px">Done</button></div>'
     +'</div>';
 }
 
@@ -3421,13 +3494,15 @@ function wMorning(){ // first open of the day: one interaction, then it folds aw
   if(S.weights.some(w=>w.date===todayISO()))return '';
   const lw=latestWeight(),pw=planWtAt(todayIdx);
   const start=Math.round((lw?lw.lb:pw)*10)/10;
-  const cu=unloggedPast().length;
-  return '<section class="card"><div class="spread"><h2>Morning check-in</h2><span class="chip neutral">'+shortDate(todayIdx)+'</span></div>'
+  if(!ui.morningOpen) // a slim prompt, not a card — collapses the moment it is logged
+    return '<button class="prow" data-action="mopen" aria-label="Log this morning’s weight">'
+      +'<div class="pl"><div class="pt">Morning weigh-in</div><div class="ps">Tap to log today’s weight</div></div>'
+      +'<span class="pk">'+fmtLb(start)+' →</span></button>';
+  return '<section class="card"><div class="lblrow"><span class="seclbl">Morning weigh-in</span><span class="chip neutral">'+shortDate(todayIdx)+'</span></div>'
     +rulerHTML('mruler',Math.max(120,Math.round(start)-15),Math.min(280,Math.round(start)+15),0.1,start,'lb',1,1)
     +'<div class="loggrid" style="margin-top:12px">'
     +'<button class="btn2" data-action="mlater">Later</button>'
     +'<button class="btn" data-action="msave">Log weight</button></div>'
-    +(cu?'<p class="mini center" style="margin:10px 0 0">'+cu+' day'+(cu>1?'s':'')+' to catch up just below.</p>':'')
     +'</section>';
 }
 
@@ -3513,6 +3588,21 @@ function planSummary(){
   const gw=goalWeightVal();
   return {totalKm:totalKm,peakKm:peakKm,peakW:peakW,goalWt:gw,toLose:210-gw,
     phase:WEEKS[clamp(currentWeekIdx(),0,15)].phase,daysToGo:RACE_IDX-todayIdx};
+}
+/* The always-present countdown: race day is the spine. A designed coral day-count
+   plus a thin 16-week rail (done = ink, current = coral, future = hairline, then the
+   finish dot). Taps open the Berlin course. Shared by all three screens. */
+function countdownRail(){
+  const days=Math.max(0,RACE_IDX-todayIdx), cw=clamp(currentWeekIdx(),0,15);
+  const raceDay=days<=0;
+  let rail='';
+  for(let w=0;w<16;w++)rail+='<i class="'+(w<cw?'done':w===cw?'now':'')+'"></i>';
+  rail+='<span class="fin" aria-hidden="true"></span>';
+  return '<button class="cd" data-action="cityopen" aria-label="'+(raceDay?'Race day':days+' days to Berlin')+' — week '+(cw+1)+' of 16, open the Berlin course">'
+    +(raceDay?'<b style="font-size:24px">BERLIN</b>'
+      :'<b>'+days+'</b><span class="u">days to Berlin</span>')
+    +'<span class="meta">Sun 27 Sep<br>'+WEEKS[cw].phase+' · W'+(cw+1)+'/16</span></button>'
+    +'<div class="rail" aria-hidden="true">'+rail+'</div>';
 }
 function miniBars(){ // the 16-week mileage shape (ramp → peak → taper), current week lit
   const W=320,H=44,T=2,B=2,ih=H-T-B,cw=currentWeekIdx(),bw=W/16;
@@ -3653,7 +3743,7 @@ function wRecovery(){
     return '<section class="card"><div class="spread"><h2>Recovery</h2><span class="chip neutral">no data yet</span></div>'
       +'<p class="mini" style="margin:8px 2px 0">Nothing for today yet — open the Oura app to sync the ring, then Sync now on the Training tab.</p></section>';
   const e=eff(todayIdx);
-  const rsClass=h.rs==null?'neutral':h.rs>=85?'c-easy':h.rs>=70?'neutral':h.rs>=55?'c-long':'c-hard';
+  const rsClass=h.rs==null?'neutral':h.rs>=85?'c-easy':h.rs>=70?'neutral':h.rs>=55?'c-warn':'c-hard';
   const rb=ouraBase('rhr',iso),hb=ouraBase('hrv',iso);
   const sig=[];
   if(h.hrv!=null)sig.push('<span class="chip neutral">HRV '+h.hrv+(hb?' · 7d '+Math.round(hb):'')+'</span>');
@@ -3681,16 +3771,28 @@ function wRecovery(){
   if(h.spo2!=null)extras.push('SpO₂ '+h.spo2+'%');
   if(h.bdi!=null&&h.bdi>10)extras.push('breathing disturbance '+h.bdi);
   if(H.vo2)extras.push('VO₂max '+H.vo2);
-  return '<section class="card"><div class="spread"><h2>Recovery</h2>'
-    +(h.rs!=null?'<span class="chip '+rsClass+'">readiness '+h.rs+'</span>':'<span class="chip neutral">Oura</span>')+'</div>'
-    +'<div class="row" style="gap:18px;margin-top:4px">'
-    +(h.rs!=null?'<div><span class="mini">Readiness</span><div class="big num">'+h.rs+'</div></div>':'')
-    +(h.ss!=null?'<div><span class="mini">Sleep score</span><div class="big num">'+h.ss+'</div></div>':'')
+  const stat=(lbl,val)=>'<div class="rstat"><span class="mini">'+lbl+'</span><div class="big num">'+val+'</div></div>';
+  // one supporting line: the plan-aware verdict, or a calm default
+  let lead=verdict;
+  if(!lead){
+    const word=h.rs!=null?(h.rs>=85?'Green light — recovered and ready':h.rs>=70?'Steady — train as planned':'Body says amber — keep today easy'):'Logged for today';
+    lead='<p class="note" style="margin:10px 0 0">'+word+'.</p>';
+  }
+  const detail=(sleepLine||sig.length||extras.length)
+    ?'<details class="recmore"><summary>Sleep &amp; signals</summary>'
+      +sleepLine
+      +(sig.length?'<div class="row">'+sig.join('')+'</div>':'')
+      +(extras.length?'<p class="mini">'+extras.join(' · ')+'</p>':'')
+      +'</details>':'';
+  return '<section class="card"><div class="lblrow"><span class="seclbl">Recovery</span>'
+    +(h.rs!=null?'<span class="chip '+rsClass+'">'+(h.rs>=85?'ready':h.rs>=70?'steady':h.rs>=55?'easy today':'rest up')+'</span>':'<span class="chip neutral">Oura</span>')+'</div>'
+    +'<div class="rstats">'
+    +(h.rs!=null?stat('Readiness',h.rs):'')
+    +(h.ss!=null?stat('Sleep',h.ss):'')
+    +(h.hrv!=null?stat('HRV',h.hrv):'')
     +'</div>'
-    +sleepLine
-    +(sig.length?'<div class="row" style="margin-top:8px">'+sig.join('')+'</div>':'')
-    +verdict
-    +(extras.length?'<p class="mini" style="margin:10px 2px 0">'+extras.join(' · ')+'</p>':'')
+    +lead
+    +detail
     +'</section>';
 }
 
@@ -3751,7 +3853,7 @@ function wDeficit(){
   const def=b.burned-ea.kcal; // positive = deficit
   const goal=deficitGoal(),real=ateLogged(todayIdx),onTarget=def>=goal-150;
   const chip=real?'<span class="chip c-blue">logged</span>'
-    :'<span class="chip '+(onTarget?'c-easy':'c-long')+'">'+(onTarget?'on target':'building')+' · est</span>';
+    :'<span class="chip '+(onTarget?'c-easy':'c-warn')+'">'+(onTarget?'on target':'building')+' · est</span>';
   // one composed sentence — the coach voice
   const sentence=real
     ?'Ate '+fmtKcal(ea.kcal)+', burned '+fmtKcal(b.burned)+' — '+fmtKcal(Math.abs(def))+(def>=0?' under':' over')
@@ -3812,28 +3914,62 @@ function wHrvTrend(){
     +'<div class="svgwrap"><svg viewBox="0 0 '+W+' '+Hh+'" style="width:100%;height:auto;display:block" role="img" aria-label="HRV and resting heart rate trend">'
     +line('hrv','var(--accent)')+line('rhr','var(--hard)')
     +'</svg></div>'
-    +'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--accent-text)">—</span> HRV (up = adapting) · <span style="color:var(--hard)">—</span> resting HR (down = fitter)</p>'
+    +'<p class="mini" style="margin:4px 2px 0"><span style="color:var(--ink)">—</span> HRV (up = adapting) · <span style="color:var(--hard)">—</span> resting HR (down = fitter)</p>'
     +'</section>';
 }
 
+/* The forecast as a range dial: the goal at centre, the confidence band as a coral
+   range, and the prediction as a coral marker that drifts toward the goal as it firms. */
+function forecastDial(f){
+  const W=320,H=40,cy=18;
+  const half=Math.max(f.band*1.7,Math.abs(f.secs-f.goalT)+f.band,300);
+  const lo=f.goalT-half,hi=f.goalT+half,span=(hi-lo)||1;
+  const X=s=>10+(W-20)*(clamp(s,lo,hi)-lo)/span;
+  let g='<line x1="10" y1="'+cy+'" x2="'+(W-10)+'" y2="'+cy+'" stroke="var(--track)" stroke-width="4" stroke-linecap="round"/>';
+  g+='<line x1="'+X(f.secs-f.band).toFixed(1)+'" y1="'+cy+'" x2="'+X(f.secs+f.band).toFixed(1)+'" y2="'+cy+'" stroke="var(--coral-bg)" stroke-width="11" stroke-linecap="round"/>';
+  g+='<line x1="'+X(f.goalT).toFixed(1)+'" y1="'+(cy-9)+'" x2="'+X(f.goalT).toFixed(1)+'" y2="'+(cy+9)+'" stroke="var(--ink)" stroke-width="2"/>';
+  g+='<text x="'+X(f.goalT).toFixed(1)+'" y="'+(cy+20)+'" text-anchor="middle" font-size="9" font-weight="700" fill="var(--sub)">GOAL</text>';
+  g+='<circle cx="'+X(f.secs).toFixed(1)+'" cy="'+cy+'" r="5.5" fill="var(--coral)" stroke="var(--card)" stroke-width="2"/>';
+  return '<div class="fdial"><svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block" role="img" aria-label="Forecast range around the goal">'+g+'</svg></div>';
+}
 function wForecast(){
   const f=berlinForecast();
   const fmtBand=s=>{const m=Math.round(s/60);return m>=1?'± '+m+' min':'± '+Math.round(s)+' s';};
+  const conf=clamp(Math.round((f.n/10)*100),6,100);
+  const confBar='<div class="fconf"><div class="fct"><i style="width:'+conf+'%"></i></div><span class="mini">'+(f.state==='early'?'Firming up':'Sharpening')+' · '+f.n+' run'+(f.n===1?'':'s')+' in</span></div>';
   if(f.state==='early')
     return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast" style="cursor:pointer">'
-      +'<div class="spread"><h2>Berlin forecast</h2><span class="chip neutral">firming up</span></div>'
-      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:2px"><span class="hero num">'+fmtFinishT(f.secs)+'</span><span class="sub" style="font-weight:600">goal · '+fmtBand(f.band)+'</span></div>'
-      +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+' ('+f.n+' run'+(f.n===1?'':'s')+' in)</p></section>';
+      +'<div class="lblrow"><span class="seclbl" style="color:var(--coral)">Berlin forecast</span><span class="chip neutral">firming up</span></div>'
+      +'<div class="row" style="align-items:baseline;gap:8px;margin-top:4px"><span class="hero num" style="color:var(--coral)">'+fmtFinishT(f.secs)+'</span><span class="sub" style="font-weight:600">goal · '+fmtBand(f.band)+'</span></div>'
+      +forecastDial(f)+confBar
+      +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+'</p></section>';
   const prev=berlinForecast(rawT-1),d=f.secs-(prev?prev.secs:f.secs);
   const deltaChip=Math.abs(d)<2?'<span class="chip neutral">no change today</span>'
     :d<0?'<span class="chip c-easy">▲ '+Math.abs(d)+'s faster</span>':'<span class="chip c-hard">▼ '+d+'s slower</span>';
   const vsGoal=Math.round(f.secs-f.goalT);
   return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast, tap for the trends behind it" style="cursor:pointer">'
-    +'<div class="spread"><h2>Berlin forecast</h2>'+deltaChip+'</div>'
-    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:2px"><span class="hero num">'+fmtFinishT(f.secs)+'</span>'
+    +'<div class="lblrow"><span class="seclbl" style="color:var(--coral)">Berlin forecast</span>'+deltaChip+'</div>'
+    +'<div class="row" style="align-items:baseline;gap:8px;margin-top:4px"><span class="hero num" style="color:var(--coral)">'+fmtFinishT(f.secs)+'</span>'
     +'<span class="sub" style="font-weight:600">'+fmtBand(f.band)+' · '+(vsGoal<=0?Math.abs(vsGoal)+'s under goal':vsGoal+'s over goal')+'</span></div>'
+    +forecastDial(f)+confBar
     +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+'</p>'
     +'<p class="mini" style="margin:8px 2px 0;color:var(--sub)">Tap for the three trends driving it</p></section>';
+}
+/* Settings & integrations — the configure-once plumbing (connections + calendar/
+   walk automation) lives here, off the daily Training scroll. Reached from the gear
+   in the Training header. rerenderKeepScroll() refreshes this panel in place
+   (connection actions re-render #view, not the open sheet) — see settingsRefresh. */
+function settingsSheetContent(){
+  return '<div class="spread"><h2 style="margin:0">Settings &amp; integrations</h2>'
+    +'<button class="btn3" data-action="closesheet" style="color:var(--accent-text)">Done</button></div>'
+    +'<p class="note" style="margin:6px 0 2px">Connect your data sources and tune how the week is written to your calendar. Set once — it stays out of the daily scroll.</p>'
+    +stravaCard()+ouraCard()+gcalCard()+fitCard();
+}
+function openSettingsSheet(){ui.settingsOpen=true;openSheet(settingsSheetContent());}
+function settingsRefresh(){
+  if(!ui.settingsOpen)return;
+  const p=document.querySelector('#sheet .panel');
+  if(p){const st=p.scrollTop;p.innerHTML=settingsSheetContent();p.scrollTop=st;}
 }
 function openForecastSheet(){
   const f=berlinForecast(),close='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none">Close</button>';
@@ -3848,17 +3984,20 @@ function openForecastSheet(){
     +'<p class="mini" style="margin:10px 2px 0">Negative = time gained on Berlin. Log easy runs to sharpen the fitness read.</p>'
     +close);
 }
+/* Default order encodes the Today hierarchy: a slim weigh-in prompt, then the
+   session HERO, recovery, the forecast, and the rest — with the catch-up demoted
+   near the bottom (it's a reconciliation row, not a competing card). */
 const WIDGET_DEFS=[
   {id:'morning',label:'Morning check-in (auto)',render:wMorning},
-  {id:'forecast',label:'Berlin forecast',render:wForecast},
-  {id:'recov',label:'Recovery (Oura)',render:wRecovery},
   {id:'session',label:'Today’s session',render:wSession},
-  {id:'steps',label:'Steps to 10k + fit-it-in',render:wSteps},
-  {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
+  {id:'recov',label:'Recovery (Oura)',render:wRecovery},
+  {id:'forecast',label:'Berlin forecast',render:wForecast},
   {id:'week',label:'Week progress',render:wWeek},
+  {id:'steps',label:'Steps to 10k + fit-it-in',render:wSteps},
   {id:'fuel',label:'Fuel target',render:wFuel},
   {id:'deficit',label:'Energy balance (Oura)',render:wDeficit},
   {id:'weight',label:'Weight log',render:wWeight},
+  {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
   {id:'race',label:'Race countdown',render:wRace},
   {id:'trend',label:'Weight trend chart',render:wTrend},
   {id:'hrvtrend',label:'HRV · RHR trend',render:wHrvTrend},
@@ -4244,13 +4383,13 @@ function vToday(){
   const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
   const standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
   if(isIOS&&!standalone&&!S.hideInstallTip&&location.protocol.indexOf('http')===0)
-    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">Install first: Share, then <b>Add to Home Screen</b>, and log there. The installed app keeps its own separate storage.</span><button class="btn3" data-action="hideinstalltip" style="color:var(--long);flex:none">Got it</button></div>';
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">Install first: Share, then <b>Add to Home Screen</b>, and log there. The installed app keeps its own separate storage.</span><button class="btn3" data-action="hideinstalltip" style="color:var(--warn);flex:none">Got it</button></div>';
   const logCount=Object.keys(S.sessions).length+S.weights.length;
   if((logCount>=3&&!S.lastBackup)||(logCount>=10&&daysSince(S.lastBackup)>14))
     note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">'
       +(S.lastBackup?logCount+' logs live only on this phone. A backup takes 30 seconds.'
         :'Your logs exist only on this phone — deleting the app icon deletes them. First backup takes 30 seconds.')
-      +'</span><button class="btn3" data-action="export" style="color:var(--long);flex:none">Back up</button></div>';
+      +'</span><button class="btn3" data-action="export" style="color:var(--warn);flex:none">Back up</button></div>';
   if(easyDrift())
     note+='<div class="banner">Your last three easy days all felt hard (RPE 6+). Consider an extra rest day or easing this week’s paces.</div>';
   if(ouraConnected()){ // the amber triad: illness/overreach early warning vs the 7-day baseline
@@ -4259,7 +4398,7 @@ function vToday(){
       note+='<div class="banner">Overnight signals are off: '+esc(ofl.join(', '))+' vs your week. Back off today — easy effort or extra rest beats pushing through.</div>';
   }
   if(rawT>=0&&rawT<=RACE_IDX&&rawT%7===6&&new Date().getHours()>=16) // Sunday evening: the week's chapter
-    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">The week is in the books.</span><button class="btn3" data-action="wrapped" style="color:var(--long);flex:none">Week wrapped</button></div>';
+    note+='<div class="banner" style="display:flex;gap:8px;align-items:center"><span style="flex:1">The week is in the books.</span><button class="btn3" data-action="wrapped" style="color:var(--warn);flex:none">Week wrapped</button></div>';
 
   let widgets='';
   widgetConfig().forEach(w=>{
@@ -4269,9 +4408,8 @@ function vToday(){
   });
 
   return '<div><div class="todayhead">'
-    +appleNav(longDate(todayIdx),'Week '+(e.w+1)+' of 16 · '+e.wk.phase+' phase'+(RACE_IDX-todayIdx>0?' · '+(RACE_IDX-todayIdx)+' days to Berlin':' · RACE DAY'),'editwidgets')
-    /* the blue line: position along the 112-day course to Berlin — taps open the city */
-    +'<button class="course" data-action="cityopen" aria-label="Day '+(todayIdx+1)+' of 112 — open the Berlin course" style="display:block;width:100%;border:none;padding:0;cursor:pointer"><i style="width:'+Math.round(todayIdx/RACE_IDX*100)+'%"></i></button></div>'
+    +appleNav(longDate(todayIdx),'','editwidgets')
+    +countdownRail()+'</div>'
     +(morningLine()?'<p class="note" style="margin:10px 2px 0">'+morningLine()+'</p>':'')
     +(function(){const pd=patternScan();return (pd&&pd.eff)?'<p class="note" style="margin:8px 2px 0;color:var(--txt2)"><b>Noticed:</b> '+esc(pd.text)+'</p>':'';})()
     +note
@@ -4320,7 +4458,7 @@ function dayCard(i){
     const meta=resultMeta(l);
     const ab=i<rawT?absorption(i):null; // did the night after bank it?
     body='<div class="row" style="margin-top:10px">'
-      +'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-long':'c-hard')+'">'+(l.status==='done'?'Done':l.status==='partial'?'Partial':'Missed')+'</span>'
+      +'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-warn':'c-hard')+'">'+(l.status==='done'?'Done':l.status==='partial'?'Partial':'Missed')+'</span>'
       +logChips(l)+(ab?'<span class="chip '+ab.cls+'">'+ab.label+'</span>':'')+'</div>'
       +(meta?'<p class="mini" style="margin:6px 2px 0">'+meta+'</p>':'')
       +runVisual(l,i);
@@ -4331,7 +4469,7 @@ function dayCard(i){
       +'<button class="btn3" data-action="missed" data-i="'+i+'">Missed?</button>'
       +'<span class="mini" style="color:var(--sub)">imports from Strava on sync</span></div>';
   }
-  return '<section class="card" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
+  return '<section class="card sesshero" style="border-left-color:var(--'+(ZONECLR[e.zone]||'rest')+')" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
     +'<div class="spread"><div class="row">'
     +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
     +zoneChip(e)+movedChip(e)
@@ -4348,8 +4486,12 @@ function dayCard(i){
 function vTrain(){
   const w=ui.week,wk=WEEKS[w];
   const [stLbl,stCls]=weekStatus(w);
+  const cw=clamp(currentWeekIdx(),0,15);
   let chips='<div class="weekchips">';
-  for(let j=0;j<16;j++)chips+='<button data-action="selweek" data-w="'+j+'" class="'+(j===w?'sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+'</button>';
+  for(let j=0;j<16;j++){
+    const stCls=j<cw?'wk-done':j===cw?'wk-now':'wk-future';
+    chips+='<button data-action="selweek" data-w="'+j+'" class="'+stCls+(j===w?' sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+(j<cw?' ✓':'')+'</button>';
+  }
   chips+='</div>';
 
   let days='';for(let d=0;d<7;d++)days+=dayCard(w*7+d);
@@ -4363,8 +4505,9 @@ function vTrain(){
       +'<td class="num right">'+fmtKm(effLong(j))+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
 
-  return '<div>'+appleNav('Training','')
-    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:0 2px;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
+  return '<div>'+appleNav('Training','','opensettings')
+    +countdownRail()
+    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:8px 2px 0;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -4393,10 +4536,6 @@ function vTrain(){
     +loopShelf()
     +specimenCard()
     +boardCard()
-    +stravaCard()
-    +ouraCard()
-    +gcalCard()
-    +fitCard()
     +'</div>';
 }
 
@@ -4439,7 +4578,7 @@ function nutDayCard(i){
     const def=b.burned-ea.kcal,onp=Math.abs(def-e.deficit)<=200;
     const tag=real?'':' est';
     verdict='<div class="row" style="margin-top:10px"><span class="chip neutral">burned '+fmtKcal(b.burned)+'</span>'
-      +'<span class="chip '+(onp?'c-easy':(def>e.deficit?'c-easy':'c-long'))+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+' deficit'+tag+'</span></div>'
+      +'<span class="chip '+(onp?'c-easy':(def>e.deficit?'c-easy':'c-warn'))+'">'+(def>=0?'−':'+')+fmtKcal(Math.abs(def))+' deficit'+tag+'</span></div>'
       +'<p class="mini" style="margin:6px 2px 0">plan −'+fmtKcal(e.deficit)+(Math.abs(def-e.deficit)<25?' · on plan':'')+'</p>';
     // the "calories left" coach line, before logging, today/past
     if(!real){
@@ -4514,7 +4653,7 @@ function cutCard(){
   const chip=ratio==null?'<span class="chip neutral">counting</span>'
     :ratio>=1.1?'<span class="chip c-easy">ahead</span>'
     :ratio>=0.9?'<span class="chip c-easy">on track</span>'
-    :ratio>=0.6?'<span class="chip c-long">behind</span>'
+    :ratio>=0.6?'<span class="chip c-warn">behind</span>'
     :'<span class="chip c-hard">well behind</span>';
   // the scale is the reality check — show it once, as confirmation or (if it diverges) the tie-breaker
   let scaleLine='';
@@ -4677,7 +4816,7 @@ function nutDayHero(i){
   // gauge: eaten vs burn, marker where eating lands your cut
   const eatenPct=burn>0?clamp(ek/burn*100,0,100):0,markPct=burn>0?clamp(eatTarget/burn*100,0,100):0;
   const fillPct=isFuture?markPct:(real?eatenPct:0);
-  const fillCol=isFuture?'color-mix(in srgb,var(--accent) 40%,transparent)':(!real?'var(--accent)':(ek<=eatTarget?'var(--easy)':'var(--long)'));
+  const fillCol=isFuture?'color-mix(in srgb,var(--accent) 40%,transparent)':(!real?'var(--accent)':(ek<=eatTarget?'var(--easy)':'var(--warn)'));
   const gauge='<div style="position:relative;height:18px;border-radius:99px;background:var(--track);overflow:hidden;margin-top:14px">'
     +'<i style="display:block;height:100%;width:'+fillPct+'%;background:'+fillCol+';border-radius:99px;transition:width .5s var(--ease-out)"></i>'
     +'<span style="position:absolute;top:0;bottom:0;left:'+markPct+'%;width:2px;background:var(--ink);opacity:.5"></span></div>'
@@ -4929,7 +5068,7 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
   const burnedVal=burned!=null?(est?'~':'')+fmtKcal(burned):'–';
   const eatenVal=hasEat?fmtKcal(eatenK):'—';
   let defVal='—',defCol='var(--sub)';
-  if(burned!=null&&hasEat){const def=burned-eatenK;defVal=(def>=0?'−':'+')+fmtKcal(Math.abs(def));defCol=def>=0?'var(--easy)':'var(--long)';}
+  if(burned!=null&&hasEat){const def=burned-eatenK;defVal=(def>=0?'−':'+')+fmtKcal(Math.abs(def));defCol=def>=0?'var(--easy)':'var(--warn)';}
   const num='font-size:24px;font-weight:800;line-height:1',lbl='margin-top:5px;letter-spacing:.05em';
   const opDiv='<div class="num" style="display:flex;align-items:center;color:var(--sub);font-size:18px">';
   const hint=burned==null?'Connect Oura on the Training tab to see what you’ve burned.':(!hasEat?'Log a meal to see today’s deficit.':'');
@@ -4942,7 +5081,15 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
       +opDiv+'=</div>'
       +'<div style="flex:1;text-align:center;background:var(--inset);border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div class="num" style="'+num+';color:'+defCol+'">'+defVal+'</div><div class="mini" style="'+lbl+';color:'+(defVal==='—'?'var(--sub)':defCol)+'">DEFICIT</div></div>'
     +'</div>'
+    // the bar carries the relationship: eaten (ink) inside the burn budget; the coloured remainder is the deficit
+    +(burned!=null&&hasEat?(function(){
+        const def=burned-eatenK,over=eatenK>burned,fill=clamp(eatenK/burned*100,0,100);
+        return '<div class="balbar'+(over?' over':'')+'"><div class="bf" style="width:'+fill.toFixed(0)+'%"></div></div>'
+          +'<div class="ballbl"><span>Ate '+fmtKcal(eatenK)+'</span><span style="color:'+defCol+'">'+(def>=0?fmtKcal(def)+' deficit':fmtKcal(-def)+' over')+'</span><span>Burn '+(est?'~':'')+fmtKcal(burned)+'</span></div>';
+      })():'')
     +(hint?'<p class="mini" style="margin:11px 2px 0;color:var(--sub)">'+hint+'</p>':'')
+    +(burned!=null&&b.resting!=null?'<details class="nmath"><summary>How this is worked out</summary>'
+        +'<p class="mini" style="margin:6px 2px 0">Burned blends a resting estimate ('+fmtKcal(b.resting)+' kcal, from your profile) with the day’s active calories ('+fmtKcal(b.active)+' kcal — Oura, plus the run). Eaten is your logged food. Deficit is the gap.</p></details>':'')
     +'<button class="btn3" style="margin-top:12px;color:var(--accent-text)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
     +'</section>';
 }
@@ -4972,7 +5119,8 @@ function vNut(){
       +nutWeightLog()
       +'</section>';
   }
-  return '<div>'+appleNav('Nutrition','Week '+(Math.floor(clamp(rawT,0,RACE_IDX)/7)+1)+' · '+Math.max(0,RACE_IDX-rawT)+' days to Berlin')
+  return '<div>'+appleNav('Nutrition','The scale is the spine')
+    +countdownRail()
     +weightCard
     +nutTodayBalance(i)
     +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent-text)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
@@ -5037,6 +5185,7 @@ function openSheet(html,morphEl,onReady,label){
   }
 }
 function closeSheet(){
+  ui.settingsOpen=false;
   const s=document.getElementById('sheet');
   s.classList.remove('open');
   document.getElementById('app').inert=false;
@@ -5089,8 +5238,11 @@ function appleRow(glyph,color,name,value,unit,action){
 /* Apple large-title header. avatarAction (optional) shows the round profile/edit
    button on the right — used only on Today, matching Apple Health's Summary tab. */
 function appleNav(title,sub,avatarAction){
-  return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'
-    +(avatarAction?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>':'')+'</div>';
+  const gear='<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+  let avatar='';
+  if(avatarAction==='opensettings')avatar='<button class="aAvatar" data-action="opensettings" aria-haspopup="dialog" aria-label="Settings and integrations" style="color:var(--txt2)">'+gear+'</button>';
+  else if(avatarAction)avatar='<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>';
+  return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'+avatar+'</div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
 
@@ -5141,6 +5293,7 @@ function bindChartScrub(){ // drag along the weight line, a dot follows with dat
 function rerenderKeepScroll(){
   ui.scroll[ui.tab]=window.scrollY;
   render();
+  settingsRefresh(); // connection/automation cards live in the settings sheet, not #view
 }
 
 function deckSkip(i){
@@ -5203,16 +5356,17 @@ document.addEventListener('click',ev=>{
   else if(a==='logsheet'){openLogSheet(Number(el.dataset.i));}
   else if(a==='quickdone'){quickLogDone(Number(el.dataset.i));}
   else if(a==='deckskip'){deckSkip(Number(el.dataset.i));}
+  else if(a==='mopen'){ui.morningOpen=true;rerenderKeepScroll();}
   else if(a==='msave'){
     const v=readRuler('mruler');
     if(v>=120&&v<=280){
       const prev=S.weights.slice();
       logWeight(todayISO(),Math.round(v*10)/10);
-      ui.morning=false;rerenderKeepScroll();
+      ui.morning=false;ui.morningOpen=false;rerenderKeepScroll();
       snack('Logged '+fmtLb(v)+' lb — good morning',()=>{S.weights=prev;save();ui.morning=true;rerenderKeepScroll();});
     }
   }
-  else if(a==='mlater'){ui.morning=false;rerenderKeepScroll();}
+  else if(a==='mlater'){ui.morning=false;ui.morningOpen=false;rerenderKeepScroll();}
   else if(a==='rebalsum'){openRebalSummary(Number(el.dataset.w||ui.week));}
   else if(a==='wrapped'){openWrapped();}
   else if(a==='wrapclose'){closeWrapped();}
@@ -5278,6 +5432,7 @@ document.addEventListener('click',ev=>{
     if(prev)snack('Cleared · '+headline(e2),()=>{S.sessions[e2.id]=prev;save();rerenderKeepScroll();});
   }
   else if(a==='editwidgets'){openWidgetSheet();}
+  else if(a==='opensettings'){openSettingsSheet();}
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
   else if(a==='nutadjsave'){
     const i2=Number(el.dataset.i),inp=document.getElementById('adjkcal'),v=parseFloat(inp.value);
