@@ -1082,6 +1082,7 @@ function sanitizePayload(data){
       const spo2=num(r.spo2,70,100,1);if(spo2!=null)o.spo2=spo2;
       if(typeof r.bin==='string'&&HHMM.test(r.bin))o.bin=r.bin;
       if(['normal','stressful','restored'].indexOf(r.str)>=0)o.str=r.str;
+      if(['apple-health','oura'].indexOf(r.stepsSrc)>=0)o.stepsSrc=r.stepsSrc; // which source 'steps' came from
       if(Object.keys(o).length)out.health.d[k]=o;
     }
     const vo2=Number(data.health.vo2);
@@ -1091,13 +1092,14 @@ function sanitizePayload(data){
     if(Number.isInteger(btE)&&Math.abs(btE)<=43200)out.health.btE=btE;
   }
   // Apple Health steps: a flat {date,count} array (the Shortcut's shape) folded into
-  // health.d[date].steps. Bounded 0–100,000; out-of-block dates dropped. Source apple-health.
+  // health.d[date].steps, tagged stepsSrc:'apple-health' so it outranks Oura's count (Oura misses
+  // any activity you do without the ring on). Bounded 0–100,000; out-of-block dates dropped.
   if(data&&Array.isArray(data.steps)){
     data.steps.forEach(s=>{
       if(!s||!/^\d{4}-\d{2}-\d{2}$/.test(String(s.date)))return;
       const i=isoToIdx(s.date);if(i<-7||i>RACE_IDX)return;
       const c=Number(s.count);if(!isFinite(c)||c<0||c>100000)return;
-      (out.health.d[s.date]||(out.health.d[s.date]={})).steps=Math.round(c);
+      const o=out.health.d[s.date]||(out.health.d[s.date]={});o.steps=Math.round(c);o.stepsSrc='apple-health';
     });
   }
   // fit-it-in settings (S.settings.fit) — bounded so a tampered backup can't break the reconciler
@@ -1135,15 +1137,23 @@ function mergePayload(data,source){ // additive: existing (manual) entries alway
   const c=sanitizePayload(data);let nS=0,nW=0,nH=0;
   for(const k in c.sessions){if(!S.sessions[k]){c.sessions[k].source=source||c.sessions[k].source;S.sessions[k]=c.sessions[k];nS++;}}
   c.weights.forEach(w=>{if(!S.weights.some(x=>x.date===w.date)){w.source=source||w.source;S.weights.push(w);nW++;}});
-  // health fields (Apple Health steps via the Shortcut): additive and idempotent. Steps climb
-  // through the day, so the higher reading wins; every other field defers to what's already stored.
+  // health fields (Apple Health steps via the Shortcut): additive and idempotent. Apple Health steps
+  // are authoritative — they overwrite an Oura-sourced count and climb across the day's readings —
+  // because Oura misses any activity done without the ring. Every other field defers to what's stored.
   if(c.health&&c.health.d){
     const H=healthRef();
     for(const date in c.health.d){
       const src=c.health.d[date],dst=H.d[date]||(H.d[date]={});
       for(const f in src){
-        if(f==='steps'){const nv=Math.max(dst.steps||0,src.steps);if(nv!==(dst.steps||0)){dst.steps=nv;nH++;}}
-        else if(dst[f]==null){dst[f]=src[f];nH++;}
+        if(f==='steps'||f==='stepsSrc')continue; // handled together below
+        if(dst[f]==null){dst[f]=src[f];nH++;}
+      }
+      if(src.steps!=null){
+        if(src.stepsSrc==='apple-health'){
+          const base=dst.stepsSrc==='apple-health'?(dst.steps||0):0; // climb among AH readings; ignore prior Oura value
+          const nv=Math.max(base,src.steps);
+          if(nv!==dst.steps||dst.stepsSrc!=='apple-health'){dst.steps=nv;dst.stepsSrc='apple-health';nH++;}
+        }else if(dst.steps==null){dst.steps=src.steps;if(src.stepsSrc)dst.stepsSrc=src.stepsSrc;nH++;}
       }
     }
   }
@@ -1663,7 +1673,8 @@ function ouraSync(manual){
     grab('daily_activity',it=>{const e=day(it.day);
       if(it.active_calories!=null)e.calA=Math.round(it.active_calories);
       if(it.total_calories!=null)e.calT=Math.round(it.total_calories);
-      if(it.steps!=null)e.steps=Math.round(it.steps);}),
+      // Oura steps only when Apple Health hasn't supplied them — AH catches ring-off activity, Oura doesn't
+      if(it.steps!=null&&e.stepsSrc!=='apple-health'){e.steps=Math.round(it.steps);e.stepsSrc='oura';}}),
     grab('daily_stress',it=>{const e=day(it.day);if(it.day_summary)e.str=String(it.day_summary).slice(0,12);}),
     grab('daily_spo2',it=>{const e=day(it.day);
       if(it.spo2_percentage&&it.spo2_percentage.average!=null)e.spo2=Math.round(it.spo2_percentage.average*10)/10;
@@ -1896,7 +1907,7 @@ function stepsRemaining(i){
     // live truth: size walks from the ACTUAL remaining. The run, once it happens, lands in this
     // count (Health/Strava) — so we never also forecast it here (avoids double-counting a run
     // that's already in the step total but not yet logged). The brief: "sizes walks from the actual remaining".
-    return {goal:f.stepGoal,actual:actual,soFar:actual,runCredit:0,
+    return {goal:f.stepGoal,actual:actual,soFar:actual,runCredit:0,src:h.stepsSrc||null,
       remaining:Math.max(0,f.stepGoal-actual),projected:actual,covered:actual>=f.stepGoal};
   }
   // forecast (future days, or today before Health reports): desk-day baseline + the run's
@@ -2196,7 +2207,7 @@ function wSteps(){
   const shown=sr.actual!=null?sr.actual:sr.projected;
   const pct=sr.goal>0?(shown/sr.goal*100):0;
   const big=sr.actual!=null?fmtKcal(sr.actual):'~'+fmtKcal(sr.projected);
-  const sub=sr.actual!=null?'Apple Health'+(sr.covered?' · 10k covered ✓':''):(healthRef().d[isoAt(todayIdx)]&&healthRef().d[isoAt(todayIdx)].steps!=null?'':'forecast — run the Health Shortcut for live steps');
+  const sub=sr.actual!=null?((sr.src==='oura'?'Oura':'Apple Health')+(sr.covered?' · 10k covered ✓':'')):(healthRef().d[isoAt(todayIdx)]&&healthRef().d[isoAt(todayIdx)].steps!=null?'':'forecast — run the Health Shortcut for live steps');
   // fit-it-in list: labels always come from the live plan; borrow the reconciler's
   // chosen times when its snapshot is for today (else a generic placement hint)
   const plan=(gcalPlanToday&&gcalPlanToday.date===isoAt(todayIdx))?gcalPlanToday.items:null;
