@@ -849,9 +849,10 @@ function quickLogDone(i){ // swipe right: done at plan distance
   const pre=capturePayoff(e);
   logSession(e.id,{status:'done',km:cur.km!=null?cur.km:e.km});
   payoff(pre,e);
+  gcalReconcileSoon(); // a finished run reshapes today's walk top-up
   snack('Logged · '+headline(e),()=>{
     if(prev)S.sessions[e.id]=prev;else delete S.sessions[e.id];
-    save();rerenderKeepScroll();
+    save();rerenderKeepScroll();gcalReconcileSoon();
   });
 }
 
@@ -890,9 +891,12 @@ function payoff(pre,e){
 /* Phase 2–4 hook: register future importers (Apple Health, Strava, Oura) in
    DATA_SOURCES; all writes flow through logSession()/logWeight() with a
    source tag, so imported data lands beside manual entries without rework. */
-const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'}};
+const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{label:'Shortcut'},'apple-health':{label:'Apple Health'},gcal:{label:'Google Calendar'}};
 const KEY='berlin2026.v1';
-function freshState(){return {v:1,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
+/* v3 fit-it-in settings — the calendar reconciler reads these (lunch window, step goal,
+   what to diarise). Kept inside S so they ride the backup; tokens never do. */
+function fitDefaults(){return {lunchStart:'11:00',lunchEnd:'14:00',stepGoal:10000,ambientSteps:3000,diariseWalks:true,walkDaysAhead:2,diariseStrength:true,diariseLearning:false,diariseFoot:false};}
+function freshState(){return {v:2,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},settings:{fit:fitDefaults()},gcal:{lastSync:null,syncToken:null,calendarId:'primary',note:null},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -902,6 +906,14 @@ function loadState(){
     const raw=localStorage.getItem(KEY);
     if(!raw)return freshState();
     const s=JSON.parse(raw);
+    // v1 → v2 migration: introduce fit settings + calendar sync metadata.
+    // Object.assign below is shallow, so seed the nested defaults explicitly.
+    if(!s.v||s.v<2){
+      if(!s.settings||typeof s.settings!=='object')s.settings={};
+      s.settings.fit=Object.assign(fitDefaults(),(s.settings.fit&&typeof s.settings.fit==='object')?s.settings.fit:{});
+      if(!s.gcal||typeof s.gcal!=='object')s.gcal={lastSync:null,syncToken:null,calendarId:'primary',note:null};
+      s.v=2;
+    }
     return Object.assign(freshState(),s);
   }catch(e){
     try{localStorage.setItem(KEY+'.corrupt-backup',localStorage.getItem(KEY)||'');}catch(_){}
@@ -1078,6 +1090,36 @@ function sanitizePayload(data){
     if(Number.isInteger(btS)&&Math.abs(btS)<=43200)out.health.btS=btS;
     if(Number.isInteger(btE)&&Math.abs(btE)<=43200)out.health.btE=btE;
   }
+  // Apple Health steps: a flat {date,count} array (the Shortcut's shape) folded into
+  // health.d[date].steps. Bounded 0–100,000; out-of-block dates dropped. Source apple-health.
+  if(data&&Array.isArray(data.steps)){
+    data.steps.forEach(s=>{
+      if(!s||!/^\d{4}-\d{2}-\d{2}$/.test(String(s.date)))return;
+      const i=isoToIdx(s.date);if(i<-7||i>RACE_IDX)return;
+      const c=Number(s.count);if(!isFinite(c)||c<0||c>100000)return;
+      (out.health.d[s.date]||(out.health.d[s.date]={})).steps=Math.round(c);
+    });
+  }
+  // fit-it-in settings (S.settings.fit) — bounded so a tampered backup can't break the reconciler
+  if(data&&data.settings&&typeof data.settings==='object'&&data.settings.fit&&typeof data.settings.fit==='object'){
+    const Pf=data.settings.fit,f={},def=fitDefaults();
+    f.lunchStart=HHMM.test(Pf.lunchStart)?Pf.lunchStart:def.lunchStart;
+    f.lunchEnd=HHMM.test(Pf.lunchEnd)?Pf.lunchEnd:def.lunchEnd;
+    const sg=Number(Pf.stepGoal);f.stepGoal=(isFinite(sg)&&sg>=2000&&sg<=30000)?Math.round(sg):def.stepGoal;
+    const am=Number(Pf.ambientSteps);f.ambientSteps=(isFinite(am)&&am>=0&&am<=20000)?Math.round(am):def.ambientSteps;
+    const wd=Number(Pf.walkDaysAhead);f.walkDaysAhead=(Number.isInteger(wd)&&wd>=0&&wd<=14)?wd:def.walkDaysAhead;
+    ['diariseWalks','diariseStrength','diariseLearning','diariseFoot'].forEach(k=>{f[k]=typeof Pf[k]==='boolean'?Pf[k]:def[k];});
+    out.settings={fit:f};
+  }
+  // calendar sync metadata (S.gcal) — never tokens; just the bookkeeping that's safe to back up
+  if(data&&data.gcal&&typeof data.gcal==='object'){
+    const g={lastSync:null,syncToken:null,calendarId:'primary',note:null};
+    if(typeof data.gcal.lastSync==='string')g.lastSync=data.gcal.lastSync.slice(0,40);
+    if(typeof data.gcal.syncToken==='string')g.syncToken=data.gcal.syncToken.slice(0,400);
+    if(typeof data.gcal.calendarId==='string'&&data.gcal.calendarId)g.calendarId=data.gcal.calendarId.slice(0,200);
+    if(typeof data.gcal.note==='string')g.note=data.gcal.note.slice(0,120);
+    out.gcal=g;
+  }
   // loop names (keyed by the first run's day index → user-given name)
   out.loops={};
   if(data&&data.loops&&typeof data.loops==='object'){
@@ -1090,12 +1132,24 @@ function sanitizePayload(data){
   return out;
 }
 function mergePayload(data,source){ // additive: existing (manual) entries always win
-  const c=sanitizePayload(data);let nS=0,nW=0;
+  const c=sanitizePayload(data);let nS=0,nW=0,nH=0;
   for(const k in c.sessions){if(!S.sessions[k]){c.sessions[k].source=source||c.sessions[k].source;S.sessions[k]=c.sessions[k];nS++;}}
   c.weights.forEach(w=>{if(!S.weights.some(x=>x.date===w.date)){w.source=source||w.source;S.weights.push(w);nW++;}});
+  // health fields (Apple Health steps via the Shortcut): additive and idempotent. Steps climb
+  // through the day, so the higher reading wins; every other field defers to what's already stored.
+  if(c.health&&c.health.d){
+    const H=healthRef();
+    for(const date in c.health.d){
+      const src=c.health.d[date],dst=H.d[date]||(H.d[date]={});
+      for(const f in src){
+        if(f==='steps'){const nv=Math.max(dst.steps||0,src.steps);if(nv!==(dst.steps||0)){dst.steps=nv;nH++;}}
+        else if(dst[f]==null){dst[f]=src[f];nH++;}
+      }
+    }
+  }
   S.weights.sort((a,b)=>a.date<b.date?-1:1);
-  if(nS||nW)save();
-  return {sessions:nS,weights:nW};
+  if(nS||nW||nH)save();
+  return {sessions:nS,weights:nW,health:nH};
 }
 
 /* Day moves: per-week permutation. order[w][pos] = original day slot now sitting at pos. */
@@ -1128,7 +1182,7 @@ function stravaConnect(){
   if(STRAVA_PROXY.indexOf('REPLACE-ME')>=0){snack('The Cloudflare Worker isn’t set up yet — see worker/README.md.');return;}
   location.href='https://www.strava.com/oauth/authorize?client_id='+STRAVA_CLIENT_ID
     +'&redirect_uri='+encodeURIComponent(location.origin+location.pathname)
-    +'&response_type=code&scope=activity:read_all&approval_prompt=auto';
+    +'&response_type=code&scope=activity:read_all&approval_prompt=auto&state=strava';
 }
 
 /* a valid access token, refreshed through the Worker when <5 min remain */
@@ -1354,9 +1408,10 @@ function stravaApply(list){
   enrich.forEach(x=>stravaEnrich(x.p,x.id));
   stravaPatch({note:list.length+' run'+(list.length===1?'':'s')+' imported'});
   if(pre)payoff(pre,todayE);else rerenderKeepScroll();
+  gcalReconcileSoon(); // imported runs change today's walk top-up
   snack('Imported '+list.length+' run'+(list.length===1?'':'s')+' from Strava',()=>{
     for(const id in snap){if(snap[id])S.sessions[id]=snap[id];else delete S.sessions[id];}
-    save();rerenderKeepScroll();
+    save();rerenderKeepScroll();gcalReconcileSoon();
   });
 }
 function stravaCard(){
@@ -1687,6 +1742,396 @@ function ouraCard(){
       :'<button class="btn2" style="width:100%;margin-top:10px" data-action="ourasync">Sync now</button>')
     +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="ouradisconnect">Disconnect</button>'
     +'</section>';
+}
+
+/* ---------------- 3c. Google Calendar (two-way) ----------------
+   The calendar substrate: read Luke's meetings, write his training blocks
+   around them, and keep the two in agreement. Tokens live in their own
+   localStorage key (never in S, never in backups), exactly like Strava/Oura.
+   Only OAuth token exchange/refresh go through the Worker; calendar reads and
+   writes are CORS-open and go browser → www.googleapis.com directly. */
+const GCAL_CLIENT_ID=(storageOK&&localStorage.getItem('berlin2026.gcalClientId'))||'PASTE-GOOGLE-CLIENT-ID.apps.googleusercontent.com';
+const GCAL_KEY='berlin2026.gcal';
+const GCAL_PROXY=STRAVA_PROXY; // same Worker; /gcal/token + /gcal/refresh
+const GCAL_REDIRECT=location.origin+location.pathname; // resolves to the GitHub Pages URL
+const GCAL_SCOPE='https://www.googleapis.com/auth/calendar.events';
+const GCAL_TZ=(function(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London';}catch(e){return 'Europe/London';}})();
+/* Google colorId per kind (brief): easy 2, recovery 7, long 5, hard/threshold 11, strength 8, learning 3, walk 10 */
+const GCAL_COLOR={Recovery:'7',Easy:'2',Long:'5',Marathon:'11',Threshold:'11',Interval:'11'};
+
+function gcalState(){try{const r=localStorage.getItem(GCAL_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
+function gcalSave(st){try{localStorage.setItem(GCAL_KEY,JSON.stringify(st));}catch(e){}}
+function gcalPatchTok(p){const st=gcalState();if(st)gcalSave(Object.assign(st,p));}
+function gcalConnected(){return !!gcalState();}
+function gcalMeta(){if(!S.gcal||typeof S.gcal!=='object')S.gcal={lastSync:null,syncToken:null,calendarId:'primary',note:null};return S.gcal;}
+function fitCfg(){if(!S.settings||typeof S.settings!=='object')S.settings={};if(!S.settings.fit||typeof S.settings.fit!=='object')S.settings.fit=fitDefaults();return S.settings.fit;}
+
+function gcalConnect(){
+  if(GCAL_PROXY.indexOf('REPLACE-ME')>=0){snack('The Cloudflare Worker isn’t set up yet — see worker/README.md.');return;}
+  if(!GCAL_CLIENT_ID||GCAL_CLIENT_ID.indexOf('PASTE')>=0){snack('Add your Google client ID to index.html first — see GOOGLE-OAUTH-SETUP.md.');return;}
+  location.href='https://accounts.google.com/o/oauth2/v2/auth?client_id='+encodeURIComponent(GCAL_CLIENT_ID)
+    +'&redirect_uri='+encodeURIComponent(GCAL_REDIRECT)
+    +'&response_type=code&scope='+encodeURIComponent(GCAL_SCOPE)
+    +'&access_type=offline&prompt=consent&include_granted_scopes=true&state=gcal';
+}
+/* a valid access token, refreshed through the Worker when <2 min remain */
+function gcalToken(){
+  const st=gcalState();
+  if(!st||!st.refresh)return Promise.reject({auth:1});
+  if(st.expiresAt-Date.now()/1000>120)return Promise.resolve(st.access);
+  return fetch(GCAL_PROXY+'/gcal/refresh',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:st.refresh})})
+    .then(r=>{if(r.status===400||r.status===401||r.status===403)throw{auth:1};if(!r.ok)throw{net:1};return r.json();})
+    .then(d=>{if(!d.access_token)throw{auth:1};gcalPatchTok({access:d.access_token,expiresAt:d.expires_at});return d.access_token;});
+}
+/* Calendar v3 helper. 401 = re-auth; 403/429/other = transient (quiet); DELETE of an
+   already-gone event is a success (idempotent). */
+function gcalApi(method,path,token,body){
+  const opt={method:method,headers:{Authorization:'Bearer '+token}};
+  if(body!=null){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetch('https://www.googleapis.com/calendar/v3'+path,opt).then(r=>{
+    if(method==='DELETE'&&(r.status===404||r.status===410||r.status===200||r.status===204))return {};
+    if(r.status===401)throw{auth:1};
+    if(r.status===410)throw{gone:1};
+    if(!r.ok)throw{net:1,status:r.status};
+    if(r.status===204)return {};
+    return r.json();
+  });
+}
+function gcalCalId(){return encodeURIComponent(gcalMeta().calendarId||'primary');}
+function gcalListWindow(token,timeMin,timeMax,pageToken,acc){
+  acc=acc||[];
+  const q='/calendars/'+gcalCalId()+'/events?singleEvents=true&orderBy=startTime&maxResults=250'
+    +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax)
+    +(pageToken?'&pageToken='+encodeURIComponent(pageToken):'');
+  return gcalApi('GET',q,token).then(d=>{
+    acc=acc.concat((d&&d.items)||[]);
+    if(d&&d.nextPageToken&&acc.length<1500)return gcalListWindow(token,timeMin,timeMax,d.nextPageToken,acc);
+    if(d&&d.nextSyncToken){gcalMeta().syncToken=d.nextSyncToken;} // reserved for future incremental reads
+    return acc;
+  });
+}
+/* OUR tagged events, fetched authoritatively (not via the capped window list) so convergence
+   always patches/deletes an existing block instead of re-inserting a duplicate, even if the
+   window holds more meetings than one page can carry. */
+function gcalListTagged(token,timeMin,timeMax,pageToken,acc){
+  acc=acc||[];
+  const q='/calendars/'+gcalCalId()+'/events?singleEvents=true&maxResults=250'
+    +'&privateExtendedProperty='+encodeURIComponent('berlin26=1')
+    +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax)
+    +(pageToken?'&pageToken='+encodeURIComponent(pageToken):'');
+  return gcalApi('GET',q,token).then(d=>{
+    acc=acc.concat((d&&d.items)||[]);
+    if(d&&d.nextPageToken&&acc.length<2500)return gcalListTagged(token,timeMin,timeMax,d.nextPageToken,acc);
+    return acc;
+  });
+}
+function gcalInsert(token,ev){return gcalApi('POST','/calendars/'+gcalCalId()+'/events',token,ev);}
+function gcalPatchEvent(token,id,ev){return gcalApi('PATCH','/calendars/'+gcalCalId()+'/events/'+encodeURIComponent(id),token,ev);}
+function gcalDeleteEvent(token,id){return gcalApi('DELETE','/calendars/'+gcalCalId()+'/events/'+encodeURIComponent(id),token);}
+/* delete every berlin26-tagged event from today forward — used by Disconnect → "remove blocks" */
+function gcalRemoveBlocks(token){
+  const lo=Math.max(0,rawTodayIdx());
+  const timeMin=localMidnightISO(isoAt(lo)),timeMax=localMidnightISO(isoAt(Math.min(RACE_IDX+1,lo+90)));
+  return gcalApi('GET','/calendars/'+gcalCalId()+'/events?singleEvents=true&maxResults=2500'
+    +'&privateExtendedProperty='+encodeURIComponent('berlin26=1')
+    +'&timeMin='+encodeURIComponent(timeMin)+'&timeMax='+encodeURIComponent(timeMax),token)
+    .then(d=>Promise.all(((d&&d.items)||[]).map(ev=>gcalDeleteEvent(token,ev.id).catch(()=>{}))));
+}
+
+/* ---- placement maths (pure, minutes-of-day) ---- */
+function hhmmToMin(s){const m=/^(\d\d):(\d\d)$/.exec(s||'');return m?(+m[1]*60+ +m[2]):null;}
+function minToHHMM(m){m=Math.max(0,Math.min(1439,Math.round(m)));return p2(Math.floor(m/60))+':'+p2(m%60);}
+function localMidnightISO(isoDate){const m=isoDate.split('-').map(Number);return new Date(m[0],m[1]-1,m[2]).toISOString();}
+function localDateKey(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
+function freeGaps(busy,lo,hi){
+  const b=(busy||[]).map(x=>[Math.max(lo,x[0]),Math.min(hi,x[1])]).filter(x=>x[1]>x[0]).sort((a,c)=>a[0]-c[0]);
+  const merged=[];b.forEach(x=>{const t=merged[merged.length-1];if(t&&x[0]<=t[1])t[1]=Math.max(t[1],x[1]);else merged.push(x.slice());});
+  const gaps=[];let cur=lo;merged.forEach(x=>{if(x[0]>cur)gaps.push([cur,x[0]]);cur=Math.max(cur,x[1]);});if(cur<hi)gaps.push([cur,hi]);
+  return gaps;
+}
+function occupy(gaps,s,e){const out=[];gaps.forEach(g=>{if(e<=g[0]||s>=g[1]){out.push(g);return;}if(s>g[0])out.push([g[0],s]);if(e<g[1])out.push([e,g[1]]);});return out;}
+function placeBlock(gaps,dur,prefLo,prefHi){ // prefer a start inside [prefLo,prefHi]; else first fit
+  if(prefLo!=null){for(let k=0;k<gaps.length;k++){const g=gaps[k],s=Math.max(g[0],prefLo);if(s+dur<=g[1]&&s<=prefHi)return s;}}
+  for(let k=0;k<gaps.length;k++){if(gaps[k][1]-gaps[k][0]>=dur)return gaps[k][0];}
+  return null;
+}
+function placeInLargest(gaps,dur){let best=null;gaps.forEach(g=>{if(g[1]-g[0]>=dur&&(!best||(g[1]-g[0])>(best[1]-best[0])))best=g;});return best?best[0]:null;}
+
+/* steps still owed to the goal for day i (the reconciler and the Today widget share this).
+   Today with real Apple Health steps → size from the actual gap (goal − actual). Otherwise
+   (future days, or today before Health reports) → forecast from the desk-day baseline plus the
+   run's ~1000 steps/km while the run is still outstanding. */
+function stepsRemaining(i){
+  const f=fitCfg(),e=eff(i),iso=isoAt(i),today=rawTodayIdx();
+  const h=healthRef().d[iso]||{};
+  const actual=(i===today&&typeof h.steps==='number')?h.steps:null;
+  if(actual!=null){
+    // live truth: size walks from the ACTUAL remaining. The run, once it happens, lands in this
+    // count (Health/Strava) — so we never also forecast it here (avoids double-counting a run
+    // that's already in the step total but not yet logged). The brief: "sizes walks from the actual remaining".
+    return {goal:f.stepGoal,actual:actual,soFar:actual,runCredit:0,
+      remaining:Math.max(0,f.stepGoal-actual),projected:actual,covered:actual>=f.stepGoal};
+  }
+  // forecast (future days, or today before Health reports): desk-day baseline + the run's
+  // ~1000 steps/km, unless the run is already settled (done/missed) and so won't add more.
+  const l=sessLog(e.id),settled=!!(l&&(l.status==='done'||l.status==='missed'));
+  const runCredit=(e.zone!=='Rest'&&e.km>0&&!settled)?Math.round(e.km*1000):0;
+  return {goal:f.stepGoal,actual:null,soFar:f.ambientSteps,runCredit:runCredit,
+    remaining:Math.max(0,f.stepGoal-f.ambientSteps-runCredit),projected:f.ambientSteps+runCredit,covered:(f.stepGoal-f.ambientSteps-runCredit)<=0};
+}
+function gcalEvent(dateStr,startMin,durMin,title,desc,colorId,kind,dayId,slot){
+  const s=minToHHMM(startMin),e=minToHHMM(Math.min(1439,startMin+durMin));
+  return {summary:title,description:desc||'',
+    start:{dateTime:dateStr+'T'+s+':00',timeZone:GCAL_TZ},
+    end:{dateTime:dateStr+'T'+e+':00',timeZone:GCAL_TZ},
+    colorId:String(colorId),transparency:'transparent',reminders:{useDefault:false,overrides:[]},
+    extendedProperties:{private:{berlin26:'1',kind:kind,dayId:dayId,slot:String(slot==null?0:slot)}}};
+}
+/* does a stored event need patching? compare instants (Google echoes an offset; we send a naive
+   local time + timeZone, so parse both) plus title/colour. Description is intentionally not diffed. */
+function gcalDiffers(have,want){
+  const inst=t=>{try{return new Date(t).getTime();}catch(e){return NaN;}};
+  const hs=have.start&&have.start.dateTime,ws=want.start.dateTime,he=have.end&&have.end.dateTime,we=want.end.dateTime;
+  if(inst(hs)!==inst(ws)||inst(he)!==inst(we))return true;
+  if((have.summary||'')!==(want.summary||''))return true;
+  if(String(have.colorId||'')!==String(want.colorId||''))return true;
+  return false;
+}
+
+/* The reconciler. Pure-ish: reads eff()/Health/Oura + the live calendar, then converges the
+   calendar to the plan (patch if exists, insert if not, delete ours if no longer wanted).
+   Never touches an untagged event. No-ops cleanly when disconnected / offline / out of block. */
+let gcalBusy=false,gcalLastTry=0,gcalReconTimer=null,gcalPlanToday=null,gcalReconPending=false;
+function gcalReconcileSoon(){ // after an in-app edit that changes a day
+  if(!gcalConnected())return;
+  clearTimeout(gcalReconTimer);
+  gcalReconTimer=setTimeout(()=>gcalReconcile({announce:true}),1500);
+}
+function gcalReconcile(opts){
+  opts=opts||{};
+  const st=gcalState();
+  if(!st||!storageOK)return;
+  if(st.needsAuth&&!opts.manual)return;
+  if(gcalBusy){gcalReconPending=true;return;} // an edit during a slow sync: re-run once it lands
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)return; // airplane mode → no-op
+  const today=rawTodayIdx(),lo=Math.max(0,today),hi=Math.min(RACE_IDX,today+13);
+  if(hi<lo){return;} // entirely outside the block
+  gcalBusy=true;gcalLastTry=Date.now();
+  const f=fitCfg();
+  const timeMin=localMidnightISO(isoAt(lo)),timeMax=localMidnightISO(isoAt(Math.min(RACE_IDX+1,hi+1)));
+  gcalToken().then(token=>Promise.all([gcalListWindow(token,timeMin,timeMax),gcalListTagged(token,timeMin,timeMax)]).then(r=>({token,items:r[0],ours:r[1]}))).then(res=>{
+    const token=res.token,items=res.items||[],ours=res.ours||[];
+    // our blocks come from the authoritative tagged query (never re-inserted as duplicates);
+    // meetings (busy, untagged, timed) come from the window list.
+    const busyByDate={},oursByKey={};
+    ours.forEach(ev=>{const priv=ev.extendedProperties&&ev.extendedProperties.private;if(priv)oursByKey[(priv.dayId||'')+':'+(priv.kind||'')+':'+(priv.slot||'0')]=ev;});
+    items.forEach(ev=>{
+      const priv=ev.extendedProperties&&ev.extendedProperties.private;
+      if(priv&&priv.berlin26==='1')return; // ours — handled via the tagged list above
+      if(ev.status==='cancelled')return;
+      if(ev.transparency==='transparent')return; // free events never block
+      const sdt=ev.start&&ev.start.dateTime;if(!sdt)return; // skip all-day
+      const sd=new Date(sdt),ed=new Date((ev.end&&ev.end.dateTime)||sdt);
+      const key=localDateKey(sd);
+      const sm=sd.getHours()*60+sd.getMinutes();
+      const em=localDateKey(ed)===key?(ed.getHours()*60+ed.getMinutes()):1440;
+      (busyByDate[key]||(busyByDate[key]=[])).push([sm,Math.max(sm+5,em)]);
+    });
+
+    const desired={},keep={};let nRun=0,nWalk=0,nStr=0;const blocked=[];
+    for(let i=lo;i<=hi;i++){
+      const e=eff(i),dateStr=isoAt(i),wd=i%7;
+      let gaps=freeGaps(busyByDate[dateStr],390,1260); // active day 06:30–21:00
+      const runDay=e.zone!=='Rest'&&e.km>0;
+      let runEnd=null;
+      const todayItems=(i===today)?[]:null;
+      // 1) run
+      if(runDay){
+        const pace=ZONE_MID_PACE[e.zone]||360;
+        const dur=clamp(Math.round(e.km*pace/60)+10,15,300);
+        const isLong=e.zone==='Long';
+        let start;
+        if(isLong){start=placeBlock(gaps,dur,540,540);if(start==null)start=placeBlock(gaps,dur,null,null);}
+        else{const ls=hhmmToMin(f.lunchStart)||660,le=hhmmToMin(f.lunchEnd)||840;start=placeBlock(gaps,dur,ls,Math.max(ls,le-dur));if(start==null)start=placeBlock(gaps,dur,null,null);}
+        if(start!=null){
+          gaps=occupy(gaps,start,start+dur);runEnd=start+dur;nRun++;
+          const col=GCAL_COLOR[e.zone]||'2';
+          desired[e.id+':run:0']=gcalEvent(dateStr,start,dur,'🏃 '+headline(e),e.text,col,'run',e.id,0);
+          if(todayItems)todayItems.push({kind:'run',label:headline(e),time:minToHHMM(start)+'–'+minToHHMM(start+dur)});
+        }else{blocked.push(DOW[wd]);if(oursByKey[e.id+':run:0'])keep[e.id+':run:0']=1;} // fully boxed in: leave the prior event, don't silently delete — propose a move instead
+      }
+      // 2) walks to the step goal
+      if(f.diariseWalks&&i>=today&&(i-today)<f.walkDaysAhead){
+        const sr=stepsRemaining(i);
+        if(sr.remaining>=500){
+          const totalMin=Math.round(sr.remaining/110);
+          const nW=totalMin>70?3:(totalMin>35?2:1);
+          const perMin=Math.max(10,Math.round(totalMin/nW)),perSteps=Math.round(sr.remaining/nW/100)*100;
+          for(let w=0;w<nW;w++){
+            const s=placeInLargest(gaps,perMin);if(s==null)break;
+            gaps=occupy(gaps,s,s+perMin);nWalk++;
+            desired[e.id+':walk:'+w]=gcalEvent(dateStr,s,perMin,'🚶 Walk — ~'+perSteps+' steps (~'+perMin+' min)','Top-up toward '+sr.goal+' steps.','10','walk',e.id,w);
+            if(todayItems)todayItems.push({kind:'walk',label:'Walk · ~'+perSteps+' steps',time:minToHHMM(s)+'–'+minToHHMM(s+perMin)});
+          }
+        }
+      }
+      // 3) strength — Wed=B, Sun=A into a free gap; Thu=C-light right after the run.
+      //    Never the day before a long run, the day after one, or on a low-readiness day.
+      if(f.diariseStrength){
+        let circuit=null;if(wd===2)circuit='B';else if(wd===6)circuit='A';else if(wd===3)circuit='C';
+        const nextLong=(i+1<=RACE_IDX)&&eff(i+1).zone==='Long';
+        const afterLong=(i-1>=0)&&eff(i-1).zone==='Long';
+        let lowReady=false;if(i===today){const h=healthRef().d[dateStr];if(h&&h.rs!=null&&h.rs<60)lowReady=true;}
+        if(circuit&&!nextLong&&!afterLong&&!lowReady){
+          const dur=circuit==='C'?20:30;
+          let s=(circuit==='C'&&runEnd!=null)?placeBlock(gaps,dur,runEnd,runEnd):null;
+          if(s==null)s=placeInLargest(gaps,dur);
+          if(s!=null){
+            gaps=occupy(gaps,s,s+dur);nStr++;
+            desired[e.id+':strength:0']=gcalEvent(dateStr,s,dur,'🏋️ Strength · circuit '+circuit,'Rest-day circuit '+circuit+'.','8','strength',e.id,0);
+            if(todayItems)todayItems.push({kind:'strength',label:'Strength · circuit '+circuit,time:minToHHMM(s)+'–'+minToHHMM(s+dur)});
+          }
+        }
+      }
+      // 4) learning (off by default) — 2h Mon/Wed/Sun evenings
+      if(f.diariseLearning&&(wd===0||wd===2||wd===6)){
+        const s=placeBlock(gaps,120,19*60,19*60);
+        if(s!=null){gaps=occupy(gaps,s,s+120);desired[e.id+':learning:0']=gcalEvent(dateStr,s,120,'📚 Learning · 2h','Evening study block.','3','learning',e.id,0);
+          if(todayItems)todayItems.push({kind:'learning',label:'Learning · 2h',time:minToHHMM(s)+'–'+minToHHMM(s+120)});}
+      }
+      // 5) foot/calf — in-app reminder by default; calendar only if diariseFoot
+      if(f.diariseFoot){
+        desired[e.id+':foot:0']=gcalEvent(dateStr,7*60,10,'🦶 Foot & calf · AM','On waking: calf raises + foot mobility.','8','foot',e.id,0);
+        desired[e.id+':foot:1']=gcalEvent(dateStr,20*60+30,10,'🦶 Foot & calf · PM','Evening: calf raises + foot mobility.','8','foot',e.id,1);
+      }
+      if(todayItems){
+        const sr=stepsRemaining(i);
+        gcalPlanToday={date:dateStr,remaining:sr.remaining,goal:sr.goal,covered:sr.remaining<=0,items:todayItems};
+      }
+    }
+
+    // converge: patch/insert wanted, delete ours that are no longer wanted
+    const ops=[];let nIns=0,nPat=0,nDel=0;
+    for(const key in desired){
+      const want=desired[key],have=oursByKey[key];
+      if(have){if(gcalDiffers(have,want))ops.push(gcalPatchEvent(token,have.id,want).then(()=>{nPat++;}).catch(()=>{}));}
+      else ops.push(gcalInsert(token,want).then(()=>{nIns++;}).catch(()=>{}));
+    }
+    for(const key in oursByKey){if(!desired[key]&&!keep[key])ops.push(gcalDeleteEvent(token,oursByKey[key].id).then(()=>{nDel++;}).catch(()=>{}));}
+    return Promise.all(ops).then(()=>({nRun,nWalk,nStr,nIns,nPat,nDel,blocked}));
+  }).then(r=>{
+    gcalBusy=false;
+    if(gcalReconPending){gcalReconPending=false;gcalReconcileSoon();} // an edit arrived mid-sync — catch it up
+    const parts=[];
+    if(r.nRun)parts.push(r.nRun+' run'+(r.nRun===1?'':'s'));
+    if(r.nWalk)parts.push(r.nWalk+' walk'+(r.nWalk===1?'':'s'));
+    if(r.nStr)parts.push(r.nStr+' strength');
+    let note=parts.length?parts.join(', '):'nothing to place';
+    if(r.nIns||r.nPat||r.nDel)note+=' · '+r.nIns+' new, '+r.nPat+' re-timed'+(r.nDel?', '+r.nDel+' cleared':'');
+    if(r.blocked.length)note+=' · '+r.blocked.join('/')+' run boxed in — move from the day card';
+    gcalMeta().lastSync=new Date().toISOString();gcalMeta().note=note;save();
+    gcalPatchTok({needsAuth:0,err:null});
+    if(opts.announce)snack('Calendar · '+note);
+    rerenderKeepScroll();
+  }).catch(err=>{
+    gcalBusy=false;
+    if(gcalReconPending){gcalReconPending=false;gcalReconcileSoon();}
+    if(err&&err.auth){
+      const wasAuth=!!(gcalState()&&gcalState().needsAuth);
+      gcalPatchTok({needsAuth:1});
+      if(!wasAuth||opts.manual)snack('Google Calendar needs reconnecting — Training tab, Reconnect.');
+    }else{
+      gcalMeta().note=null;save();gcalPatchTok({err:'Couldn’t reach Google Calendar just now.'});
+      if(opts.manual)snack('Couldn’t reach Google Calendar — try again in a minute.');
+    }
+    rerenderKeepScroll();
+  });
+}
+function gcalDisconnect(){
+  if(!confirm('Disconnect Google Calendar? The tokens on this phone are deleted; your meetings are never touched.'))return;
+  const wipe=()=>{try{localStorage.removeItem(GCAL_KEY);}catch(e){}const g=gcalMeta();g.lastSync=null;g.note=null;g.syncToken=null;save();rerenderKeepScroll();};
+  if(gcalConnected()&&confirm('Also remove the training blocks this app added to your calendar?')){
+    gcalToken().then(token=>gcalRemoveBlocks(token)).then(()=>{snack('Disconnected · calendar blocks removed');wipe();})
+      .catch(()=>{snack('Disconnected — but couldn’t remove every block (reconnect to retry).');wipe();});
+  }else wipe();
+}
+
+/* ---- Google Calendar UI: connect card + the fit-it-in settings card ---- */
+function gcalCard(){
+  const st=gcalState(),g=gcalMeta();
+  if(!st)return '<section class="card"><div class="spread"><h2 style="margin:0">Google Calendar</h2><span class="chip neutral">Not connected</span></div>'
+    +EmptyState({note:'Two-way: your meetings stay put, and runs, walks and circuits get written around them — all marked free, colour-coded, and tidied up on every sync.',action:{label:'Connect Google Calendar',name:'gcalconnect'},mt:'8px'})
+    +'</section>';
+  return '<section class="card"><div class="spread"><h2 style="margin:0">Google Calendar</h2>'
+    +(st.needsAuth?'<span class="chip c-hard">Reconnect</span>':'<span class="chip c-easy">Connected</span>')+'</div>'
+    +'<p class="note" style="margin:8px 0 0">Connected · '+esc(g.calendarId||'primary')+'.</p>'
+    +'<p class="mini" style="margin:4px 2px 0">'+(g.lastSync?'Last sync: '+fmtSyncTime(g.lastSync)+(g.note?' · '+esc(g.note):''):'Not synced yet')+'</p>'
+    +(st.err?'<p class="mini" style="margin:2px 2px 0">'+esc(st.err)+'</p>':'')
+    +(st.needsAuth
+      ?'<button class="btn2" style="width:100%;margin-top:10px" data-action="gcalconnect">Reconnect Google Calendar</button>'
+      :'<button class="btn2" style="width:100%;margin-top:10px" data-action="gcalsync">Sync now</button>')
+    +'<button class="btn3" style="width:100%;margin-top:8px;color:var(--sub)" data-action="gcaldisconnect">Disconnect</button>'
+    +'</section>';
+}
+function fitCard(){
+  const f=fitCfg();
+  const tog=(k,label,sub)=>'<div class="sheetrow" style="cursor:default"><span style="flex:1;font-weight:600">'+label+(sub?'<div class="mini">'+sub+'</div>':'')+'</span>'
+    +'<button class="switch" role="switch" aria-checked="'+(!!f[k])+'" aria-pressed="'+(!!f[k])+'" aria-label="'+esc(String(label).replace(/&amp;/g,'and'))+'" data-action="fittoggle" data-k="'+k+'" style="flex:none"></button></div>';
+  return '<section class="card"><h2>Calendar &amp; walks</h2>'
+    +'<p class="note" style="margin:6px 0 10px">Runs slot into the lunch window around meetings; walks top you up to the step goal in the gaps.</p>'
+    +'<div class="ifield"><span style="flex:1">Lunch window</span>'
+      +'<input class="stepin" style="flex:0 0 96px;font-size:18px" type="time" data-action="fittime" data-k="lunchStart" value="'+esc(f.lunchStart)+'" aria-label="Lunch window start">'
+      +'<span class="stepu">to</span>'
+      +'<input class="stepin" style="flex:0 0 96px;font-size:18px" type="time" data-action="fittime" data-k="lunchEnd" value="'+esc(f.lunchEnd)+'" aria-label="Lunch window end"></div>'
+    +'<div class="ifield"><span style="flex:1">Daily step goal</span>'
+      +'<input class="stepin" style="flex:0 0 116px;font-size:22px" type="number" inputmode="numeric" min="2000" max="30000" step="500" data-action="fitnum" data-k="stepGoal" value="'+f.stepGoal+'" aria-label="Daily step goal"><span class="stepu">steps</span></div>'
+    +'<div class="ifield"><span style="flex:1">Desk-day baseline<div class="mini">steps without trying</div></span>'
+      +'<input class="stepin" style="flex:0 0 116px;font-size:22px" type="number" inputmode="numeric" min="0" max="20000" step="500" data-action="fitnum" data-k="ambientSteps" value="'+f.ambientSteps+'" aria-label="Desk-day baseline steps"><span class="stepu">steps</span></div>'
+    +'<div class="ifield"><span style="flex:1">Diarise walks ahead<div class="mini">how many days to fill</div></span>'
+      +'<input class="stepin" style="flex:0 0 96px;font-size:22px" type="number" inputmode="numeric" min="0" max="14" step="1" data-action="fitnum" data-k="walkDaysAhead" value="'+f.walkDaysAhead+'" aria-label="Days ahead to diarise walks"><span class="stepu">days</span></div>'
+    +tog('diariseWalks','Diarise walks','split into the day’s free gaps')
+    +tog('diariseStrength','Diarise strength','rest-day circuits + Thu C-light')
+    +tog('diariseLearning','Diarise learning','2h Mon/Wed/Sun evenings')
+    +tog('diariseFoot','Diarise foot &amp; calf','short AM + PM mobility')
+    +'</section>';
+}
+
+/* ---- Today: steps ring vs 10k + the fit-it-in list ---- */
+function stepRing(pct,size){
+  size=size||120;const r=(size-14)/2,cx=size/2,cy=size/2,C=2*Math.PI*r,fill=C*clamp(pct,0,100)/100;
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" aria-hidden="true" style="flex:none">'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--line)" stroke-width="11"/>'
+    +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="var(--accent)" stroke-width="11" stroke-linecap="round" stroke-dasharray="'+fill.toFixed(1)+' '+(C-fill).toFixed(1)+'" transform="rotate(-90 '+cx+' '+cy+')"/></svg>';
+}
+function wSteps(){
+  const f=fitCfg(),sr=stepsRemaining(todayIdx),e=eff(todayIdx);
+  const shown=sr.actual!=null?sr.actual:sr.projected;
+  const pct=sr.goal>0?(shown/sr.goal*100):0;
+  const big=sr.actual!=null?fmtKcal(sr.actual):'~'+fmtKcal(sr.projected);
+  const sub=sr.actual!=null?'Apple Health'+(sr.covered?' · 10k covered ✓':''):(healthRef().d[isoAt(todayIdx)]&&healthRef().d[isoAt(todayIdx)].steps!=null?'':'forecast — run the Health Shortcut for live steps');
+  // fit-it-in list: labels always come from the live plan; borrow the reconciler's
+  // chosen times when its snapshot is for today (else a generic placement hint)
+  const plan=(gcalPlanToday&&gcalPlanToday.date===isoAt(todayIdx))?gcalPlanToday.items:null;
+  const timeFor=k=>{if(!plan)return null;const m=plan.find(it=>it.kind===k);return m?m.time:null;};
+  let items=[];
+  if(e.zone!=='Rest'&&e.km>0)items.push({kind:'run',label:headline(e),time:timeFor('run')||(f.lunchStart+'–'+f.lunchEnd)});
+  if(f.diariseWalks&&sr.remaining>=500)items.push({kind:'walk',label:'Walk · ~'+fmtKcal(sr.remaining)+' steps',time:timeFor('walk')||'in the gaps'});
+  const wd=todayIdx%7,c=wd===2?'B':wd===6?'A':wd===3?'C':null;
+  if(f.diariseStrength&&c)items.push({kind:'strength',label:'Strength · circuit '+c,time:timeFor('strength')||(wd===3?'after the run':'free gap')});
+  items.push({kind:'foot',label:'Foot & calf',time:'on waking + evening'});
+  const glyph={run:'🏃',walk:'🚶',strength:'🏋️',learning:'📚',foot:'🦶'};
+  let list='';
+  items.forEach(it=>{list+='<div class="row" style="gap:8px;align-items:baseline;margin-top:6px;justify-content:space-between">'
+    +'<span style="font-size:13px"><span aria-hidden="true">'+(glyph[it.kind]||'•')+'</span> '+esc(it.label)+'</span>'
+    +'<span class="mini" style="flex:none">'+esc(it.time)+'</span></div>';});
+  return '<section class="card"><div class="spread"><h2>Steps</h2>'
+    +(sr.covered?'<span class="chip c-easy">10k covered ✓</span>':'<span class="chip neutral">'+fmtKcal(sr.remaining)+' to go</span>')+'</div>'
+    +'<div class="row" style="gap:16px;align-items:center;margin-top:6px">'
+    +'<div style="position:relative;flex:none">'+stepRing(pct,116)
+    +'<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">'
+    +'<div class="big num" style="font-size:24px;line-height:1">'+big+'</div><div class="mini">/ '+fmtKcal(sr.goal)+'</div></div></div>'
+    +'<div style="flex:1;min-width:0">'+(sub?'<p class="mini" style="margin:0 0 2px">'+esc(sub)+'</p>':'')+list+'</div>'
+    +'</div></section>';
 }
 
 /* ---------------- 3d. Derived intelligence ----------------
@@ -3298,6 +3743,7 @@ const WIDGET_DEFS=[
   {id:'forecast',label:'Berlin forecast',render:wForecast},
   {id:'recov',label:'Recovery (Oura)',render:wRecovery},
   {id:'session',label:'Today’s session',render:wSession},
+  {id:'steps',label:'Steps to 10k + fit-it-in',render:wSteps},
   {id:'catchup',label:'Catch-up (auto)',render:wCatchup},
   {id:'week',label:'Week progress',render:wWeek},
   {id:'fuel',label:'Fuel target',render:wFuel},
@@ -3389,7 +3835,7 @@ function dayDragEnd(){
     const prevOrder=orderOf(w).slice();
     swapDays(w,pos,b);
     haptic(true);
-    rerenderKeepScroll();
+    rerenderKeepScroll();gcalReconcileSoon();
     requestAnimationFrame(()=>{
       [w*7+pos,w*7+b].forEach(ix=>{const c=document.getElementById('day-'+ix);if(c)c.classList.add('hl');});
       document.querySelectorAll('.tag-moved').forEach(t2=>t2.classList.add('pop'));
@@ -3397,7 +3843,7 @@ function dayDragEnd(){
     snack('Swapped '+DOW[pos]+' and '+DOW[b]+' — fuelling follows',()=>{
       const ident=prevOrder.every((v,i)=>v===i);
       if(ident)delete S.order[w];else S.order[w]=prevOrder;
-      save();rerenderKeepScroll();
+      save();rerenderKeepScroll();gcalReconcileSoon();
     });
   }else{
     card.classList.add('swipe-snapback');
@@ -3839,6 +4285,8 @@ function vTrain(){
     +boardCard()
     +stravaCard()
     +ouraCard()
+    +gcalCard()
+    +fitCard()
     +'</div>';
 }
 
@@ -4589,10 +5037,10 @@ function deckSkip(i){
   const e=eff(i);
   const prev=S.sessions[e.id]?Object.assign({},S.sessions[e.id]):null;
   logSession(e.id,{status:'missed',km:0});
-  rerenderKeepScroll();
+  rerenderKeepScroll();gcalReconcileSoon();
   snack('Skipped · '+headline(e),()=>{
     if(prev)S.sessions[e.id]=prev;else delete S.sessions[e.id];
-    save();rerenderKeepScroll();
+    save();rerenderKeepScroll();gcalReconcileSoon();
   });
 }
 document.addEventListener('swiperight',ev=>{
@@ -4639,7 +5087,7 @@ document.addEventListener('click',ev=>{
       if(st==='missed'&&cur.km==null)patch.km=0;
       logSession(id,patch);
     }
-    rerenderKeepScroll();
+    rerenderKeepScroll();gcalReconcileSoon();
   }
   else if(a==='movestart'){openMoveSheet(Number(el.dataset.i));}
   else if(a==='logsheet'){openLogSheet(Number(el.dataset.i));}
@@ -4747,7 +5195,7 @@ document.addEventListener('click',ev=>{
     const cfg=widgetConfig(),i=cfg.findIndex(x=>x.id===el.dataset.id),j=i+Number(el.dataset.dir);
     if(i>=0&&j>=0&&j<cfg.length){const t=cfg[i];cfg[i]=cfg[j];cfg[j]=t;S.widgets=cfg;save();rerenderKeepScroll();openWidgetSheet();}
   }
-  else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();}
+  else if(a==='swap'){swapDays(Number(el.dataset.w),Number(el.dataset.a),Number(el.dataset.b));closeSheet();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='resetweek'){openResetSheet(Number(el.dataset.w));}
   else if(a==='resetconfirm'){
     const w=Number(el.dataset.w);
@@ -4901,9 +5349,14 @@ document.addEventListener('click',ev=>{
     else navigator.clipboard.readText().then(t=>{
       try{
         const res=mergePayload(JSON.parse(t),'shortcut');
-        alert((res.sessions||res.weights)
-          ?'Imported '+res.weights+' weight'+(res.weights===1?'':'s')+' and '+res.sessions+' session log'+(res.sessions===1?'':'s')+'. Existing entries were kept.'
+        const bits=[];
+        if(res.weights)bits.push(res.weights+' weight'+(res.weights===1?'':'s'));
+        if(res.sessions)bits.push(res.sessions+' session log'+(res.sessions===1?'':'s'));
+        if(res.health)bits.push('steps');
+        alert(bits.length
+          ?'Imported '+bits.join(' and ')+'. Existing entries were kept.'
           :'Nothing new to import — entries already on this phone always win.');
+        if(res.health)gcalReconcileSoon(); // fresh steps → re-size walks
         rerenderKeepScroll();
       }catch(e){alert('Clipboard doesn’t contain a valid payload. Expected JSON like {"weights":[{"date":"2026-06-12","lb":208.6}]}.');}
     }).catch(()=>alert('Couldn’t read the clipboard.'));
@@ -4955,6 +5408,10 @@ document.addEventListener('click',ev=>{
       rerenderKeepScroll();
     }
   }
+  else if(a==='gcalconnect'){gcalConnect();}
+  else if(a==='gcalsync'){gcalReconcile({manual:true,announce:true});}
+  else if(a==='gcaldisconnect'){gcalDisconnect();}
+  else if(a==='fittoggle'){const f=fitCfg(),k=el.dataset.k;f[k]=!f[k];save();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
   else if(a==='cityopen'){openCitySheet();}
   else if(a==='paintmode'){
@@ -5023,6 +5480,8 @@ document.addEventListener('change',ev=>{
   else if(a==='foodgv'){if(ui.food&&ui.food.pick){const v=Math.round(parseFloat(el.value));if(isFinite(v)){ui.food.grams=clamp(v,5,2000);el.value=ui.food.grams;const kc=document.getElementById('foodkc');if(kc)kc.textContent=fmtKcal(Math.round(ui.food.pick.k100*ui.food.grams/100));}}}
   else if(a==='pcval'){const c=PC_SECTIONS[ui.pcOpen];if(!c)return;const p=c.parse(el.value);if(p!=null&&isFinite(p)){ui.pcVal=clamp(p,c.min,c.max);const pv=document.getElementById('pcpreview');if(pv)pv.innerHTML=pcPreviewBlock();}}
   else if(a==='pcpacev'){if(!S.plan)S.plan={};if(!S.plan.paceShift)S.plan.paceShift={};const z=el.dataset.z,v=clamp(Math.round(parseFloat(el.value))||0,-60,60);if(v===0)delete S.plan.paceShift[z];else S.plan.paceShift[z]=v;save();pcRefresh();rerenderKeepScroll();}
+  else if(a==='fittime'){const f=fitCfg(),k=el.dataset.k;if(HHMM.test(el.value)){f[k]=el.value;save();gcalReconcileSoon();}else el.value=f[k];}
+  else if(a==='fitnum'){const f=fitCfg(),k=el.dataset.k,lim={stepGoal:[2000,30000],ambientSteps:[0,20000],walkDaysAhead:[0,14]}[k];let v=Math.round(parseFloat(el.value));if(!isFinite(v))v=f[k];if(lim)v=clamp(v,lim[0],lim[1]);f[k]=v;el.value=v;save();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='stravaday'){
     const p=stravaPend[Number(el.dataset.idx)];
     if(p){p.i=Number(el.value);stravaSheetRefresh();}
@@ -5147,12 +5606,19 @@ document.addEventListener('keydown',ev=>{
 });
 
 /* Shortcut hand-off: opening <app-url>#log=<base64 JSON> merges the payload
-   (weights/sessions) — the zero-backend bridge for Apple Health via iOS Shortcuts. */
+   (weights/sessions/steps) — the zero-backend bridge for Apple Health via iOS Shortcuts. */
 if(location.hash.indexOf('#log=')===0){
   try{
     const res=mergePayload(JSON.parse(atob(decodeURIComponent(location.hash.slice(5)))),'shortcut');
     history.replaceState(null,'',location.pathname+location.search);
-    if(res.sessions||res.weights)setTimeout(()=>alert('Imported '+res.weights+' weight'+(res.weights===1?'':'s')+' and '+res.sessions+' session log'+(res.sessions===1?'':'s')+' from Shortcut.'),300);
+    const bits=[];
+    if(res.weights)bits.push(res.weights+' weight'+(res.weights===1?'':'s'));
+    if(res.sessions)bits.push(res.sessions+' session log'+(res.sessions===1?'':'s'));
+    if(res.health)bits.push('steps');
+    if(bits.length){
+      const msg='Imported '+bits.join(' and ')+' from Health.';
+      setTimeout(()=>{snack(msg);if(res.health)gcalReconcileSoon();},300); // fresh steps → re-size walks
+    }
   }catch(e){}
 }
 
@@ -5166,31 +5632,55 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTod
 addEventListener('pageshow',refreshToday);
 addEventListener('focus',refreshToday);
 
-/* ---------------- 10b. Strava boot ---------------- */
-/* OAuth return: Strava redirects back with ?code= (and the scope actually granted) */
-const stravaQS=new URLSearchParams(location.search);
-if(stravaQS.get('code')||stravaQS.get('error')){
+/* ---------------- 10b. Strava + Google Calendar boot ---------------- */
+/* OAuth return: Strava AND Google both redirect back here with ?code=. The state param
+   tells them apart (state=strava / state=gcal); legacy Strava grants carry no state. */
+const oauthQS=new URLSearchParams(location.search);
+const oauthState=oauthQS.get('state')||'';
+if(oauthQS.get('code')||oauthQS.get('error')){
   history.replaceState(null,'',location.pathname+location.hash);
-  const stravaCode=stravaQS.get('code'),stravaScope=stravaQS.get('scope')||'';
-  if(stravaCode){ // no code = cancelled on Strava's page; nothing to do
-    fetch(STRAVA_PROXY+'/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:stravaCode})})
-      .then(r=>{if(!r.ok)throw 0;return r.json();})
-      .then(d=>{
-        if(!d.access_token||!d.refresh_token)throw 0;
-        stravaSave({access:d.access_token,refresh:d.refresh_token,expiresAt:d.expires_at,athlete:d.athlete||null,lastSync:null,note:null,err:null,needsAuth:0});
-        snack('Strava connected'+(d.athlete&&d.athlete.firstname?' as '+d.athlete.firstname:''));
-        rerenderKeepScroll();
-        if(stravaScope&&stravaScope.indexOf('activity:read')<0)snack('Strava connected without activity access — disconnect, reconnect, and leave every permission ticked.');
-        else stravaSync(false);
-      })
-      .catch(()=>snack('Couldn’t finish connecting Strava — try again in a minute.'));
+  const oauthCode=oauthQS.get('code');
+  if(oauthState==='gcal'){ // Google Calendar
+    if(oauthCode){
+      fetch(GCAL_PROXY+'/gcal/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:oauthCode,redirect_uri:GCAL_REDIRECT})})
+        .then(r=>{if(!r.ok)throw 0;return r.json();})
+        .then(d=>{
+          if(!d.access_token)throw 0;
+          gcalSave({access:d.access_token,refresh:d.refresh_token||null,expiresAt:d.expires_at,scope:d.scope||null,needsAuth:0,err:null});
+          const g=gcalMeta();g.lastSync=null;g.note=null;save();
+          snack('Google Calendar connected · primary');
+          rerenderKeepScroll();
+          if(!d.refresh_token)snack('Connected, but Google sent no refresh token — remove the app at myaccount.google.com/permissions, then reconnect.');
+          gcalReconcile({manual:true,announce:true});
+        })
+        .catch(()=>snack('Couldn’t finish connecting Google Calendar — try again in a minute.'));
+    }
+  }else{ // Strava (state=strava or legacy no-state grant)
+    const stravaScope=oauthQS.get('scope')||'';
+    if(oauthCode){ // no code = cancelled on Strava's page; nothing to do
+      fetch(STRAVA_PROXY+'/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:oauthCode})})
+        .then(r=>{if(!r.ok)throw 0;return r.json();})
+        .then(d=>{
+          if(!d.access_token||!d.refresh_token)throw 0;
+          stravaSave({access:d.access_token,refresh:d.refresh_token,expiresAt:d.expires_at,athlete:d.athlete||null,lastSync:null,note:null,err:null,needsAuth:0});
+          snack('Strava connected'+(d.athlete&&d.athlete.firstname?' as '+d.athlete.firstname:''));
+          rerenderKeepScroll();
+          if(stravaScope&&stravaScope.indexOf('activity:read')<0)snack('Strava connected without activity access — disconnect, reconnect, and leave every permission ticked.');
+          else stravaSync(false);
+        })
+        .catch(()=>snack('Couldn’t finish connecting Strava — try again in a minute.'));
+    }
   }
-}else if(stravaConnected()){
-  setTimeout(()=>stravaSync(false),600); // routine sync on open
+}else{
+  if(stravaConnected())setTimeout(()=>stravaSync(false),600); // routine sync on open
+  if(gcalConnected())setTimeout(()=>gcalReconcile({}),1700);  // reconcile on open
 }
 /* …and on resume, throttled — iOS PWAs resume far more often than they reload */
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden&&stravaConnected()&&Date.now()-stravaLastTry>15*60000)stravaSync(false);
+});
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden&&gcalConnected()&&Date.now()-gcalLastTry>15*60000)gcalReconcile({});
 });
 
 /* Oura rides the same rhythm: sync on open and on throttled resume */

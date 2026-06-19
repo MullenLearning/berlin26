@@ -187,6 +187,41 @@ touches sessions or weights.
 - First sync backfills from a week before the block so baselines exist on day one;
   syncs run on open/resume (throttled) plus Sync now on the Training tab.
 
+## Google Calendar + Apple Health steps (v3)
+
+The app becomes the hub that ties Strava, Oura, Apple Health **and Google Calendar**
+together. See `BERLIN26-V3-CALENDAR-HEALTH.md` for the full brief and `GOOGLE-OAUTH-SETUP.md`
+for the 5-minute OAuth-client setup.
+
+- **Two-way Google Calendar.** Connect from the **Training tab** (OAuth, same Worker as
+  Strava — only token exchange/refresh proxy through it; reads/writes are CORS-open and go
+  browser → `www.googleapis.com` directly). Tokens live in localStorage key
+  `berlin2026.gcal`, **outside backups**; only sync metadata (`S.gcal` = last sync, calendar
+  id, summary) rides the backup. **Set-up:** paste your **public** Google client id into the
+  `GCAL_CLIENT_ID` const near the top of the script in `index.html` (or set
+  `localStorage['berlin2026.gcalClientId']`); the **secret** stays only in the Worker.
+- **The reconciler** (`reconcile`, rolling today…+13): reads your meetings, then writes/patches/
+  deletes the app's own training blocks around them so re-running never duplicates. Every event
+  it writes is `transparency:transparent` (never blocks real availability) and carries
+  `extendedProperties.private={berlin26:'1',kind,dayId,slot}` so it only ever touches its own
+  events. Runs slot into the lunch window (default 11:00–14:00) around busy meetings; long runs
+  default to a 09:00 morning slot. Meetings are fixed — **training yields**. A user day-move
+  (`S.order`) is pinned; the reconciler only re-times *within* the day and surfaces a "move it"
+  note if a run is fully boxed in. Colour-coded by Google `colorId`.
+- **Diarised walks to 10k.** The shortfall to the step goal (after crediting the run and the
+  steps already walked) is placed as real calendar events in the day's free gaps, split into
+  2–3 walks when long, regenerated each sync so old walk blocks never pile up.
+- **Apple Health steps** feed in through the existing `#log=` / paste bridge: an optional
+  `steps:[{date,count}]` array lands in `S.health.d[date].steps` (source `apple-health`),
+  additive and idempotent — re-running the Shortcut lets the count climb without duplicating.
+  Walk sizing uses the *actual* remaining; the **Steps** Today widget shows a ring vs 10k, the
+  fit-it-in list (run/walk/strength/foot with the times the reconciler chose), and "covered ✓"
+  once the day clears the goal.
+- **Calendar & walks** settings card (Training tab): lunch window, step goal, desk-day
+  baseline, days-ahead, and toggles for diarising walks / strength / learning / foot.
+- Reconcile runs on connect, on open/resume (throttled like Strava), on **Sync now**, and after
+  any in-app edit that changes a day. Offline / not connected / out-of-block → it no-ops cleanly.
+
 ## Nutrition tab v2 (12 Jun, late)
 
 The tab turned from plan-display into deficit-tracking, powered by the same burn
@@ -238,9 +273,8 @@ the data earns the claim).
 Phase 1 is manual-only by design. The code is structured for later importers:
 all writes flow through `logSession()` / `logWeight()` in `index.html` (§3 of the script),
 each entry carries a `source` tag, and sources register in `DATA_SOURCES`
-(`manual`, `strava`, `shortcut` today). Apple Health (via iOS Shortcuts) is next; each
-source lands its data through the same two functions, with manual entry remaining the
-fallback.
+(`manual`, `strava`, `shortcut`, `apple-health`, `gcal`). Each source lands its data
+through the same two functions, with manual entry remaining the fallback.
 
 **The Phase 2 bridge already exists.** Two zero-backend ingestion paths accept a JSON
 payload and merge it additively (existing entries on the phone always win):
@@ -253,12 +287,14 @@ Payload shape (any subset):
 ```json
 {
   "weights":  [{ "date": "2026-06-12", "lb": 208.6 }],
-  "sessions": { "w1d4": { "status": "done", "km": 9, "rpe": 4 } }
+  "sessions": { "w1d4": { "status": "done", "km": 9, "rpe": 4 } },
+  "steps":    [{ "date": "2026-06-19", "count": 8200 }]
 }
 ```
 
-An iOS Shortcut can read Apple Health (body mass / workouts), build this JSON, Base64-encode
-it, and open the URL — that's Phase 2 without a server.
+An iOS Shortcut can read Apple Health (body mass / workouts / **steps today**), build this
+JSON, Base64-encode it, and open the URL — that's the bridge without a server. The `steps`
+array merges into `S.health.d[date].steps` (climbing, idempotent) and drives walk sizing.
 
 ## Deploy checklist
 

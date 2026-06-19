@@ -7,9 +7,16 @@
      GET /oura/v2/usercollection/<endpoint>?...  → forwarded with the
      caller's Authorization header. The Oura token lives on the phone;
      this is a dumb pipe with a path whitelist.
-   Env vars (Worker → Settings → Variables; encrypt the secret):
+   3. Google Calendar OAuth (token endpoint has no browser CORS for this flow):
+     POST /gcal/token    {code, redirect_uri} → tokens (first connect, access_type=offline)
+     POST /gcal/refresh  {refresh_token}      → fresh access token
+     Calendar reads/writes (events.list/insert/patch/delete) ARE CORS-open and go
+     browser → www.googleapis.com directly; the Worker only does token exchange.
+   Env vars (Worker → Settings → Variables; encrypt the secrets):
      STRAVA_CLIENT_ID      257604
      STRAVA_CLIENT_SECRET  <from https://www.strava.com/settings/api>
+     GCAL_CLIENT_ID        <Google Cloud OAuth client, type "Web application">
+     GCAL_CLIENT_SECRET    <same client>
    No storage, no logging — tokens pass through and are never kept. */
 
 const PROD_ORIGIN = 'https://mullenlearning.github.io';
@@ -50,6 +57,42 @@ export default {
       }
       const body = await r.text();
       return new Response(body, { status: r.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+    }
+
+    // Google Calendar OAuth — token exchange + refresh (reads/writes are browser-direct, CORS-open)
+    if (request.method === 'POST' && (path === '/gcal/token' || path === '/gcal/refresh')) {
+      let gb = {};
+      try { gb = await request.json(); } catch (e) { return json({ error: 'bad_request' }, 400); }
+      const gform = new URLSearchParams({
+        client_id: env.GCAL_CLIENT_ID,
+        client_secret: env.GCAL_CLIENT_SECRET,
+      });
+      if (path === '/gcal/token') {
+        if (typeof gb.code !== 'string' || !gb.code) return json({ error: 'missing_code' }, 400);
+        if (typeof gb.redirect_uri !== 'string' || !gb.redirect_uri) return json({ error: 'missing_redirect_uri' }, 400);
+        gform.set('grant_type', 'authorization_code');
+        gform.set('code', gb.code);
+        gform.set('redirect_uri', gb.redirect_uri);
+      } else {
+        if (typeof gb.refresh_token !== 'string' || !gb.refresh_token) return json({ error: 'missing_refresh_token' }, 400);
+        gform.set('grant_type', 'refresh_token');
+        gform.set('refresh_token', gb.refresh_token);
+      }
+      let gr, gd;
+      try {
+        gr = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: gform,
+        });
+        gd = await gr.json();
+      } catch (e) { return json({ error: 'google_unreachable' }, 502); }
+      if (!gr.ok) return json({ error: 'google_rejected', status: gr.status, detail: (gd && gd.error) || null }, gr.status === 429 ? 429 : 401);
+      // pass through only what the app stores
+      return json({
+        access_token: gd.access_token,
+        refresh_token: gd.refresh_token || null, // present only on first consent (access_type=offline + prompt=consent)
+        expires_at: Math.floor(Date.now() / 1000) + (gd.expires_in || 3600),
+        scope: gd.scope || null,
+      });
     }
 
     if (request.method !== 'POST' || (path !== '/token' && path !== '/refresh')) {
