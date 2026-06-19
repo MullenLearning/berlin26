@@ -1161,6 +1161,15 @@ function mergePayload(data,source){ // additive: existing (manual) entries alway
   if(nS||nW||nH)save();
   return {sessions:nS,weights:nW,health:nH};
 }
+/* Normalise a Shortcut hand-off into a payload. A bare number (clipboard or hash) is treated as
+   today's step count — so the iOS Shortcut can just copy/append the step total with no JSON. */
+function parseIngest(t){
+  t=String(t==null?'':t).trim();
+  if(/^\d{1,6}$/.test(t))return {steps:[{date:todayISO(),count:+t}]};
+  const v=JSON.parse(t);
+  if(typeof v==='number'&&isFinite(v))return {steps:[{date:todayISO(),count:v}]};
+  return v;
+}
 
 /* Day moves: per-week permutation. order[w][pos] = original day slot now sitting at pos. */
 function orderOf(w){return S.order[w]||[0,1,2,3,4,5,6];}
@@ -5447,7 +5456,7 @@ document.addEventListener('click',ev=>{
     if(!navigator.clipboard||!navigator.clipboard.readText){alert('Clipboard access isn’t available here.');}
     else navigator.clipboard.readText().then(t=>{
       try{
-        const res=mergePayload(JSON.parse(t),'shortcut');
+        const res=mergePayload(parseIngest(t),'shortcut');
         const bits=[];
         if(res.weights)bits.push(res.weights+' weight'+(res.weights===1?'':'s'));
         if(res.sessions)bits.push(res.sessions+' session log'+(res.sessions===1?'':'s'));
@@ -5457,7 +5466,7 @@ document.addEventListener('click',ev=>{
           :'Nothing new to import — entries already on this phone always win.');
         if(res.health)gcalReconcileSoon(); // fresh steps → re-size walks
         rerenderKeepScroll();
-      }catch(e){alert('Clipboard doesn’t contain a valid payload. Expected JSON like {"weights":[{"date":"2026-06-12","lb":208.6}]}.');}
+      }catch(e){alert('Clipboard didn’t contain steps or a valid payload. Expected just today’s step count (e.g. 8200), or JSON like {"steps":[{"date":"2026-06-19","count":8200}]}.');}
     }).catch(()=>alert('Couldn’t read the clipboard.'));
   }
   else if(a==='importpick'){document.getElementById('importfile').click();}
@@ -5705,11 +5714,14 @@ document.addEventListener('keydown',ev=>{
   }
 });
 
-/* Shortcut hand-off: opening <app-url>#log=<base64 JSON> merges the payload
-   (weights/sessions/steps) — the zero-backend bridge for Apple Health via iOS Shortcuts. */
-if(location.hash.indexOf('#log=')===0){
+/* Shortcut hand-off: opening <app-url>#log=<base64 JSON> merges a full payload, or the bare
+   <app-url>#steps=<n> sets today's steps — the zero-backend bridge for Apple Health via iOS
+   Shortcuts. (Only reaches THIS app if the link opens it; otherwise use Paste from Shortcut.) */
+if(location.hash.indexOf('#log=')===0||location.hash.indexOf('#steps=')===0){
   try{
-    const res=mergePayload(JSON.parse(atob(decodeURIComponent(location.hash.slice(5)))),'shortcut');
+    const isSteps=location.hash.indexOf('#steps=')===0;
+    const raw=isSteps?location.hash.slice(7):atob(decodeURIComponent(location.hash.slice(5)));
+    const res=mergePayload(parseIngest(raw),'shortcut');
     history.replaceState(null,'',location.pathname+location.search);
     const bits=[];
     if(res.weights)bits.push(res.weights+' weight'+(res.weights===1?'':'s'));
