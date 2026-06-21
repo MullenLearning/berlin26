@@ -149,6 +149,7 @@ select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http
 .err{color:var(--hard);font-size:12px;font-weight:600;margin:6px 2px 0}
 .coachta{width:100%;min-height:128px;max-height:300px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:11px 12px;resize:vertical;-webkit-appearance:none}
 #coachbrief{color:var(--txt2)}
+.agt{flex:0 0 104px;min-height:38px;font-size:14px;padding:6px 8px;text-align:center}
 /* flat macro row — dividers + type hierarchy, no boxes-in-boxes */
 .macros{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px}
 .macro{padding:2px 14px;border-left:1px solid var(--line)}
@@ -956,8 +957,8 @@ const DATA_SOURCES={manual:{label:'Manual'},strava:{label:'Strava'},shortcut:{la
 const KEY='berlin2026.v1';
 /* v3 fit-it-in settings — the calendar reconciler reads these (lunch window, step goal,
    what to diarise). Kept inside S so they ride the backup; tokens never do. */
-function fitDefaults(){return {lunchStart:'11:00',lunchEnd:'14:00',stepGoal:10000,ambientSteps:3000,diariseWalks:true,walkDaysAhead:2,diariseStrength:true,diariseLearning:false,diariseFoot:false};}
-function freshState(){return {v:2,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},plan:{},health:{d:{}},loops:{},hints:{},settings:{fit:fitDefaults()},gcal:{lastSync:null,syncToken:null,calendarId:'primary',note:null},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
+function fitDefaults(){return {lunchStart:'11:00',lunchEnd:'14:00',stepGoal:10000,ambientSteps:3000,diariseWalks:true,walkDaysAhead:2,diariseStrength:true,diariseLearning:false,diariseFoot:false,freeTitles:'Lunch, New Event'};}
+function freshState(){return {v:2,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},weekDone:{},plan:{},health:{d:{}},loops:{},hints:{},settings:{fit:fitDefaults()},gcal:{lastSync:null,syncToken:null,calendarId:'primary',note:null},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -1111,6 +1112,10 @@ function sanitizePayload(data){
   if(data&&data.locked&&typeof data.locked==='object'){
     for(const k in data.locked){const w=Number(k);if(Number.isInteger(w)&&w>=0&&w<16&&data.locked[k])out.locked[w]=1;}
   }
+  out.weekDone={}; // weeks the user marked complete early
+  if(data&&data.weekDone&&typeof data.weekDone==='object'){
+    for(const k in data.weekDone){const w=Number(k);if(Number.isInteger(w)&&w>=0&&w<16&&data.weekDone[k])out.weekDone[w]=1;}
+  }
   // living-plan overrides (S.plan) — deltas/factors over the baked plan, never copies. Bounded.
   out.plan={volWeek:{},paceShift:{}};
   if(data&&data.plan&&typeof data.plan==='object'){
@@ -1177,6 +1182,7 @@ function sanitizePayload(data){
     const am=Number(Pf.ambientSteps);f.ambientSteps=(isFinite(am)&&am>=0&&am<=20000)?Math.round(am):def.ambientSteps;
     const wd=Number(Pf.walkDaysAhead);f.walkDaysAhead=(Number.isInteger(wd)&&wd>=0&&wd<=14)?wd:def.walkDaysAhead;
     ['diariseWalks','diariseStrength','diariseLearning','diariseFoot'].forEach(k=>{f[k]=typeof Pf[k]==='boolean'?Pf[k]:def[k];});
+    f.freeTitles=typeof Pf.freeTitles==='string'?Pf.freeTitles.slice(0,200):def.freeTitles;
     out.settings={fit:f};
   }
   // calendar sync metadata (S.gcal) — never tokens; just the bookkeeping that's safe to back up
@@ -1186,6 +1192,7 @@ function sanitizePayload(data){
     if(typeof data.gcal.syncToken==='string')g.syncToken=data.gcal.syncToken.slice(0,400);
     if(typeof data.gcal.calendarId==='string'&&data.gcal.calendarId)g.calendarId=data.gcal.calendarId.slice(0,200);
     if(typeof data.gcal.note==='string')g.note=data.gcal.note.slice(0,120);
+    if(data.gcal.times&&typeof data.gcal.times==='object'){g.times={};for(const k in data.gcal.times){const v=Number(data.gcal.times[k]);if(/^w(1[0-6]|[1-9])d[0-6]:[a-z]+:\d+$/.test(k)&&isFinite(v)&&v>=0&&v<1440)g.times[k]=Math.round(v);}}
     out.gcal=g;
   }
   // loop names (keyed by the first run's day index → user-given name)
@@ -1850,6 +1857,10 @@ function gcalSave(st){try{localStorage.setItem(GCAL_KEY,JSON.stringify(st));}cat
 function gcalPatchTok(p){const st=gcalState();if(st)gcalSave(Object.assign(st,p));}
 function gcalConnected(){return !!gcalState();}
 function gcalMeta(){if(!S.gcal||typeof S.gcal!=='object')S.gcal={lastSync:null,syncToken:null,calendarId:'primary',note:null};return S.gcal;}
+/* user time overrides for app-placed blocks (key "<dayId>:<kind>:<slot>" → start minute),
+   set by moving an event in the in-app calendar; honoured by the reconciler. */
+function gcalTimes(){const g=gcalMeta();if(!g.times||typeof g.times!=='object')g.times={};return g.times;}
+function gcalTimeOv(key){const v=gcalTimes()[key];return (typeof v==='number'&&v>=0&&v<1440)?v:null;}
 function fitCfg(){if(!S.settings||typeof S.settings!=='object')S.settings={};if(!S.settings.fit||typeof S.settings.fit!=='object')S.settings.fit=fitDefaults();return S.settings.fit;}
 
 function gcalConnect(){
@@ -2031,6 +2042,8 @@ function gcalReconcile(opts){
   if(hi<lo){return;} // entirely outside the block
   gcalBusy=true;gcalLastTry=Date.now();
   const f=fitCfg();
+  // calendar titles to treat as FREE for scheduling (e.g. your "Lunch"/"New Event" hold blocks)
+  const freeSet=String(f.freeTitles||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
   const timeMin=localMidnightISO(isoAt(lo)),timeMax=localMidnightISO(isoAt(Math.min(RACE_IDX+1,hi+1)));
   gcalToken().then(token=>Promise.all([gcalListWindow(token,timeMin,timeMax),gcalListTagged(token,timeMin,timeMax)]).then(r=>({token,items:r[0],ours:r[1]}))).then(res=>{
     const token=res.token,items=res.items||[],ours=res.ours||[];
@@ -2060,8 +2073,9 @@ function gcalReconcile(opts){
       const key=localDateKey(sd);
       const sm=sd.getHours()*60+sd.getMinutes();
       const em=localDateKey(ed)===key?(ed.getHours()*60+ed.getMinutes()):1440;
-      (meetingsByDate[key]||(meetingsByDate[key]=[])).push({sm:sm,em:Math.max(sm+5,em),title:ev.summary||'Busy'});
-      if(ev.transparency!=='transparent')(busyByDate[key]||(busyByDate[key]=[])).push([sm,Math.max(sm+5,em)]);
+      const isFree=ev.transparency==='transparent'||freeSet.indexOf(String(ev.summary||'').trim().toLowerCase())>=0;
+      (meetingsByDate[key]||(meetingsByDate[key]=[])).push({sm:sm,em:Math.max(sm+5,em),title:ev.summary||'Busy',free:isFree});
+      if(!isFree)(busyByDate[key]||(busyByDate[key]=[])).push([sm,Math.max(sm+5,em)]);
     });
 
     const desired={},keep={};let nRun=0,nWalk=0,nStr=0;const blocked=[];
@@ -2076,8 +2090,9 @@ function gcalReconcile(opts){
         const pace=ZONE_MID_PACE[e.zone]||360;
         const dur=clamp(Math.round(e.km*pace/60)+10,15,300);
         const isLong=e.zone==='Long';
-        let start;
-        if(isLong){start=placeBlock(gaps,dur,540,540);if(start==null)start=placeBlock(gaps,dur,null,null);}
+        let start=gcalTimeOv(e.id+':run:0'); // honour a time the user set in the in-app calendar
+        if(start!=null){}
+        else if(isLong){start=placeBlock(gaps,dur,540,540);if(start==null)start=placeBlock(gaps,dur,null,null);}
         else{const ls=hhmmToMin(f.lunchStart)||660,le=hhmmToMin(f.lunchEnd)||840;start=placeBlock(gaps,dur,ls,Math.max(ls,le-dur));if(start==null)start=placeBlock(gaps,dur,null,null);}
         if(start!=null){
           gaps=occupy(gaps,start,start+dur);runEnd=start+dur;nRun++;
@@ -2094,7 +2109,8 @@ function gcalReconcile(opts){
           const nW=totalMin>70?3:(totalMin>35?2:1);
           const perMin=Math.max(10,Math.round(totalMin/nW)),perSteps=Math.round(sr.remaining/nW/100)*100;
           for(let w=0;w<nW;w++){
-            const s=placeInLargest(gaps,perMin);if(s==null)break;
+            const ovW=gcalTimeOv(e.id+':walk:'+w);
+            const s=ovW!=null?ovW:placeInLargest(gaps,perMin);if(s==null)break;
             gaps=occupy(gaps,s,s+perMin);nWalk++;
             desired[e.id+':walk:'+w]=gcalEvent(dateStr,s,perMin,'🚶 Walk — ~'+perSteps+' steps (~'+perMin+' min)','Top-up toward '+sr.goal+' steps.','10','walk',e.id,w);
             if(todayItems)todayItems.push({kind:'walk',label:'Walk · ~'+perSteps+' steps',time:minToHHMM(s)+'–'+minToHHMM(s+perMin)});
@@ -2110,7 +2126,8 @@ function gcalReconcile(opts){
         let lowReady=false;if(i===today){const h=healthRef().d[dateStr];if(h&&h.rs!=null&&h.rs<60)lowReady=true;}
         if(circuit&&!nextLong&&!afterLong&&!lowReady){
           const dur=circuit==='C'?20:30;
-          let s=(circuit==='C'&&runEnd!=null)?placeBlock(gaps,dur,runEnd,runEnd):null;
+          let s=gcalTimeOv(e.id+':strength:0');
+          if(s==null)s=(circuit==='C'&&runEnd!=null)?placeBlock(gaps,dur,runEnd,runEnd):null;
           if(s==null)s=placeInLargest(gaps,dur);
           if(s!=null){
             gaps=occupy(gaps,s,s+dur);nStr++;
@@ -2121,7 +2138,7 @@ function gcalReconcile(opts){
       }
       // 4) learning (off by default) — 2h Mon/Wed/Sun evenings
       if(f.diariseLearning&&(wd===0||wd===2||wd===6)){
-        const s=placeBlock(gaps,120,19*60,19*60);
+        const ovL=gcalTimeOv(e.id+':learning:0');const s=ovL!=null?ovL:placeBlock(gaps,120,19*60,19*60);
         if(s!=null){gaps=occupy(gaps,s,s+120);desired[e.id+':learning:0']=gcalEvent(dateStr,s,120,'📚 Learning · 2h','Evening study block.','3','learning',e.id,0);
           if(todayItems)todayItems.push({kind:'learning',label:'Learning · 2h',time:minToHHMM(s)+'–'+minToHHMM(s+120)});}
       }
@@ -2140,9 +2157,9 @@ function gcalReconcile(opts){
     const agenda=[];
     for(let i=lo;i<=hi;i++){
       const ds=isoAt(i),its=[];
-      (meetingsByDate[ds]||[]).forEach(m=>its.push({sm:m.sm,em:m.em,title:m.title,mine:false,kind:'meeting'}));
+      (meetingsByDate[ds]||[]).forEach(m=>its.push({sm:m.sm,em:m.em,title:m.title,mine:false,kind:'meeting',free:!!m.free}));
       for(const key in desired){const ev=desired[key];if((ev.start.dateTime||'').indexOf(ds)!==0)continue;
-        its.push({sm:hhmmToMin(ev.start.dateTime.slice(11,16)),em:hhmmToMin(ev.end.dateTime.slice(11,16)),title:ev.summary,mine:true,kind:ev.extendedProperties.private.kind});}
+        its.push({sm:hhmmToMin(ev.start.dateTime.slice(11,16)),em:hhmmToMin(ev.end.dateTime.slice(11,16)),title:ev.summary,mine:true,kind:ev.extendedProperties.private.kind,key:key,i:i});}
       its.sort((a,b)=>a.sm-b.sm);
       agenda.push({i:i,items:its});
     }
@@ -2223,30 +2240,43 @@ function gcalCard(){
 }
 /* in-app agenda: the next two weeks as the app sees them — your meetings plus the blocks it
    placed. Built from the last reconcile; opening it kicks a fresh sync when it's empty/stale. */
-function gcalAgendaSheet(){
-  const a=gcalAgenda&&gcalAgenda.days;
+function gcalAgendaContent(){
+  const a=gcalAgenda&&gcalAgenda.days,td=rawTodayIdx();
   let body='<div class="spread"><h2 style="margin:0">Your next 2 weeks</h2>'
     +'<button class="btn3" data-action="gcalsync" style="color:var(--accent-text)">Sync</button></div>'
-    +'<p class="mini" style="margin:2px 2px 8px">Meetings (grey) and the training the app fitted around them. '+(gcalMeta().lastSync?'Synced '+fmtSyncTime(gcalMeta().lastSync):'Not synced yet')+'.</p>';
+    +'<p class="mini" style="margin:2px 2px 10px">Meetings (grey) and the training fitted around them. Change a run/walk’s time to move it — your Google Calendar updates on the next sync. '+(gcalMeta().lastSync?'Synced '+fmtSyncTime(gcalMeta().lastSync):'Not synced yet')+'.</p>';
   if(!a||!a.length){
     body+='<p class="note" style="margin:8px 0">Nothing loaded yet — tap Sync, then reopen.</p>';
-    if(gcalConnected())gcalReconcile({manual:true});
   }else{
     a.forEach(d=>{
-      const dd=dAt(d.i),isTd=d.i===rawTodayIdx();
+      const dd=dAt(d.i),isTd=d.i===td;
       body+='<div style="margin-top:13px"><div class="mini" style="font-weight:700;color:var(--ink)">'+DOW[d.i%7]+' '+dd.getUTCDate()+' '+MON[dd.getUTCMonth()]+(isTd?' · today':'')+'</div>';
       if(!d.items.length)body+='<p class="mini" style="margin:3px 2px 0">— nothing scheduled</p>';
       d.items.forEach(it=>{
-        body+='<div class="row" style="gap:8px;align-items:baseline;margin-top:4px;justify-content:space-between">'
-          +'<span style="font-size:13px;'+(it.mine?'font-weight:600':'color:var(--sub)')+'">'+(it.mine?'':'<span aria-hidden="true">📅</span> ')+esc(it.title)+'</span>'
-          +'<span class="mini" style="flex:none">'+minToHHMM(it.sm)+'–'+minToHHMM(it.em)+'</span></div>';
+        if(it.mine&&d.i>=td){ // app-placed, future → editable time
+          const moved=gcalTimeOv(it.key)!=null;
+          body+='<div class="row" style="gap:8px;align-items:center;margin-top:6px">'
+            +'<span style="font-size:13px;font-weight:600;flex:1;min-width:0">'+esc(it.title)+'</span>'
+            +(moved?'<button class="btn3" data-action="gcaltimeauto" data-key="'+esc(it.key)+'" style="padding:4px 6px;color:var(--sub);min-height:0">auto</button>':'')
+            +'<input type="time" class="agt" data-action="gcaltime" data-key="'+esc(it.key)+'" data-dur="'+(it.em-it.sm)+'" value="'+minToHHMM(it.sm)+'" aria-label="Move '+esc(it.title)+'"></div>';
+        }else{
+          body+='<div class="row" style="gap:8px;align-items:baseline;margin-top:4px;justify-content:space-between">'
+            +'<span style="font-size:13px;'+(it.mine?'font-weight:600':'color:var(--sub)')+'">'+(it.mine?'':'<span aria-hidden="true">📅</span> ')+esc(it.title)+(it.free?' <span class="mini" style="color:var(--easy)">· free</span>':'')+'</span>'
+            +'<span class="mini" style="flex:none">'+minToHHMM(it.sm)+'–'+minToHHMM(it.em)+'</span></div>';
+        }
       });
       body+='</div>';
     });
   }
   body+='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>';
-  openSheet(body);
+  return body;
 }
+function gcalAgendaSheet(){
+  ui.agendaOpen=true;
+  if(!(gcalAgenda&&gcalAgenda.days&&gcalAgenda.days.length)&&gcalConnected())gcalReconcile({manual:true});
+  openSheet(gcalAgendaContent());
+}
+function gcalAgendaRefresh(){if(!ui.agendaOpen)return;const p=document.querySelector('#sheet .panel');if(p){const st=p.scrollTop;p.innerHTML=gcalAgendaContent();p.scrollTop=st;}}
 function fitCard(){
   const f=fitCfg();
   const tog=(k,label,sub)=>'<div class="sheetrow" style="cursor:default"><span style="flex:1;font-weight:600">'+label+(sub?'<div class="mini">'+sub+'</div>':'')+'</span>'
@@ -2263,6 +2293,8 @@ function fitCard(){
       +'<input class="stepin" style="flex:0 0 116px;font-size:22px" type="number" inputmode="numeric" min="0" max="20000" step="500" data-action="fitnum" data-k="ambientSteps" value="'+f.ambientSteps+'" aria-label="Desk-day baseline steps"><span class="stepu">steps</span></div>'
     +'<div class="ifield"><span style="flex:1">Diarise walks ahead<div class="mini">how many days to fill</div></span>'
       +'<input class="stepin" style="flex:0 0 96px;font-size:22px" type="number" inputmode="numeric" min="0" max="14" step="1" data-action="fitnum" data-k="walkDaysAhead" value="'+f.walkDaysAhead+'" aria-label="Days ahead to diarise walks"><span class="stepu">days</span></div>'
+    +'<div class="ifield" style="align-items:flex-start"><span style="flex:1">Treat as free<div class="mini">calendar titles to schedule over (comma-separated)</div></span>'
+      +'<input class="stepin" style="flex:0 0 150px;font-size:14px;text-align:left" type="text" data-action="fitfree" value="'+esc(f.freeTitles||'')+'" aria-label="Calendar titles to treat as free"></div>'
     +tog('diariseWalks','Diarise walks','split into the day’s free gaps')
     +tog('diariseStrength','Diarise strength','rest-day circuits + Thu C-light')
     +tog('diariseLearning','Diarise learning','2h Mon/Wed/Sun evenings')
@@ -3002,6 +3034,9 @@ function zoneRange(z){ // the pace RANGE string; baked verbatim when untouched, 
   return fmtPace(Math.round(mid-half))+'–'+fmtPace(Math.round(mid+half))+'/km';
 }
 function currentWeekIdx(){return Math.floor(clamp(rawTodayIdx(),0,RACE_IDX)/7);}
+/* the training week the user is actually on — the date-based week, advanced past any
+   week they've marked complete early ("finished my runs, move me to next week"). */
+function activeWeekIdx(){let w=currentWeekIdx();while(w<15&&S.weekDone&&S.weekDone[w])w++;return w;}
 function weekFactor(w){ // edits only ever touch FUTURE, unlocked weeks
   if(w<=currentWeekIdx()||(S.locked&&S.locked[w]))return 1;
   const p=S.plan||{};
@@ -3060,6 +3095,17 @@ function rewriteRunDist(txt,km){
   const q=mp?parseFloat(mp[1]):0,main=Math.max(0,Math.round((km-q)*10)/10);
   return txt.replace(/(\d+(?:\.\d+)?)\s*km/,fmtKm(main)+' km'); // first "<n> km" only
 }
+/* The card title + pace line already state distance and target pace, so strip that
+   boilerplate from the description and show only what's left — strides, the MP
+   finish, alternatives — plus any coach note. Threshold/interval sets (which don't
+   start with "<n> km easy @ pace") are left whole. */
+function detailLine(e){
+  let t=e.text||'',note='';
+  const ci=t.indexOf(' · Coach:');if(ci>=0){note=t.slice(ci+3);t=t.slice(0,ci);}
+  t=t.replace(/^(?:(?:[Tt]aper |[Rr]ace-specific )?[Ll]ong run:\s*)?\d+(?:\.\d+)?\s*km\s+(?:easy\s+|recovery\s+|steady\s+)?@\s*\d{1,2}:\d\d(?:[–-]\d{1,2}:\d\d)?\/km\s*/,'').replace(/^\+\s*/,'').trim();
+  const parts=[];if(t)parts.push(t);if(note)parts.push(note.trim());
+  return parts.join(' · ');
+}
 function eff(i){
   const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
   const wk=WEEKS[w],s=wk.days[op],n=planNutRow(i);
@@ -3107,9 +3153,10 @@ function weekActualKm(w){
   return t;
 }
 function weekStatus(w){ // w: 0-based
-  const rawW=Math.floor(rawTodayIdx()/7);
-  if(w===rawW)return ['In progress','p-prog'];
-  if(w>rawW)return ['Upcoming','p-up'];
+  if(S.weekDone&&S.weekDone[w])return ['Done','p-hit']; // marked complete early
+  const aw=activeWeekIdx();
+  if(w===aw)return ['In progress','p-prog'];
+  if(w>aw)return ['Upcoming','p-up'];
   const r=weekActualKm(w)/effWeekTarget(w);
   if(r>=0.9)return ['Hit','p-hit'];
   if(r>=0.6)return ['Partial','p-partial'];
@@ -3259,13 +3306,13 @@ let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
 const morningPending=S.lastOpen!==todayISO(); // first open of the day
 if(morningPending){S.lastOpen=todayISO();save();}
-const ui={tab:'today',week:clamp(Math.floor(rawT/7),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcVal:null,pcAdv:false,morning:morningPending};
+const ui={tab:'today',week:clamp(activeWeekIdx(),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcVal:null,pcAdv:false,morning:morningPending};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
   if(r!==rawT){
     rawT=r;todayIdx=clamp(rawT,0,RACE_IDX);
-    ui.week=clamp(Math.floor(rawT/7),0,15);ui.nutDay=todayIdx;ui.scroll={};
+    ui.week=clamp(activeWeekIdx(),0,15);ui.nutDay=todayIdx;ui.scroll={};
     ui.morning=S.lastOpen!==todayISO(); // a new day = a new morning check-in
     if(ui.morning){S.lastOpen=todayISO();save();}
     render(true);
@@ -3321,7 +3368,7 @@ function volumeChart(){
     g+='<line x1="'+L+'" y1="'+y.toFixed(1)+'" x2="'+(W-Rm)+'" y2="'+y.toFixed(1)+'" stroke="var(--grid)" stroke-width="1"/>'
       +'<text x="'+(L-6)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" fill="var(--sub)" font-size="10" font-weight="600">'+v+'</text>';
   });
-  const rawW=clamp(Math.floor(rawTodayIdx()/7),0,15);
+  const rawW=activeWeekIdx();
   let peakW=0,peakV=0;
   for(let w=0;w<16;w++){const t=effWeekTarget(w);if(t>peakV){peakV=t;peakW=w;}}
   for(let w=0;w<16;w++){
@@ -3498,7 +3545,7 @@ function wSession(){
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
     +'<div class="row" style="margin-top:10px">'+zoneChip(e)+movedChip(e)+fuelChip+'</div>'
     +rebalLine(e)
-    +'<p class="detail">'+esc(e.text)+'</p>'
+    +(detailLine(e)?'<p class="detail">'+esc(detailLine(e))+'</p>':'')
     +(l.status
       ?'<div class="row" style="margin-top:10px">'+logChips(l)+'</div>'
        +(resultMeta(l)?'<p class="mini" style="margin:6px 2px 0">'+resultMeta(l)+'</p>':'')
@@ -3631,13 +3678,13 @@ function planSummary(){
   for(let w=0;w<16;w++){const t=effWeekTarget(w);totalKm+=t;if(t>peakKm){peakKm=t;peakW=w;}}
   const gw=goalWeightVal();
   return {totalKm:totalKm,peakKm:peakKm,peakW:peakW,goalWt:gw,toLose:210-gw,
-    phase:WEEKS[clamp(currentWeekIdx(),0,15)].phase,daysToGo:RACE_IDX-todayIdx};
+    phase:WEEKS[clamp(activeWeekIdx(),0,15)].phase,daysToGo:RACE_IDX-todayIdx};
 }
 /* The always-present countdown: race day is the spine. A designed coral day-count
    plus a thin 16-week rail (done = ink, current = coral, future = hairline, then the
    finish dot). Taps open the Berlin course. Shared by all three screens. */
 function countdownRail(){
-  const days=Math.max(0,RACE_IDX-todayIdx), cw=clamp(currentWeekIdx(),0,15);
+  const days=Math.max(0,RACE_IDX-todayIdx), cw=clamp(activeWeekIdx(),0,15);
   const raceDay=days<=0;
   let rail='';
   for(let w=0;w<16;w++)rail+='<i class="'+(w<cw?'done':w===cw?'now':'')+'"></i>';
@@ -3649,7 +3696,7 @@ function countdownRail(){
     +'<div class="rail" aria-hidden="true">'+rail+'</div>';
 }
 function miniBars(){ // the 16-week mileage shape (ramp → peak → taper), current week lit
-  const W=320,H=44,T=2,B=2,ih=H-T-B,cw=currentWeekIdx(),bw=W/16;
+  const W=320,H=44,T=2,B=2,ih=H-T-B,cw=clamp(activeWeekIdx(),0,15),bw=W/16;
   const max=Math.max.apply(null,Array.from({length:16},(_,w)=>effWeekTarget(w)))||1;
   let g='';
   for(let w=0;w<16;w++){const t=effWeekTarget(w),h=Math.max(2,ih*t/max),x=w*bw;
@@ -3658,7 +3705,7 @@ function miniBars(){ // the 16-week mileage shape (ramp → peak → taper), cur
   return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;margin-top:4px" role="img" aria-label="Weekly mileage across the block">'+g+'</svg>';
 }
 function miniGlide(){ // the weight plan, 210 → goal, current week marked
-  const W=320,H=40,T=5,B=5,ih=H-T-B,cw=currentWeekIdx(),g1=goalWeightVal();
+  const W=320,H=40,T=5,B=5,ih=H-T-B,cw=clamp(activeWeekIdx(),0,15),g1=goalWeightVal();
   const span=(210-g1)||1,Y=w=>T+ih*((210-wtWeekAt(w))/span);
   let d='';for(let w=0;w<16;w++)d+=(w?'L':'M')+((w/15)*W).toFixed(1)+' '+Y(w).toFixed(1);
   const cx=(cw/15)*W;
@@ -3799,7 +3846,7 @@ function coachSchema(){
     +'Rules: adjust only CURRENT + FUTURE weeks (never the past or race week W16). Keep week-over-week volume jumps gentle (~10% or less). Valid zones: '+Object.keys(ZONE_MID_PACE).join(', ')+', Rest.';
 }
 function coachBrief(){
-  const t=clamp(rawT,0,RACE_IDX),cw=currentWeekIdx(),L=[];
+  const t=clamp(rawT,0,RACE_IDX),cw=activeWeekIdx(),L=[];
   L.push('# Berlin marathon — coaching adjustment request');
   L.push('Act as my running coach. Review the plan + recent training below, and PULL MY STRAVA via the MCP for objective load (recent runs, distance, pace, HR, relative effort, anything missed). Then re-plan the remaining weeks so I progress safely and don’t spike into injury after a missed week.');
   L.push('');
@@ -3860,7 +3907,7 @@ function coachPreviewHtml(c){
   try{const tmp=saved?JSON.parse(JSON.stringify(saved)):{};coachMergeInto(tmp,c);S.plan=tmp;
     aT=snap(effWeekTarget);aL=snap(effLong);Object.keys(ZONE_MID_PACE).forEach(z=>aP[z]=zoneMid(z));}
   finally{S.plan=saved;}
-  const cw=currentWeekIdx();let rows='';
+  const cw=activeWeekIdx();let rows='';
   for(let w=cw;w<16;w++){if(bT[w]===aT[w]&&bL[w]===aL[w])continue;
     rows+='<div class="spread" style="margin-top:3px"><span class="mini" style="color:var(--ink);font-weight:700">W'+(w+1)+'</span><span class="mini">'
       +(bT[w]!==aT[w]?'target '+bT[w]+'→<b style="color:var(--ink)">'+aT[w]+'</b>':'')
@@ -4652,7 +4699,7 @@ function dayCard(i){
     +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
     +rebalLine(e)
-    +'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(e.text)+'</p>'
+    +(detailLine(e)?'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(detailLine(e))+'</p>':'')
     +'<div class="row" style="margin-top:8px"><span class="chip c-'+DAYTYPE[e.type].c+'">'+DAYTYPE[e.type].label+' · '+fmtKcal(e.kcal)+' kcal</span></div>'
     +body
     +'</section>';
@@ -4661,7 +4708,7 @@ function dayCard(i){
 function vTrain(){
   const w=ui.week,wk=WEEKS[w];
   const [stLbl,stCls]=weekStatus(w);
-  const cw=clamp(currentWeekIdx(),0,15);
+  const cw=clamp(activeWeekIdx(),0,15);
   let chips='<div class="weekchips">';
   for(let j=0;j<16;j++){
     const stCls=j<cw?'wk-done':j===cw?'wk-now':'wk-future';
@@ -4704,6 +4751,8 @@ function vTrain(){
     })()
     +'<p class="note" style="margin:8px 0 0">'+esc(wk.note)+'</p>'
     +(weekMoved(w)?'<button class="btn2" style="margin-top:10px;width:100%" data-action="resetweek" data-w="'+w+'">Reset week to plan</button>':'')
+    +((w===activeWeekIdx()&&w<15)?'<button class="btn" style="margin-top:10px;width:100%" data-action="weekcomplete" data-w="'+w+'">Week done → start Week '+(w+2)+'</button>':'')
+    +((S.weekDone&&S.weekDone[w])?'<button class="btn3" style="margin-top:8px;width:100%;color:var(--sub)" data-action="weekreopen" data-w="'+w+'">Re-open this week</button>':'')
     +'</section>'
     +(w===15?racePack():'')
     +days
@@ -5361,7 +5410,7 @@ function openSheet(html,morphEl,onReady,label){
   }
 }
 function closeSheet(){
-  ui.settingsOpen=false;
+  ui.settingsOpen=false;ui.agendaOpen=false;
   const s=document.getElementById('sheet');
   s.classList.remove('open');
   document.getElementById('app').inert=false;
@@ -5470,6 +5519,7 @@ function rerenderKeepScroll(){
   ui.scroll[ui.tab]=window.scrollY;
   render();
   settingsRefresh(); // connection/automation cards live in the settings sheet, not #view
+  gcalAgendaRefresh(); // the in-app calendar reflects newly-reconciled times
 }
 
 function deckSkip(i){
@@ -5677,6 +5727,9 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='closesheet'){closeSheet();}
   else if(a==='selweek'){ui.week=Number(el.dataset.w);ui.scroll.train=0;render();}
+  else if(a==='weekcomplete'){const w=Number(el.dataset.w);if(!S.weekDone)S.weekDone={};S.weekDone[w]=1;ui.week=Math.min(15,w+1);ui.scroll.train=0;save();render();gcalReconcileSoon();
+    snack('Week '+(w+1)+' done · now on Week '+(w+2),()=>{delete S.weekDone[w];ui.week=w;save();render();gcalReconcileSoon();});}
+  else if(a==='weekreopen'){const w=Number(el.dataset.w);if(S.weekDone)delete S.weekDone[w];ui.week=w;save();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='selnutday'){
     if(window._nutDragTs&&Date.now()-window._nutDragTs<400)return; // a bar drag just ended, not a tap
     ui.nutDay=Number(el.dataset.i);rerenderKeepScroll();
@@ -5894,6 +5947,7 @@ document.addEventListener('click',ev=>{
   else if(a==='gcalconnect'){gcalConnect();}
   else if(a==='gcalsync'){gcalReconcile({manual:true,announce:true});}
   else if(a==='gcalagenda'){gcalAgendaSheet();}
+  else if(a==='gcaltimeauto'){const key=el.dataset.key;delete gcalTimes()[key];save();gcalAgendaRefresh();gcalReconcileSoon();}
   else if(a==='gcaldisconnect'){gcalDisconnect();}
   else if(a==='fittoggle'){const f=fitCfg(),k=el.dataset.k;f[k]=!f[k];save();rerenderKeepScroll();gcalReconcileSoon();}
   else if(a==='runsheet'){openRunSheet(Number(el.dataset.i));}
@@ -5966,6 +6020,11 @@ document.addEventListener('change',ev=>{
   else if(a==='pcpacev'){if(!S.plan)S.plan={};if(!S.plan.paceShift)S.plan.paceShift={};const z=el.dataset.z,v=clamp(Math.round(parseFloat(el.value))||0,-60,60);if(v===0)delete S.plan.paceShift[z];else S.plan.paceShift[z]=v;save();pcRefresh();rerenderKeepScroll();}
   else if(a==='fittime'){const f=fitCfg(),k=el.dataset.k;if(HHMM.test(el.value)){f[k]=el.value;save();gcalReconcileSoon();}else el.value=f[k];}
   else if(a==='fitnum'){const f=fitCfg(),k=el.dataset.k,lim={stepGoal:[2000,30000],ambientSteps:[0,20000],walkDaysAhead:[0,14]}[k];let v=Math.round(parseFloat(el.value));if(!isFinite(v))v=f[k];if(lim)v=clamp(v,lim[0],lim[1]);f[k]=v;el.value=v;save();rerenderKeepScroll();gcalReconcileSoon();}
+  else if(a==='fitfree'){const f=fitCfg();f.freeTitles=String(el.value).slice(0,200);save();gcalReconcileSoon();}
+  else if(a==='gcaltime'){const key=el.dataset.key,dur=+el.dataset.dur||30,mm=hhmmToMin(el.value);if(mm==null)return;
+    gcalTimes()[key]=mm;save();
+    if(gcalAgenda&&gcalAgenda.days)gcalAgenda.days.forEach(d=>{d.items.forEach(it=>{if(it.key===key){it.sm=mm;it.em=mm+dur;}});d.items.sort((x,y)=>x.sm-y.sm);}); // optimistic + keep chronological
+    gcalAgendaRefresh();gcalReconcileSoon();}
   else if(a==='stravaday'){
     const p=stravaPend[Number(el.dataset.idx)];
     if(p){p.i=Number(el.value);stravaSheetRefresh();}
