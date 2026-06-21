@@ -147,6 +147,8 @@ input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);b
 input::placeholder{color:var(--sub);opacity:1}
 select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23C7C7CC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
 .err{color:var(--hard);font-size:12px;font-weight:600;margin:6px 2px 0}
+.coachta{width:100%;min-height:128px;max-height:300px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:11px 12px;resize:vertical;-webkit-appearance:none}
+#coachbrief{color:var(--txt2)}
 /* flat macro row — dividers + type hierarchy, no boxes-in-boxes */
 .macros{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:14px}
 .macro{padding:2px 14px;border-left:1px solid var(--line)}
@@ -1123,6 +1125,11 @@ function sanitizePayload(data){
     if(P.paceShift&&typeof P.paceShift==='object')for(const z in P.paceShift){const f=nn(P.paceShift[z],-60,60);if(ZONE_MID_PACE[z]!=null&&f!=null)o.paceShift[z]=Math.round(f);}
     if(P.heatOn===false)o.heatOn=false;
     if(P.home&&typeof P.home==='object'){const la=nn(P.home.lat,-90,90),lo2=nn(P.home.lon,-180,180);if(la!=null&&lo2!=null)o.home={lat:la,lon:lo2};}
+    // coach per-session overrides + the "let the coach re-plan instead of auto-redistributing" switch
+    if(P.sessions&&typeof P.sessions==='object'){o.sessions={};for(const id in P.sessions){if(!/^w(1[0-6]|[1-9])d[0-6]$/.test(id))continue;const sv=P.sessions[id];if(!sv||typeof sv!=='object')continue;const e={};if(sv.skip===true)e.skip=true;else{const k=nn(sv.km,0,60);if(k!=null)e.km=Math.round(k*10)/10;if(typeof sv.zone==='string'&&ZONE_MID_PACE[sv.zone]!=null)e.zone=sv.zone;}if(typeof sv.note==='string'&&sv.note)e.note=sv.note.slice(0,80);if(Object.keys(e).length)o.sessions[id]=e;}if(!Object.keys(o.sessions).length)delete o.sessions;}
+    if(P.noRebalance===true)o.noRebalance=true;
+    if(typeof P.coachNote==='string'&&P.coachNote)o.coachNote=P.coachNote.slice(0,400);
+    if(typeof P.coachAt==='string'){const m=P.coachAt.match(/^\d{4}-\d\d-\d\d/);if(m)o.coachAt=m[0];}
   }
   // ambient Oura measurements (S.health) — every field bounded on the way back in
   out.health={d:{}};
@@ -2943,6 +2950,7 @@ function nutAdjusted(i,n){
    per day (+10% for long runs, the key sessions), −30% downward, race day
    untouchable. */
 function runAdjusted(i,km){
+  if(S.plan&&S.plan.noRebalance)return {km:km,adj:0}; // coach has taken over — no blind redistribution
   const t=rawTodayIdx();
   if(km<=0||i<=t||i===RACE_IDX)return {km:km,adj:0};
   const w=Math.floor(i/7);
@@ -3000,8 +3008,21 @@ function weekFactor(w){ // edits only ever touch FUTURE, unlocked weeks
   return clamp((p.volPct||1)*((p.volWeek&&p.volWeek[w])||1),0.5,1.3);
 }
 function planKmAt(i){return slotAt(i)[1]*weekFactor(Math.floor(i/7));}
-function effWeekTarget(w){return Math.round(WEEKS[w].target*weekFactor(w));}
-function effLong(w){return Math.round(WEEKS[w].long*weekFactor(w)*10)/10;}
+/* coach per-session override for the session at day-index i (keyed by its stable
+   id 'w<week>d<op>', so it survives day-swaps). {km?, zone?, skip?, note?} */
+function sessionOv(i){if(i===RACE_IDX||i<rawTodayIdx())return null;const w=Math.floor(i/7);return (S.plan&&S.plan.sessions&&S.plan.sessions['w'+(w+1)+'d'+orderOf(w)[i%7]])||null;} // never the race day or the past
+function weekHasOv(w){if(!(S.plan&&S.plan.sessions))return false;for(let d=0;d<7;d++)if(sessionOv(w*7+d))return true;return false;}
+function effWeekTarget(w){ // baked target × volume factor; exact day-sum once a coach session edit lands
+  const f=weekFactor(w);
+  if(!weekHasOv(w))return Math.round(WEEKS[w].target*f); // byte-identical to the original when untouched
+  let t=0;for(let d=0;d<7;d++){const i=w*7+d,ov=sessionOv(i);t+=ov?(ov.skip?0:(ov.km!=null?ov.km:slotAt(i)[1]*f)):slotAt(i)[1]*f;}
+  return Math.round(t);
+}
+function effLong(w){ // the week's long run, honouring a coach override on the designated long-run day
+  const f=weekFactor(w);
+  if(weekHasOv(w)){let mx=-1,d0=0;for(let d=0;d<7;d++)if(WEEKS[w].days[d][1]>mx){mx=WEEKS[w].days[d][1];d0=d;}
+    if(w*7+d0!==RACE_IDX){const ov=sessionOv(w*7+d0);if(ov)return ov.skip?0:(ov.km!=null?Math.round(ov.km*10)/10:Math.round(WEEKS[w].days[d0][1]*f*10)/10);}}
+  return Math.round(WEEKS[w].long*f*10)/10;}
 function wtWeekAt(w){return (S.plan&&S.plan.goalWeight!=null)?Math.round(planWtAt(w*7+6)*10)/10:WT[w];}
 /* a lower goal weight needs a bigger deficit → fewer calories. Scale FUTURE weeks'
    deficit by the ratio of new total loss to baked (21 lb); past/current frozen. */
@@ -3034,12 +3055,23 @@ function planNutRow(i){
 function eff(i){
   const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
   const wk=WEEKS[w],s=wk.days[op],n=planNutRow(i);
-  const na=nutAdjusted(i,n),ra=runAdjusted(i,planKmAt(i));
-  return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,
-    zone:s[0],km:ra.km,planKm:planKmAt(i),kmAdj:ra.adj,text:s[2],
-    type:n[0],kcal:na.kcal,p:185,carbs:na.carbs,fat:n[3],burn:n[4],deficit:na.deficit,
+  const id='w'+(w+1)+'d'+op,ov=sessionOv(i);
+  let zone=s[0],text=s[2],baseKm=planKmAt(i);
+  const na=nutAdjusted(i,n);let kcal=na.kcal,carbs=na.carbs,deficit=na.deficit;
+  if(ov){ // a coach edit on this session: skip, re-zone or re-distance it
+    if(ov.skip){zone='Rest';baseKm=0;}
+    else{if(ov.zone&&ZONE_MID_PACE[ov.zone]!=null)zone=ov.zone;if(ov.km!=null)baseKm=ov.km;}
+    if(ov.note)text=text+' · Coach: '+ov.note;
+    // nutrition follows the session: less run → eat less to hold the deficit (carbs flex), unless manually edited
+    if(!na.edited){const lb=lbAt(i),dK=Math.round((baseKm-planKmAt(i))*(lb/2.2046)*1.036);
+      if(dK!==0){kcal=Math.max(1400,kcal+dK);carbs=Math.max(0,carbs+Math.round(dK/4));}}
+  }
+  const ra=ov?{km:baseKm,adj:0}:runAdjusted(i,baseKm);
+  return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,coach:!!ov,
+    zone:zone,km:ra.km,planKm:planKmAt(i),kmAdj:ra.adj,text:text,
+    type:n[0],kcal:kcal,p:185,carbs:carbs,fat:n[3],burn:n[4],deficit:deficit,
     planKcal:n[1],nutAdj:na.adj,nutEdited:na.edited,
-    planWt:wtWeekAt(w),id:'w'+(w+1)+'d'+op};
+    planWt:wtWeekAt(w),id:id};
 }
 /* the single seam for "what was eaten" — the logged actual if present, else the
    plan target (clearly flagged not-logged so every surface can label it honestly) */
@@ -3638,8 +3670,9 @@ function wRace(){
 /* ---- the Plan Center: edit the plan's targets (not its shape) on one screen ---- */
 function fmtFinish(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h+':'+p2(m)+':'+p2(x);}
 function parseHMS(str){const m=String(str).trim().match(/^(\d{1,2}):([0-5]?\d)(?::([0-5]?\d))?$/);return m?(+m[1])*3600+(+m[2])*60+(m[3]?+m[3]:0):null;}
-function planChanged(){const p=S.plan||{};return p.raceSecs!=null||p.goalWeight!=null||p.volPct!=null||(p.volWeek&&Object.keys(p.volWeek).length>0)||(p.paceShift&&Object.keys(p.paceShift).length>0)||p.heatOn===false||!!p.home;}
-function planChangeCount(){const p=S.plan||{};let n=0;if(p.raceSecs!=null)n++;if(p.goalWeight!=null)n++;if(p.volPct!=null)n++;if(p.volWeek)n+=Object.keys(p.volWeek).length;if(p.paceShift)n+=Object.keys(p.paceShift).length;return n;}
+function planChanged(){const p=S.plan||{};return p.raceSecs!=null||p.goalWeight!=null||p.volPct!=null||(p.volWeek&&Object.keys(p.volWeek).length>0)||(p.paceShift&&Object.keys(p.paceShift).length>0)||p.heatOn===false||!!p.home||(p.sessions&&Object.keys(p.sessions).length>0)||p.noRebalance===true||p.dailyDeficit!=null;}
+function planChangeCount(){const p=S.plan||{};let n=0;if(p.raceSecs!=null)n++;if(p.goalWeight!=null)n++;if(p.volPct!=null)n++;if(p.dailyDeficit!=null)n++;if(p.volWeek)n+=Object.keys(p.volWeek).length;if(p.paceShift)n+=Object.keys(p.paceShift).length;if(p.sessions)n+=Object.keys(p.sessions).length;if(p.noRebalance)n++;return n;}
+function coachActive(){const p=S.plan||{};return !!(p.coachNote||p.noRebalance||(p.sessions&&Object.keys(p.sessions).length));}
 const PC_SECTIONS={
   race:  {label:'Race goal',     hint:'shifts every zone pace and the race-pack splits', step:30, min:10800, max:18000, key:'raceSecs', def:12540, cur:()=>goalSec(),                                  fmt:s=>fmtFinish(s)+' · '+fmtPace(Math.round(s/42.195))+'/km', store:v=>v, type:'text',   inp:v=>fmtFinish(v),     parse:s=>parseHMS(s),                  unit:'h:mm:ss'},
   weight:{label:'Goal race weight',hint:'re-draws the glide and scales future calorie targets to match', step:5, min:1500, max:2100, key:'goalWeight', def:1890, cur:()=>Math.round((S.plan.goalWeight!=null?S.plan.goalWeight:189)*10), fmt:v=>fmtLb(v/10)+' lb', store:v=>v/10, type:'number', inpStep:'0.1', inp:v=>(v/10).toFixed(1), parse:x=>{const f=parseFloat(x);return isFinite(f)?Math.round(f*10):null;}, unit:'lb'},
@@ -3713,6 +3746,7 @@ function planCenterContent(){
   return '<div class="spread"><h2 style="margin:0">Adjust your plan</h2>'
     +(planChanged()?'<button class="btn3" data-action="pcresetall" style="color:var(--hard)">Reset all ('+planChangeCount()+')</button>':'')+'</div>'
     +'<p class="note" style="margin:6px 0 8px">Tune the targets — the plan’s shape (ramp, down-weeks, taper) and original always stay underneath. Everything resets.</p>'
+    +'<button class="btn2" data-action="opencoach" aria-haspopup="dialog" style="width:100%;margin:0 0 12px;justify-content:space-between;border-color:var(--coral)"><span>Coach with Claude</span><span style="color:var(--coral-text);font-weight:700">'+(coachActive()?'active ›':'re-plan ›')+'</span></button>'
     +'<div id="pcpreview" style="background:var(--bg);border-radius:12px;padding:10px;margin:0 0 12px">'+pcPreviewBlock()+'</div>'
     +pcRow('race')+pcRow('weight')+pcRow('vol')
     +'<button class="btn3" data-action="pcadvanced" aria-expanded="'+(ui.pcAdv?'true':'false')+'" style="margin-top:10px;color:var(--sub)">'+(ui.pcAdv?'Hide fine-tuning':'Fine-tune paces & heat ›')+'</button>'
@@ -3724,6 +3758,135 @@ function planCenterContent(){
 function openPlanCenter(){ui.pcOpen=null;openSheet(planCenterContent(),document.querySelector('[data-action="plancenter"]'));}
 function pcRefresh(){const p=document.querySelector('#sheet .panel');if(p)p.innerHTML=planCenterContent();}
 function planKnockOn(sk){return sk==='race'?'Zone paces and race splits updated':sk==='weight'?'Weight glide + future calorie targets updated':'Future weekly targets scaled';}
+
+/* ---- Coach with Claude: round-trip plan adjustment ----
+   The app emits a brief (plan + recent training + the editable session ids + a
+   reply schema). You chat it over with Claude (which pulls your Strava via the
+   MCP) and paste its JSON back; it is validated, previewed and merged into the
+   same S.plan deltas the Plan Center uses. This is the expert layer over the
+   app's blind weekly rebalance. */
+function coachPlanSubset(){const p=S.plan||{},o={};['volPct','goalWeight','dailyDeficit','raceSecs','noRebalance'].forEach(k=>{if(p[k]!=null)o[k]=p[k];});
+  if(p.volWeek&&Object.keys(p.volWeek).length){o.volWeek={};for(const k in p.volWeek)o.volWeek[(+k)+1]=p.volWeek[k];} // show 1-based to match the schema the coach replies in
+  if(p.paceShift&&Object.keys(p.paceShift).length)o.paceShift=p.paceShift;if(p.sessions&&Object.keys(p.sessions).length)o.sessions=p.sessions;return o;}
+function coachSchema(){
+  return '## Reply with ONE fenced ```json block, including ONLY the keys you want to change:\n'
+    +'```json\n'
+    +'{ "coach": {\n'
+    +'  "note": "1–2 sentences explaining the change (shown in my app)",\n'
+    +'  "noRebalance": true,                 // true = stop the app cramming missed km into the rest of a week; you re-plan instead\n'
+    +'  "volWeek": { "3": 0.9, "4": 0.85 }, // per-week volume factor 0.5–1.3, by WEEK NUMBER (1–16, the same W labels + wN ids above), current/future only\n'
+    +'  "paceShift": { "Easy": 5, "Long": 5 },// s/km, -60..60 (+ = slower/easier)\n'
+    +'  "sessions": {                         // per-session edits, keyed by the ids listed above\n'
+    +'    "w3d5": { "km": 16, "note": "hold the long, don’t jump" },\n'
+    +'    "w3d2": { "skip": true, "note": "extra recovery" },\n'
+    +'    "w4d3": { "zone": "Easy", "km": 8 } },\n'
+    +'  "dailyDeficit": 600,                  // kcal/day 200–1500 (optional)\n'
+    +'  "goalWeight": 189                     // lb (optional)\n'
+    +'} }\n'
+    +'```\n'
+    +'Rules: adjust only CURRENT + FUTURE weeks (never the past or race week W16). Keep week-over-week volume jumps gentle (~10% or less). Valid zones: '+Object.keys(ZONE_MID_PACE).join(', ')+', Rest.';
+}
+function coachBrief(){
+  const t=clamp(rawT,0,RACE_IDX),cw=currentWeekIdx(),L=[];
+  L.push('# Berlin marathon — coaching adjustment request');
+  L.push('Act as my running coach. Review the plan + recent training below, and PULL MY STRAVA via the MCP for objective load (recent runs, distance, pace, HR, relative effort, anything missed). Then re-plan the remaining weeks so I progress safely and don’t spike into injury after a missed week.');
+  L.push('');
+  L.push('## Context');
+  L.push('- Goal: '+goalLabel()+' at Berlin, Sun 27 Sep 2026.');
+  L.push('- Today: '+longDate(t)+' — week '+(cw+1)+' of 16 ('+WEEKS[cw].phase+'), '+Math.max(0,RACE_IDX-rawT)+' days to race.');
+  const lw=latestWeight();if(lw)L.push('- Weight: '+fmtLb(lw.lb)+' lb (latest) → goal '+fmtLb(goalWeightVal())+' lb.');
+  L.push('- Current zone paces (s/km): '+Object.keys(ZONE_MID_PACE).map(z=>z+' '+fmtPace(zoneMid(z))).join(', ')+'.');
+  L.push('');
+  L.push('## The plan (16 weeks) — Wk · phase · target km · long km · status');
+  for(let w=0;w<16;w++){const st=weekStatus(w)[0],act=weekActualKm(w);
+    L.push('W'+(w+1)+' · '+WEEKS[w].phase+' · '+effWeekTarget(w)+' km · long '+effLong(w)+' km · '+st+(act>0?' (logged '+fmtKm(act)+' km)':'')+(w===cw?'   <-- current':w<cw?'':'   [future]'));}
+  L.push('');
+  L.push('## Last 14 days (the app’s logs)');
+  let any=false;
+  for(let i=Math.max(0,t-13);i<=t;i++){const e=eff(i),l=sessLog(e.id);if(e.zone==='Rest'&&e.planKm<=0)continue;
+    const st=(l&&l.status)?(l.status+(l.km!=null?' '+fmtKm(l.km)+' km':'')+(l.rpe?' RPE'+l.rpe:'')):'NOT logged';
+    L.push(isoAt(i)+' '+DOW[i%7]+' · '+e.zone+' '+fmtKm(e.planKm)+' km planned → '+st);any=true;}
+  if(!any)L.push('(nothing logged in this window)');
+  L.push('');
+  L.push('## Sessions you can edit (id · day · planned) — current + next 2 weeks');
+  for(let w=cw;w<Math.min(16,cw+3);w++)for(let d=0;d<7;d++){const i=w*7+d;if(i<=t||i===RACE_IDX)continue;const e=eff(i);if(e.zone==='Rest'&&e.planKm<=0)continue;
+    L.push(e.id+' · '+DOW[i%7]+' W'+(w+1)+' · '+e.zone+' '+fmtKm(e.planKm)+' km');}
+  L.push('');
+  L.push('## Current manual overrides');
+  L.push(planChanged()?JSON.stringify(coachPlanSubset()):'none — this is the original plan');
+  L.push('');
+  L.push(coachSchema());
+  return L.join('\n');
+}
+function coachExtractJson(txt){txt=String(txt);const m=txt.match(/```(?:json)?\s*([\s\S]*?)```/i);if(m)return m[1].trim();const a=txt.indexOf('{'),b=txt.lastIndexOf('}');return (a>=0&&b>a)?txt.slice(a,b+1):txt;}
+function coachParse(txt){
+  let j;try{j=JSON.parse(coachExtractJson(txt));}catch(e){return null;}
+  let c=(j&&j.coach&&typeof j.coach==='object')?j.coach:j;
+  if(!c||typeof c!=='object')return null;
+  if(c.note&&!c.coachNote)c.coachNote=c.note;
+  if(c.volWeek&&typeof c.volWeek==='object'){const vw={};for(const k in c.volWeek){const n=parseInt(k,10);if(isFinite(n))vw[n-1]=c.volWeek[k];}c.volWeek=vw;} // coach replies 1-based (W1–16) → store 0-based
+  const clean=sanitizePayload({plan:c}).plan; // reuse the bounded validator
+  const has=clean.raceSecs!=null||clean.goalWeight!=null||clean.dailyDeficit!=null||clean.volPct!=null||clean.noRebalance||clean.coachNote||(clean.volWeek&&Object.keys(clean.volWeek).length)||(clean.paceShift&&Object.keys(clean.paceShift).length)||(clean.sessions&&Object.keys(clean.sessions).length);
+  return has?clean:null;
+}
+function coachMergeInto(p,c){
+  if(c.raceSecs!=null)p.raceSecs=c.raceSecs;
+  if(c.goalWeight!=null)p.goalWeight=c.goalWeight;
+  if(c.dailyDeficit!=null)p.dailyDeficit=c.dailyDeficit;
+  if(c.volPct!=null)p.volPct=c.volPct;
+  if(c.volWeek&&Object.keys(c.volWeek).length)p.volWeek=Object.assign(p.volWeek||{},c.volWeek);
+  if(c.paceShift&&Object.keys(c.paceShift).length)p.paceShift=Object.assign(p.paceShift||{},c.paceShift);
+  if(c.sessions&&Object.keys(c.sessions).length)p.sessions=Object.assign(p.sessions||{},c.sessions);
+  if(c.noRebalance===true)p.noRebalance=true;
+  if(c.coachNote)p.coachNote=c.coachNote;
+  return p;
+}
+function coachPreviewHtml(c){
+  const snap=f=>{const a=[];for(let w=0;w<16;w++)a.push(f(w));return a;};
+  const bT=snap(effWeekTarget),bL=snap(effLong),bP={};Object.keys(ZONE_MID_PACE).forEach(z=>bP[z]=zoneMid(z));
+  const saved=S.plan;let aT,aL,aP={};
+  try{const tmp=saved?JSON.parse(JSON.stringify(saved)):{};coachMergeInto(tmp,c);S.plan=tmp;
+    aT=snap(effWeekTarget);aL=snap(effLong);Object.keys(ZONE_MID_PACE).forEach(z=>aP[z]=zoneMid(z));}
+  finally{S.plan=saved;}
+  const cw=currentWeekIdx();let rows='';
+  for(let w=cw;w<16;w++){if(bT[w]===aT[w]&&bL[w]===aL[w])continue;
+    rows+='<div class="spread" style="margin-top:3px"><span class="mini" style="color:var(--ink);font-weight:700">W'+(w+1)+'</span><span class="mini">'
+      +(bT[w]!==aT[w]?'target '+bT[w]+'→<b style="color:var(--ink)">'+aT[w]+'</b>':'')
+      +(bL[w]!==aL[w]?(bT[w]!==aT[w]?' · ':'')+'long '+bL[w]+'→<b style="color:var(--ink)">'+aL[w]+'</b>':'')+' km</span></div>';}
+  // flag only the jumps THIS adjustment created/worsened past ~12% (not the plan's normal build steps)
+  let ramp='';for(let w=cw+1;w<16;w++){if(aT[w-1]<=0)continue;const aJ=aT[w]/aT[w-1]-1,bJ=bT[w-1]>0?bT[w]/bT[w-1]-1:0;if(aJ>0.12&&aJ>bJ+0.01)ramp+=(ramp?', ':'')+'W'+w+'→W'+(w+1)+' +'+Math.round(aJ*100)+'%';}
+  let pace='';Object.keys(ZONE_MID_PACE).forEach(z=>{if(aP[z]!==bP[z])pace+=(pace?' · ':'')+z+' '+fmtPace(bP[z])+'→'+fmtPace(aP[z]);});
+  let sess='';if(c.sessions)Object.keys(c.sessions).forEach(id=>{const sv=c.sessions[id];sess+=(sess?'<br>':'')+'<b>'+id+'</b>: '+(sv.skip?'skip':((sv.zone?sv.zone+' ':'')+(sv.km!=null?sv.km+' km':'')))+(sv.note?' — '+esc(sv.note):'');});
+  let h='<div class="card" style="margin-top:10px;border-color:var(--coral)">';
+  if(c.coachNote)h+='<p class="detail" style="margin:0 0 8px"><b>Coach:</b> '+esc(c.coachNote)+'</p>';
+  h+='<div class="seclbl">Weekly volume</div>'+(rows||'<p class="mini" style="margin-top:4px">No weekly-volume change.</p>');
+  if(pace)h+='<div class="seclbl" style="margin-top:8px">Paces</div><p class="mini" style="margin-top:2px">'+pace+'</p>';
+  if(sess)h+='<div class="seclbl" style="margin-top:8px">Sessions</div><p class="mini" style="margin-top:2px">'+sess+'</p>';
+  if(c.dailyDeficit!=null)h+='<p class="mini" style="margin-top:8px">Daily deficit → <b>'+c.dailyDeficit+' kcal</b></p>';
+  if(c.goalWeight!=null)h+='<p class="mini" style="margin-top:6px">Goal weight → <b>'+fmtLb(c.goalWeight)+' lb</b></p>';
+  if(c.noRebalance)h+='<p class="mini" style="margin-top:6px">Auto-rebalance OFF — your coach plan stands as written.</p>';
+  if(ramp)h+='<p class="note" style="margin-top:8px;color:var(--warn)">⚠ Week-over-week jumps over ~10%: '+ramp+' — confirm that’s intended.</p>';
+  h+='<button class="btn" style="width:100%;margin-top:12px" data-action="coachapply">Apply adjustment</button></div>';
+  return h;
+}
+function coachSheetContent(){
+  const p=S.plan||{},active=coachActive();
+  let h='<div class="spread"><h2 style="margin:0">Coach with Claude</h2><button class="btn3" data-action="closesheet" style="color:var(--accent-text)">Done</button></div>'
+    +'<p class="note" style="margin:6px 0 10px">Talk your plan over with Claude — it can pull your Strava via the MCP — then paste its adjustment back. You preview every change before it lands; nothing applies on its own.</p>';
+  if(active)h+='<div class="card heroc" style="margin-top:0;border-color:var(--coral)"><div class="lblrow"><span class="seclbl" style="color:var(--coral)">Coach active</span>'+(p.coachAt?'<span class="mini">'+isoShort(p.coachAt)+'</span>':'')+'</div>'
+    +(p.coachNote?'<p class="detail" style="margin-top:6px">'+esc(p.coachNote)+'</p>':'')
+    +'<button class="btn3" data-action="coachclear" style="color:var(--hard);padding:8px 0;margin-top:2px">Clear coach adjustments</button></div>';
+  h+='<h2 style="margin:18px 0 6px">1 · Copy the brief</h2>'
+    +'<textarea id="coachbrief" class="coachta" readonly aria-label="Coaching brief for Claude">'+esc(coachBrief())+'</textarea>'
+    +'<button class="btn2" style="width:100%;margin-top:8px" data-action="coachcopy">Copy brief</button>'
+    +'<h2 style="margin:18px 0 6px">2 · Paste Claude’s adjustment</h2>'
+    +'<textarea id="coachin" class="coachta" placeholder="Paste the JSON block Claude replies with…" aria-label="Claude adjustment JSON"></textarea>'
+    +'<p class="err" id="coacherr" hidden>Couldn’t read an adjustment in there — paste the whole ```json block Claude gave you.</p>'
+    +'<div id="coachprev"></div>'
+    +'<button class="btn" style="width:100%;margin-top:8px" data-action="coachpreview">Preview changes</button>';
+  return h;
+}
+function openCoachSheet(){ui.coachPending=null;openSheet(coachSheetContent());}
 
 function wTrend(){
   if(S.weights.length<2)return '<section class="card"><h2>Weight trend</h2><p class="note" style="margin:0">Log a few weigh-ins and the trend chart appears here.</p></section>';
@@ -4472,7 +4635,7 @@ function dayCard(i){
   return '<section class="card sesshero" style="border-left-color:var(--'+(ZONECLR[e.zone]||'rest')+')" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
     +'<div class="spread"><div class="row">'
     +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
-    +zoneChip(e)+movedChip(e)
+    +zoneChip(e)+movedChip(e)+(e.coach?'<span class="chip" style="background:var(--coral-bg);color:var(--coral-text)">Coach</span>':'')
     +'</div><button class="btn3" data-action="movestart" aria-haspopup="dialog" data-i="'+i+'">Move</button></div>'
     +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
@@ -4508,6 +4671,7 @@ function vTrain(){
   return '<div>'+appleNav('Training','','opensettings')
     +countdownRail()
     +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:8px 2px 0;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
+    +(coachActive()?'<button data-action="opencoach" aria-haspopup="dialog" style="display:block;width:100%;background:var(--coral-bg);border:1px solid var(--coral);border-radius:14px;padding:10px 14px;margin-top:10px;text-align:left;cursor:pointer;font:inherit"><span class="seclbl" style="color:var(--coral-text)">Coach plan active</span><div class="detail" style="margin:4px 0 0;color:var(--txt2)">'+esc((S.plan.coachNote||'Your plan has been re-coached.').slice(0,140))+'</div><div class="mini" style="color:var(--coral-text);font-weight:700;margin-top:4px">Re-plan with Claude ›</div></button>':'')
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -5433,6 +5597,35 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='opensettings'){openSettingsSheet();}
+  else if(a==='opencoach'){openCoachSheet();}
+  else if(a==='coachcopy'){
+    const b=document.getElementById('coachbrief');if(b){b.focus();b.select();}
+    if(navigator.clipboard)navigator.clipboard.writeText(coachBrief()).then(()=>snack('Brief copied — paste it to Claude'),()=>snack('Selected — press Copy on your keyboard'));
+    else snack('Selected — press Copy on your keyboard');
+  }
+  else if(a==='coachpreview'){
+    const ta=document.getElementById('coachin'),err=document.getElementById('coacherr'),prev=document.getElementById('coachprev');
+    const c=ta?coachParse(ta.value):null;
+    if(!c){ui.coachPending=null;if(prev)prev.innerHTML='';if(err)err.hidden=false;return;}
+    if(err)err.hidden=true;ui.coachPending=c;if(prev){prev.innerHTML=coachPreviewHtml(c);prev.scrollIntoView({block:'nearest'});}
+  }
+  else if(a==='coachapply'){
+    if(!ui.coachPending)return;
+    const prevP=S.plan?JSON.parse(JSON.stringify(S.plan)):null;
+    if(!S.plan||typeof S.plan!=='object')S.plan={};
+    if(!S.plan.coachPrev){const base=JSON.parse(JSON.stringify(S.plan));delete base.coachPrev;S.plan.coachPrev=base;} // snapshot the pre-coaching plan once, so Clear fully reverts
+    coachMergeInto(S.plan,ui.coachPending);S.plan.coachAt=todayISO();ui.coachPending=null;save();
+    closeSheet();rerenderKeepScroll();gcalReconcileSoon();
+    snack('Coach adjustment applied',()=>{S.plan=prevP||{};save();rerenderKeepScroll();gcalReconcileSoon();});
+  }
+  else if(a==='coachclear'){
+    const prevP=S.plan?JSON.parse(JSON.stringify(S.plan)):null;
+    const base=(S.plan&&S.plan.coachPrev)?S.plan.coachPrev:{}; // revert every coach delta to the pre-coaching baseline
+    S.plan=JSON.parse(JSON.stringify(base));save();
+    ui.coachPending=null;const pnl=document.querySelector('#sheet .panel');if(pnl)pnl.innerHTML=coachSheetContent();
+    rerenderKeepScroll();gcalReconcileSoon();
+    snack('Coach adjustments cleared',()=>{S.plan=prevP||{};save();const q=document.querySelector('#sheet .panel');if(q)q.innerHTML=coachSheetContent();rerenderKeepScroll();gcalReconcileSoon();});
+  }
   else if(a==='nutadjust'){openNutAdjustSheet(Number(el.dataset.i));}
   else if(a==='nutadjsave'){
     const i2=Number(el.dataset.i),inp=document.getElementById('adjkcal'),v=parseFloat(inp.value);
