@@ -3052,21 +3052,33 @@ function planNutRow(i){
   return row;
 }
 
+/* Rewrite the leading distance in a baked session description to a new total,
+   keeping a fixed MP/quality segment ("+ N km @ MP") intact, so a scaled or
+   coach-edited run's text agrees with its (smaller) total. */
+function rewriteRunDist(txt,km){
+  const mp=txt.match(/\+\s*(\d+(?:\.\d+)?)\s*km\s*@\s*MP/i);
+  const q=mp?parseFloat(mp[1]):0,main=Math.max(0,Math.round((km-q)*10)/10);
+  return txt.replace(/(\d+(?:\.\d+)?)\s*km/,fmtKm(main)+' km'); // first "<n> km" only
+}
 function eff(i){
   const w=Math.floor(i/7),pos=i%7,op=orderOf(w)[pos];
   const wk=WEEKS[w],s=wk.days[op],n=planNutRow(i);
   const id='w'+(w+1)+'d'+op,ov=sessionOv(i);
-  let zone=s[0],text=s[2],baseKm=planKmAt(i);
+  let zone=s[0],baseKm=planKmAt(i),coachNote='';
   const na=nutAdjusted(i,n);let kcal=na.kcal,carbs=na.carbs,deficit=na.deficit;
   if(ov){ // a coach edit on this session: skip, re-zone or re-distance it
     if(ov.skip){zone='Rest';baseKm=0;}
     else{if(ov.zone&&ZONE_MID_PACE[ov.zone]!=null)zone=ov.zone;if(ov.km!=null)baseKm=ov.km;}
-    if(ov.note)text=text+' · Coach: '+ov.note;
+    if(ov.note)coachNote=' · Coach: '+ov.note;
     // nutrition follows the session: less run → eat less to hold the deficit (carbs flex), unless manually edited
     if(!na.edited){const lb=lbAt(i),dK=Math.round((baseKm-planKmAt(i))*(lb/2.2046)*1.036);
       if(dK!==0){kcal=Math.max(1400,kcal+dK);carbs=Math.max(0,carbs+Math.round(dK/4));}}
   }
   const ra=ov?{km:baseKm,adj:0}:runAdjusted(i,baseKm);
+  // description follows the effective distance + any coach edit, so it never contradicts the title
+  let text;
+  if(ov&&ov.skip)text='Skipped — recovery'+(ov.note?': '+ov.note:'');
+  else text=((zone!=='Rest'&&Math.abs(ra.km-s[1])>0.05)?rewriteRunDist(s[2],ra.km):s[2])+coachNote;
   return {i:i,w:w,pos:pos,op:op,moved:op!==pos,wk:wk,coach:!!ov,
     zone:zone,km:ra.km,planKm:planKmAt(i),kmAdj:ra.adj,text:text,
     type:n[0],kcal:kcal,p:185,carbs:carbs,fat:n[3],burn:n[4],deficit:deficit,
