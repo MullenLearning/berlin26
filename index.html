@@ -4090,7 +4090,6 @@ function wRecovery(){
    weight. Active = the day's TRACKED active calories (Oura) for today/past, or
    the PLANNED active (a learned non-exercise baseline + the planned run) for
    future days. No Oura profile → fall back to Oura's day total / null. */
-const OURA_ACTIVE_TRIM=0.8; // Oura over-reads active calories — trim its non-exercise portion ~20%
 function bmrAt(lb){
   const ost=ouraState();
   if(!(ost&&ost.h>0&&ost.age>0))return null;
@@ -4111,7 +4110,7 @@ function dailyNEAT(){
     vals.push(Math.max(0,h.calA-runK));
   }
   let neat=280; // conservative default until there's enough low-exercise data
-  if(vals.length>=3){vals.sort((a,b)=>a-b);neat=Math.round(vals[Math.floor(vals.length*0.2)]*OURA_ACTIVE_TRIM);} // a quiet (20th-pct) day, trimmed for Oura over-read
+  if(vals.length>=3){vals.sort((a,b)=>a-b);neat=Math.round(vals[Math.floor(vals.length*0.2)]);} // a quiet (20th-pct) day's non-exercise active
   neat=clamp(neat,120,520);
   _neatCache=neat;return neat;
 }
@@ -4127,10 +4126,10 @@ function dayBurn(i){
     const oura=h&&h.calT?h.calT:null;
     return {burned:oura,resting:null,active:null,oura:oura,run:run,measured:oura!=null};
   }
-  // active = run (distance-based) + non-exercise active. Measured days trim the day's
-  // tracked Oura active for over-read; future days use the learned conservative baseline.
+  // active = run (distance-based) + non-exercise active. Measured days use the day's
+  // tracked Oura active in full; future days use the learned baseline.
   const rawActive=h&&h.calA!=null?h.calA:(h&&h.calT!=null?Math.max(0,h.calT-bmr):null);
-  const neat=rawActive!=null?Math.max(0,rawActive-run)*OURA_ACTIVE_TRIM:dailyNEAT();
+  const neat=rawActive!=null?Math.max(0,rawActive-run):dailyNEAT();
   const active=Math.round(run+neat);
   return {burned:bmr+active,resting:bmr,active:active,oura:(h&&h.calT)||null,run:run,measured:rawActive!=null};
 }
