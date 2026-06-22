@@ -64,6 +64,7 @@ html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
 .aNav{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 2px 0}
 .aTitle{font-size:34px;font-weight:700;letter-spacing:.37px;color:#000;line-height:1.1}
 .aSub{font-size:15px;color:var(--txt2);margin:2px 2px 6px}
+.aActions{display:flex;gap:8px;flex:none;align-items:flex-start}
 .aAvatar{width:34px;height:34px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--txt2);font-size:16px;border:none;cursor:pointer;flex:none;margin-top:6px;position:relative}
 .aAvatar::before{content:"";position:absolute;inset:-5px}
 .aSec{font-size:22px;font-weight:700;color:#000;margin:24px 2px 9px;display:flex;justify-content:space-between;align-items:baseline}
@@ -5764,10 +5765,12 @@ function appleRow(glyph,color,name,value,unit,action){
    button on the right — used only on Today, matching Apple Health's Summary tab. */
 function appleNav(title,sub,avatarAction){
   const gear='<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
-  let avatar='';
-  if(avatarAction==='opensettings')avatar='<button class="aAvatar" data-action="opensettings" aria-haspopup="dialog" aria-label="Settings and integrations" style="color:var(--txt2)">'+gear+'</button>';
-  else if(avatarAction)avatar='<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>';
-  return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div>'+avatar+'</div>';
+  // the settings & integrations gear lives on every screen; a non-settings action (e.g. Today's
+  // edit-widgets) sits to its left so the gear stays in the same top-right spot everywhere.
+  const gearBtn='<button class="aAvatar" data-action="opensettings" aria-haspopup="dialog" aria-label="Settings and integrations" style="color:var(--txt2)">'+gear+'</button>';
+  const extra=(avatarAction&&avatarAction!=='opensettings')
+    ?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>':'';
+  return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div><div class="aActions">'+extra+gearBtn+'</div></div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
 
