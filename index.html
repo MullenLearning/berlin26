@@ -423,6 +423,58 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .state.err .st-t{color:var(--hard)}
 /* error-tone toast accent (info toasts unchanged) — token only */
 .snackin.err{box-shadow:inset 3px 0 0 var(--hard),0 6px 20px rgba(0,0,0,.12)}
+
+/* ---- Calendar tab ----------------------------------------------------- */
+.calseg{margin-top:10px}
+.calbar{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 8px}
+.calbar b{font:inherit;font-size:17px;font-weight:800;letter-spacing:-.3px;color:var(--ink);text-align:center;flex:1}
+.calnav{display:flex;gap:6px;flex:none}
+.calnav button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.calnav button[disabled]{opacity:.3;cursor:default}
+/* month grid */
+.caldow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:5px}
+.caldow span{font-size:10px;font-weight:700;color:var(--sub);text-align:center;text-transform:uppercase;letter-spacing:.05em}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.calcell{position:relative;min-height:62px;border:1px solid var(--line);border-radius:11px;background:var(--card);padding:5px 4px 4px;display:flex;flex-direction:column;text-align:left;cursor:pointer;overflow:hidden}
+.calcell .cdate{font-size:12px;font-weight:700;color:var(--txt2);line-height:1}
+.calcell.out{background:transparent;border-color:transparent;cursor:default}
+.calcell.out .cdate{color:var(--chevron)}
+.calcell.past{opacity:.6}
+.calcell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.calcell.today .cdate{color:var(--accent-text)}
+.calpill{margin-top:auto;font-size:10px;font-weight:800;line-height:1.3;border-radius:6px;padding:2px 4px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calcell.logged .calpill{opacity:.5}
+.cdots{display:flex;gap:2px;margin-top:3px;flex-wrap:wrap}
+.cdot{width:5px;height:5px;border-radius:50%;flex:none}
+.cdone{position:absolute;top:4px;right:5px;font-size:11px;font-weight:800;color:var(--easy);line-height:1}
+.callegend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px}
+.callegend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--sub)}
+.callegend i{width:9px;height:9px;border-radius:50%}
+/* week time-grid */
+.calwk-head{display:grid;grid-template-columns:34px repeat(7,1fr);margin-top:8px}
+.cwh{background:none;border:none;padding:4px 0;border-radius:8px;cursor:pointer;color:var(--ink)}
+.cwh small{display:block;font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase}
+.cwh b{font-size:15px;font-weight:800}
+.cwh.td b,.cwh.td small{color:var(--accent-text)}
+.calwk-allday{display:grid;grid-template-columns:34px repeat(7,1fr);border-bottom:1px solid var(--line);padding-bottom:3px}
+.calallcol{min-width:0;padding:0 1px}
+.calchip{display:block;width:100%;font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:2px 3px;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;text-align:left;cursor:pointer}
+.calchip.mtg{color:var(--ink);border:1px solid var(--line)}
+.calwk-grid{display:flex;position:relative;border-top:1px solid var(--line);margin-top:2px}
+.calgutter{width:34px;flex:none;position:relative}
+.calgutter .ghr{position:absolute;right:5px;font-size:9px;font-weight:600;color:var(--sub);transform:translateY(-50%);white-space:nowrap}
+.calcol{flex:1;min-width:0;position:relative;border-left:1px solid var(--line-soft);background-image:repeating-linear-gradient(to bottom,var(--line-soft) 0,var(--line-soft) 1px,transparent 1px,transparent 42px)}
+.calblk{position:absolute;left:1px;right:1px;border-radius:4px;padding:1px 3px;font-size:9px;line-height:1.15;font-weight:800;color:#fff;overflow:hidden;text-align:left;cursor:pointer;border:none}
+.calblk.mtg{color:var(--ink);background:var(--raised)}
+.calwk-empty{color:var(--sub);font-size:13px;text-align:center;padding:18px 8px}
+/* day-detail + add-workout sheet */
+.calkinds{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.calkindb{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:9px 4px;font-size:19px;cursor:pointer;color:var(--ink)}
+.calkindb span{font-size:11px;font-weight:700;color:var(--sub)}
+.calkindb.on{border-color:var(--kc);box-shadow:inset 0 0 0 1.5px var(--kc)}
+.calkindb.on span{color:var(--ink)}
+.caldonebtn{width:24px;height:24px;flex:none;border-radius:50%;border:1.5px solid var(--bord);background:var(--card);color:var(--easy);font-weight:800;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.caldonebtn.on{background:var(--easy-bg);border-color:var(--easy)}
 </style>
 </head>
 <body>
@@ -958,7 +1010,7 @@ const KEY='berlin2026.v1';
 /* v3 fit-it-in settings — the calendar reconciler reads these (lunch window, step goal,
    what to diarise). Kept inside S so they ride the backup; tokens never do. */
 function fitDefaults(){return {lunchStart:'11:00',lunchEnd:'14:00',stepGoal:10000,ambientSteps:3000,diariseWalks:true,walkDaysAhead:2,diariseStrength:true,diariseLearning:false,diariseFoot:false,freeTitles:'Lunch, New Event'};}
-function freshState(){return {v:2,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},weekDone:{},plan:{},health:{d:{}},loops:{},hints:{},settings:{fit:fitDefaults()},gcal:{lastSync:null,syncToken:null,calendarId:'primary',note:null},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
+function freshState(){return {v:2,sessions:{},weights:[],order:{},nutEdit:{},ate:{},food:{},locked:{},weekDone:{},plan:{},health:{d:{}},loops:{},hints:{},settings:{fit:fitDefaults()},gcal:{lastSync:null,syncToken:null,calendarId:'primary',note:null},cal:{events:{}},lastBackup:null,lastOpen:null,hideInstallTip:false,theme:'dark',skin:'berlin'};}
 function hintDone(k){ // training wheels retire themselves after first successful use
   if(!S.hints)S.hints={};
   if(!S.hints[k]){S.hints[k]=1;save();}
@@ -3286,15 +3338,17 @@ const TAB_ICONS={
   today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>',
   train:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>',
   nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
+  cal:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3.2v3.4M16 3.2v3.4"/></svg>',
 };
 const BERLIN={
   defaultTab:'today',
   tabs:[
     {id:'today',label:'Today',icon:TAB_ICONS.today},
     {id:'train',label:'Training',icon:TAB_ICONS.train},
+    {id:'cal',label:'Calendar',icon:TAB_ICONS.cal},
     {id:'nut',label:'Nutrition',icon:TAB_ICONS.nut},
   ],
-  screens:{today:()=>vToday(),train:()=>vTrain(),nut:()=>vNut()},
+  screens:{today:()=>vToday(),train:()=>vTrain(),cal:()=>vCal(),nut:()=>vNut()},
 };
 const SKIN_REG={berlin:BERLIN};
 
@@ -3306,7 +3360,7 @@ let rawT=rawTodayIdx();
 let todayIdx=clamp(rawT,0,RACE_IDX);
 const morningPending=S.lastOpen!==todayISO(); // first open of the day
 if(morningPending){S.lastOpen=todayISO();save();}
-const ui={tab:'today',week:clamp(activeWeekIdx(),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcVal:null,pcAdv:false,morning:morningPending};
+const ui={tab:'today',week:clamp(activeWeekIdx(),0,15),nutDay:todayIdx,nutWeek:'all',scroll:{},wtOpen:false,ateOpen:false,showCutWeeks:false,showBurnSplit:false,pcOpen:null,pcVal:null,pcAdv:false,morning:morningPending,calView:'month',calYM:null,calWeek:clamp(activeWeekIdx(),0,15),calForm:null,calDayISO:null};
 /* "Today" follows the device's real date even when the PWA is resumed days later */
 function refreshToday(){
   const r=rawTodayIdx();
@@ -5318,6 +5372,199 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
     +'<button class="btn3" style="margin-top:12px;color:var(--accent-text)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
     +'</section>';
 }
+/* ---------------- 9b. Calendar tab ----------------
+   A first-class calendar surface: a Month overview of the whole block (each day
+   colour-coded by its planned session) and a Week time-grid that places meetings,
+   the diarised run/walks and your own added workouts at their real times. Reads
+   the same eff()/swapDays()/gcalAgenda the rest of the app does; the only new
+   store is S.cal.events — extra sessions (gym, cross-training, physio…) the plan
+   itself doesn't carry, keyed by ISO date so they live alongside everything else. */
+const CAL_KINDS={
+  strength:{label:'Strength',c:'qual',emoji:'🏋️'},
+  cross:{label:'Cross-train',c:'rec',emoji:'🚴'},
+  mobility:{label:'Mobility',c:'easy',emoji:'🧘'},
+  xrun:{label:'Extra run',c:'long',emoji:'🏃'},
+  physio:{label:'Physio',c:'warn',emoji:'🩹'},
+  other:{label:'Other',c:'blue',emoji:'📌'},
+};
+function calEvents(){if(!S.cal||typeof S.cal!=='object')S.cal={events:{}};if(!S.cal.events||typeof S.cal.events!=='object')S.cal.events={};return S.cal.events;}
+function calEventsOn(iso){const e=calEvents()[iso];return Array.isArray(e)?e:[];}
+function calNewId(){return 'ev'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function calAddEvent(iso,ev){const all=calEvents();if(!Array.isArray(all[iso]))all[iso]=[];all[iso].push(ev);save();}
+function calUpdateEvent(iso,id,patch){const ev=calEventsOn(iso).find(x=>x.id===id);if(ev){Object.assign(ev,patch);save();}}
+function calDeleteEvent(iso,id){const all=calEvents();if(Array.isArray(all[iso])){all[iso]=all[iso].filter(x=>x.id!==id);if(!all[iso].length)delete all[iso];save();}}
+function gcalDay(idx){return (gcalAgenda&&gcalAgenda.days)?(gcalAgenda.days.find(d=>d.i===idx)||null):null;}
+function calLongDate(iso){const p=iso.split('-').map(Number),d=new Date(Date.UTC(p[0],p[1]-1,p[2])),dow=(d.getUTCDay()+6)%7;return DOWL[dow]+' '+p[2]+' '+MONL[p[1]-1]+(p[0]!==2026?' '+p[0]:'');}
+function calColor(it){
+  if(it.kind==='meeting')return 'var(--raised)';
+  if(it.kind==='run'){let z=it.zone;if(!z&&it.idx!=null)z=eff(it.idx).zone;return 'var(--'+(ZONECLR[z]||'easy')+')';}
+  if(it.kind==='walk')return 'var(--rec)';
+  if(it.kind==='strength')return 'var(--qual)';
+  if(it.kind==='learning')return 'var(--blue)';
+  if(it.kind==='foot')return 'var(--rest)';
+  const k=CAL_KINDS[it.kind];return 'var(--'+((k&&k.c)||'blue')+')';
+}
+function calShort(t){return esc(String(t||'').slice(0,30));}
+function calYMRange(){const lo=dAt(0),hi=dAt(N_DAYS-1);return [lo.getUTCFullYear()*12+lo.getUTCMonth(),hi.getUTCFullYear()*12+hi.getUTCMonth()];}
+function calCurYM(){if(ui.calYM==null){const d=dAt(clamp(rawT,0,N_DAYS-1));ui.calYM=d.getUTCFullYear()*12+d.getUTCMonth();}const r=calYMRange();ui.calYM=clamp(ui.calYM,r[0],r[1]);return ui.calYM;}
+
+function vCal(){
+  const seg=v=>'<button class="'+(ui.calView===v?'on':'')+'" data-action="calview" data-v="'+v+'" aria-pressed="'+(ui.calView===v)+'">'+(v==='month'?'Month':'Week')+'</button>';
+  return '<div>'+appleNav('Calendar','','opensettings')
+    +'<div class="aSeg calseg" role="tablist">'+seg('month')+seg('week')+'</div>'
+    +(ui.calView==='week'?calWeekView():calMonthView())
+    +'</div>';
+}
+
+function calMonthView(){
+  const ym=calCurYM(),y=Math.floor(ym/12),m=ym%12,r=calYMRange();
+  const first=new Date(Date.UTC(y,m,1)),firstDow=(first.getUTCDay()+6)%7;
+  const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate();
+  let h='<div class="calbar">'
+    +'<div class="calnav"><button data-action="calmonth" data-d="-1"'+(ym<=r[0]?' disabled':'')+' aria-label="Previous month">‹</button></div>'
+    +'<b>'+MONL[m]+' '+y+'</b>'
+    +'<div class="calnav"><button data-action="calmonth" data-d="1"'+(ym>=r[1]?' disabled':'')+' aria-label="Next month">›</button></div></div>'
+    +'<div class="caldow">'+DOW.map(d=>'<span>'+d+'</span>').join('')+'</div>';
+  const cells=[];for(let k=0;k<firstDow;k++)cells.push(null);for(let dd=1;dd<=dim;dd++)cells.push(dd);while(cells.length%7)cells.push(null);
+  let g='<div class="calgrid">';
+  cells.forEach(dd=>{
+    if(dd==null){g+='<div class="calcell out" aria-hidden="true"></div>';return;}
+    const iso=y+'-'+p2(m+1)+'-'+p2(dd),idx=isoToIdx(iso),inPlan=idx>=0&&idx<N_DAYS;
+    const e=inPlan?eff(idx):null,l=e?sessLog(e.id):null,logged=!!(l&&l.status),evs=calEventsOn(iso);
+    let cls='calcell';
+    if(idx===rawT)cls+=' today';else if(inPlan&&idx<rawT)cls+=' past';
+    if(logged)cls+=' logged';
+    let inner='<span class="cdate">'+dd+'</span>';
+    if(e&&!(e.zone==='Rest'&&e.km<=0)){
+      const c=ZONECLR[e.zone]||'rest';
+      inner+='<span class="calpill" style="background:var(--'+c+')">'+(isRace(e)?'RACE':fmtKm(e.km)+'k')+'</span>';
+    }
+    if(evs.length)inner+='<span class="cdots">'+evs.slice(0,4).map(ev=>'<span class="cdot" style="background:'+calColor({kind:ev.kind})+'"></span>').join('')+'</span>';
+    if(logged)inner+='<span class="cdone">✓</span>';
+    g+='<button class="'+cls+'" data-action="calday" data-iso="'+iso+'">'+inner+'</button>';
+  });
+  g+='</div>';
+  const leg='<div class="callegend">'
+    +[['easy','Easy'],['rec','Recovery'],['long','Long / MP'],['qual','Threshold'],['rest','Rest']].map(z=>'<span><i style="background:var(--'+z[0]+')"></i>'+z[1]+'</span>').join('')
+    +'<span><i style="background:var(--blue)"></i>Your workout</span></div>';
+  return '<div class="calmonth">'+h+g+leg
+    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="caladd" data-iso="'+isoAt(clamp(rawT,0,N_DAYS-1))+'">+ Add a workout</button></div>';
+}
+
+function calWeekView(){
+  const w=clamp(ui.calWeek==null?activeWeekIdx():ui.calWeek,0,15);ui.calWeek=w;
+  const wk=WEEKS[w];
+  let h='<div class="calbar">'
+    +'<div class="calnav"><button data-action="calweeknav" data-d="-1"'+(w<=0?' disabled':'')+' aria-label="Previous week">‹</button></div>'
+    +'<b>Week '+wk.n+' · '+esc(wk.phase)+'</b>'
+    +'<div class="calnav"><button data-action="calweeknav" data-d="1"'+(w>=15?' disabled':'')+' aria-label="Next week">›</button></div></div>';
+  const cols=[];let HMIN=24*60,HMAX=0,anyTimed=false;
+  for(let d=0;d<7;d++){
+    const idx=w*7+d,iso=isoAt(idx),timed=[],allday=[],gd=gcalDay(idx);
+    if(gd){gd.items.forEach(it=>{timed.push({sm:it.sm,em:it.em,title:it.title,kind:it.mine?it.kind:'meeting',idx:idx});});}
+    else{const e=eff(idx);if(!(e.zone==='Rest'&&e.km<=0))allday.push({title:headline(e),kind:'run',zone:e.zone,idx:idx});}
+    calEventsOn(iso).forEach(ev=>{const k=CAL_KINDS[ev.kind]||CAL_KINDS.other,lbl=k.emoji+' '+ev.title,mm=ev.time?hhmmToMin(ev.time):null;
+      if(mm!=null)timed.push({sm:mm,em:mm+(ev.mins||45),title:lbl,kind:ev.kind,idx:idx});else allday.push({title:lbl,kind:ev.kind,idx:idx});});
+    timed.sort((a,b)=>a.sm-b.sm);
+    timed.forEach(t=>{anyTimed=true;HMIN=Math.min(HMIN,t.sm);HMAX=Math.max(HMAX,t.em);});
+    cols.push({d,idx,iso,timed,allday});
+  }
+  let hd='<div class="calwk-head"><span class="ccorner"></span>';
+  cols.forEach(c=>{hd+='<button class="cwh'+(c.idx===rawT?' td':'')+'" data-action="calday" data-iso="'+c.iso+'"><small>'+DOW[c.d]+'</small><b>'+dAt(c.idx).getUTCDate()+'</b></button>';});
+  hd+='</div>';
+  let ad='';
+  if(cols.some(c=>c.allday.length)){
+    ad='<div class="calwk-allday"><span class="ccorner"></span>';
+    cols.forEach(c=>{ad+='<div class="calallcol">'+c.allday.map(it=>'<button class="calchip'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="background:'+calColor(it)+'">'+calShort(it.title)+'</button>').join('')+'</div>';});
+    ad+='</div>';
+  }
+  let body;
+  if(anyTimed){
+    const h0=clamp(Math.floor(HMIN/60),5,12),h1c=clamp(Math.ceil(HMAX/60),14,23),h1=h1c<=h0?h0+6:h1c,PXH=42,pxMin=PXH/60;
+    let gut='<div class="calgutter">';for(let hh=h0;hh<=h1;hh++)gut+='<span class="ghr" style="top:'+((hh-h0)*PXH)+'px">'+hh+'</span>';gut+='</div>';
+    body='<div class="calwk-grid" style="height:'+((h1-h0)*PXH)+'px">'+gut;
+    cols.forEach(c=>{
+      let col='<div class="calcol">';
+      c.timed.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(13,(it.em-it.sm)*pxMin);
+        col+='<button class="calblk'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="top:'+top+'px;height:'+ht+'px;background:'+calColor(it)+'">'+calShort(it.title)+'</button>';});
+      col+='</div>';body+=col;
+    });
+    body+='</div>';
+  }else{
+    body='<p class="calwk-empty">Nothing timed this week yet. Runs and added workouts with a set time land on the grid — tap a day to plan one.</p>';
+  }
+  return '<div class="calweek">'+h+hd+ad+body+'</div>';
+}
+
+/* Day detail — the planning hub for one day: the plan session (move / log), your
+   meetings that day (read-only), and your own added workouts (add / edit / tick off). */
+function openCalDay(iso){ui.calDayISO=iso;openSheet(calDayContent(iso),null,null,'Day');}
+function calDayRefresh(){if(!ui.calDayISO)return;const p=document.querySelector('#sheet .panel');if(p){const st=p.scrollTop;p.innerHTML=calDayContent(ui.calDayISO);p.scrollTop=st;}}
+function calDayContent(iso){
+  const idx=isoToIdx(iso),inPlan=idx>=0&&idx<N_DAYS;
+  let html='<h2 style="margin:0 0 2px">'+calLongDate(iso)+'</h2>';
+  if(inPlan){
+    const e=eff(idx),l=sessLog(e.id);
+    if(e.zone==='Rest'&&e.km<=0){
+      html+='<p class="note" style="margin:6px 0 0">Rest day — no run planned.</p>';
+    }else{
+      const gd=gcalDay(idx),run=gd?gd.items.find(it=>it.mine&&it.kind==='run'):null;
+      html+='<section class="card" style="margin-top:8px;border-left:4px solid var(--'+(ZONECLR[e.zone]||'rest')+')">'
+        +'<div class="row">'+zoneChip(e)+movedChip(e)+(e.coach?'<span class="chip" style="background:var(--coral-bg);color:var(--coral-text)">Coach</span>':'')+(l&&l.status?'<span class="chip c-easy" style="margin-left:auto">Logged</span>':'')+'</div>'
+        +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
+        +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
+        +(run?'<div class="mini" style="margin-top:5px;color:var(--sub)">Scheduled '+minToHHMM(run.sm)+'–'+minToHHMM(run.em)+'</div>':'')
+        +'<div class="row" style="margin-top:11px;gap:8px">'
+        +((idx>=rawT&&idx!==RACE_IDX)?'<button class="btn2" data-action="movestart" data-i="'+idx+'" style="flex:1;margin:0">Move day</button>':'')
+        +((idx<=rawT)?'<button class="btn2" data-action="logsheet" data-i="'+idx+'" style="flex:1;margin:0">'+(l&&l.status?'Edit log':'Log')+'</button>':'')
+        +'</div></section>';
+    }
+  }
+  const gd=gcalDay(idx),mtgs=gd?gd.items.filter(it=>!it.mine):[];
+  if(mtgs.length){
+    html+='<p class="mini" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">Your calendar</p>';
+    mtgs.forEach(m=>{html+='<div class="row" style="justify-content:space-between;margin-top:5px;gap:8px"><span class="mini" style="flex:1;min-width:0">📅 '+esc(m.title)+(m.free?' <span style="color:var(--easy)">· free</span>':'')+'</span><span class="mini" style="flex:none">'+minToHHMM(m.sm)+'–'+minToHHMM(m.em)+'</span></div>';});
+  }
+  const evs=calEventsOn(iso);
+  html+='<div class="spread" style="margin-top:16px"><h2 style="margin:0;font-size:18px">Your workouts</h2><button class="btn3" data-action="caladd" data-iso="'+iso+'" style="color:var(--accent-text);padding:4px 8px">+ Add</button></div>';
+  if(!evs.length){
+    html+='<p class="note" style="margin:6px 0 0">Nothing added yet. Plan a gym session, cross-training, mobility — anything that isn’t in the running plan.</p>';
+  }else{
+    evs.forEach(ev=>{const k=CAL_KINDS[ev.kind]||CAL_KINDS.other,sub=[ev.time||'',ev.mins?ev.mins+' min':'',ev.note||''].filter(Boolean).join(' · ');
+      html+='<div class="sheetrow" style="cursor:default;gap:10px;align-items:center">'
+        +'<button class="caldonebtn'+(ev.done?' on':'')+'" data-action="caldone" data-iso="'+iso+'" data-id="'+ev.id+'" aria-label="Mark '+esc(ev.title)+' done" aria-pressed="'+(!!ev.done)+'">'+(ev.done?'✓':'')+'</button>'
+        +'<span style="flex:1;min-width:0"><b style="'+(ev.done?'text-decoration:line-through;color:var(--sub)':'')+'">'+esc(k.emoji+' '+ev.title)+'</b>'+(sub?'<div class="mini">'+esc(sub)+'</div>':'')+'</span>'
+        +'<button class="btn3" data-action="caladd" data-iso="'+iso+'" data-id="'+ev.id+'" style="color:var(--sub);padding:4px 8px">Edit</button></div>';});
+  }
+  html+='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>';
+  return html;
+}
+
+/* Add / edit one custom workout. The transient form lives on ui.calForm so a kind
+   tap can re-render the chooser without losing what's already typed. */
+function openCalAdd(iso,id){
+  const ev=id?calEventsOn(iso).find(x=>x.id===id):null;
+  ui.calForm={iso:iso,id:id||null,kind:(ev&&ev.kind)||'strength',title:(ev&&ev.title)||'',time:(ev&&ev.time)||'',mins:(ev&&ev.mins!=null)?String(ev.mins):'',note:(ev&&ev.note)||''};
+  openSheet(calAddContent(),null,null,id?'Edit workout':'Add workout');
+}
+function calFormCapture(){const f=ui.calForm;if(!f)return;const g=id=>{const el=document.getElementById(id);return el?el.value:null;};
+  const t=g('calt');if(t!=null)f.title=t;const tm=g('caltime');if(tm!=null)f.time=tm;const mn=g('calmins');if(mn!=null)f.mins=mn;const nt=g('caln');if(nt!=null)f.note=nt;}
+function calAddRefresh(){const p=document.querySelector('#sheet .panel');if(p&&ui.calForm)p.innerHTML=calAddContent();}
+function calAddContent(){
+  const f=ui.calForm;
+  const kinds=Object.keys(CAL_KINDS).map(k=>'<button class="calkindb'+(f.kind===k?' on':'')+'" data-action="calkind" data-k="'+k+'" aria-pressed="'+(f.kind===k)+'" style="--kc:var(--'+CAL_KINDS[k].c+')">'+CAL_KINDS[k].emoji+'<span>'+CAL_KINDS[k].label+'</span></button>').join('');
+  return '<h2 style="margin:0 0 2px">'+(f.id?'Edit workout':'Add workout')+'</h2>'
+    +'<p class="mini" style="margin:0 0 12px;color:var(--sub)">'+calLongDate(f.iso)+'</p>'
+    +'<label class="f" for="calt">What</label><input id="calt" type="text" maxlength="60" placeholder="e.g. Lower-body strength" value="'+esc(f.title)+'" style="width:100%">'
+    +'<label class="f" style="display:block;margin-top:12px">Type</label><div class="calkinds">'+kinds+'</div>'
+    +'<div class="loggrid" style="margin-top:12px"><div><label class="f" for="caltime">Time</label><input id="caltime" type="time" value="'+esc(f.time)+'"></div>'
+    +'<div><label class="f" for="calmins">Minutes</label><input id="calmins" type="number" inputmode="numeric" min="5" max="600" step="5" placeholder="45" value="'+esc(f.mins)+'"></div></div>'
+    +'<label class="f" style="display:block;margin-top:12px" for="caln">Note</label><input id="caln" type="text" maxlength="140" placeholder="optional" value="'+esc(f.note)+'" style="width:100%">'
+    +'<button class="btn" style="width:100%;margin-top:18px" data-action="calsave">'+(f.id?'Save changes':'Add to calendar')+'</button>'
+    +(f.id?'<button class="sheetrow" data-action="caldel" data-iso="'+f.iso+'" data-id="'+f.id+'" style="justify-content:center;color:var(--hard);font-weight:700;margin-top:8px">Delete workout</button>':'')
+    +'<button class="sheetrow" data-action="'+(ui.calDayISO?'calback':'closesheet')+'" style="justify-content:center;color:var(--sub);font-weight:700;border:none">'+(ui.calDayISO?'Back':'Cancel')+'</button>';
+}
+
 function vNut(){
   const i=clamp(rawT,0,RACE_IDX);
   const tw=trendWeight(),lw=latestWeight(),rate=trendRate();
@@ -5410,7 +5657,7 @@ function openSheet(html,morphEl,onReady,label){
   }
 }
 function closeSheet(){
-  ui.settingsOpen=false;ui.agendaOpen=false;
+  ui.settingsOpen=false;ui.agendaOpen=false;ui.calDayISO=null;ui.calForm=null;
   const s=document.getElementById('sheet');
   s.classList.remove('open');
   document.getElementById('app').inert=false;
@@ -5581,6 +5828,31 @@ document.addEventListener('click',ev=>{
   else if(a==='movestart'){openMoveSheet(Number(el.dataset.i));}
   else if(a==='logsheet'){openLogSheet(Number(el.dataset.i));}
   else if(a==='quickdone'){quickLogDone(Number(el.dataset.i));}
+  else if(a==='calview'){ui.calView=el.dataset.v;rerenderKeepScroll();}
+  else if(a==='calmonth'){ui.calYM=calCurYM()+Number(el.dataset.d);rerenderKeepScroll();}
+  else if(a==='calweeknav'){ui.calWeek=clamp((ui.calWeek==null?activeWeekIdx():ui.calWeek)+Number(el.dataset.d),0,15);rerenderKeepScroll();}
+  else if(a==='calday'){openCalDay(el.dataset.iso);}
+  else if(a==='caladd'){openCalAdd(el.dataset.iso,el.dataset.id||null);}
+  else if(a==='calkind'){calFormCapture();if(ui.calForm)ui.calForm.kind=el.dataset.k;calAddRefresh();}
+  else if(a==='calback'){if(ui.calDayISO){ui.calForm=null;openCalDay(ui.calDayISO);}else closeSheet();}
+  else if(a==='caldone'){const iso=el.dataset.iso,id=el.dataset.id,ev=calEventsOn(iso).find(x=>x.id===id);if(ev){ev.done=!ev.done;save();}calDayRefresh();rerenderKeepScroll();}
+  else if(a==='calsave'){
+    calFormCapture();const f=ui.calForm;if(!f)return;
+    const title=(f.title||'').trim()||CAL_KINDS[f.kind].label;
+    const time=HHMM.test(f.time||'')?f.time:'';
+    let mins=parseInt(f.mins,10);mins=isFinite(mins)?clamp(mins,5,600):null;
+    const note=(f.note||'').trim().slice(0,140);
+    if(f.id)calUpdateEvent(f.iso,f.id,{title:title,kind:f.kind,time:time,mins:mins,note:note});
+    else calAddEvent(f.iso,{id:calNewId(),title:title,kind:f.kind,time:time,mins:mins,note:note,done:false});
+    const iso=f.iso,wasEdit=!!f.id;ui.calForm=null;rerenderKeepScroll();
+    if(ui.calDayISO)openCalDay(iso);else{closeSheet();snack((wasEdit?'Saved · ':'Added · ')+title);}
+  }
+  else if(a==='caldel'){
+    const iso=el.dataset.iso,id=el.dataset.id,ev=calEventsOn(iso).find(x=>x.id===id),snap=ev?Object.assign({},ev):null;
+    calDeleteEvent(iso,id);ui.calForm=null;rerenderKeepScroll();
+    if(ui.calDayISO)openCalDay(iso);else closeSheet();
+    snack('Deleted'+(snap?' · '+snap.title:''),()=>{if(snap){calAddEvent(iso,snap);rerenderKeepScroll();if(ui.calDayISO)calDayRefresh();}});
+  }
   else if(a==='deckskip'){deckSkip(Number(el.dataset.i));}
   else if(a==='mopen'){ui.morningOpen=true;rerenderKeepScroll();}
   else if(a==='msave'){
