@@ -460,13 +460,23 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .calallcol{min-width:0;padding:0 1px}
 .calchip{display:block;width:100%;font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:2px 3px;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;text-align:left;cursor:pointer}
 .calchip.mtg{color:var(--ink);border:1px solid var(--line)}
-.calwk-grid{display:flex;position:relative;border-top:1px solid var(--line);margin-top:2px}
+.calwk-grid{display:flex;position:relative;border-top:1.5px solid var(--bord);margin-top:2px}
 .calgutter{width:34px;flex:none;position:relative}
 .calgutter .ghr{position:absolute;right:5px;font-size:9px;font-weight:600;color:var(--sub);transform:translateY(-50%);white-space:nowrap}
-.calcol{flex:1;min-width:0;position:relative;border-left:1px solid var(--line-soft);background-image:repeating-linear-gradient(to bottom,var(--line-soft) 0,var(--line-soft) 1px,transparent 1px,transparent 42px)}
-.calblk{position:absolute;left:1px;right:1px;border-radius:4px;padding:1px 3px;font-size:9px;line-height:1.15;font-weight:800;color:#fff;overflow:hidden;text-align:left;cursor:pointer;border:none}
-.calblk.mtg{color:var(--ink);background:var(--raised)}
+.calcol{flex:1;min-width:0;position:relative;border-left:1px solid var(--bord);background-image:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent 44px)}
+.calcol:last-child{border-right:1px solid var(--bord)}
+.calblk{position:absolute;border-radius:5px;padding:2px 4px;font-size:10px;line-height:1.12;font-weight:700;color:#fff;overflow:hidden;text-align:left;cursor:pointer;border:none;box-shadow:0 0 0 1px rgba(255,255,255,.45) inset}
+.calblk.mtg{color:var(--txt2);background:var(--raised);box-shadow:none;border:1px solid var(--bord)}
 .calwk-empty{color:var(--sub);font-size:13px;text-align:center;padding:18px 8px}
+/* day-detail full-day timeline */
+.cdtl{display:flex;position:relative;border-top:1.5px solid var(--bord);margin-top:6px}
+.cdgut{width:34px;flex:none;position:relative}
+.cdgut .ghr{position:absolute;right:6px;font-size:10px;font-weight:600;color:var(--sub);transform:translateY(-50%);white-space:nowrap}
+.cdcol{flex:1;min-width:0;position:relative;border-left:1px solid var(--bord);background-image:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent 44px)}
+.cdblk{position:absolute;border-radius:6px;padding:3px 7px;color:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset}
+.cdblk b{font-size:12px;font-weight:700;line-height:1.15;overflow:hidden}
+.cdblk span{font-size:10px;font-weight:600;opacity:.85;margin-top:1px}
+.cdblk.mtg{color:var(--txt2);background:var(--raised);box-shadow:none;border:1px solid var(--bord)}
 /* day-detail + add-workout sheet */
 .calkinds{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .calkindb{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:9px 4px;font-size:19px;cursor:pointer;color:var(--ink)}
@@ -5405,6 +5415,47 @@ function calColor(it){
   const k=CAL_KINDS[it.kind];return 'var(--'+((k&&k.c)||'blue')+')';
 }
 function calShort(t){return esc(String(t||'').slice(0,30));}
+function calClean(t){return String(t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{FE00}-\u{FE0F}\u{200D}]/gu,'').replace(/\s{2,}/g,' ').replace(/^[\s·•\-–]+/,'').trim();}
+function calHourLbl(h){return h===0?'12a':h===12?'12p':h<12?h+'a':(h-12)+'p';}
+/* Short label for an app-placed (mine) block: runs collapse to "10k", the rest to one word. */
+function calMineLabel(it,idx,short){
+  const k=it.kind;
+  if(k==='run')return short?(fmtKm(eff(idx).km)+'k'):headline(eff(idx));
+  if(k==='walk')return 'Walk';
+  if(k==='strength')return 'Strength';
+  if(k==='learning')return 'Learning';
+  if(k==='foot')return 'Foot & calf';
+  return calClean(it.title);
+}
+/* Side-by-side layout for overlapping events: assigns each item a column index + the
+   cluster's column count, so concurrent blocks split the width instead of stacking. */
+function calLayout(items){ // items must be pre-sorted by sm
+  let grp=[],gEnd=-1;
+  const flush=g=>{const ends=[];g.forEach(it=>{let c=0;for(;c<ends.length;c++)if(ends[c]<=it.sm)break;ends[c]=it.em;it.col=c;});const nc=ends.length||1;g.forEach(it=>it.ncols=nc);};
+  items.forEach(it=>{if(grp.length&&it.sm>=gEnd){flush(grp);grp=[];gEnd=-1;}grp.push(it);gEnd=Math.max(gEnd,it.em);});
+  if(grp.length)flush(grp);
+  return items;
+}
+/* One day as a morning→evening timeline (meetings + training + added workouts), so the
+   gaps read at a glance. Full width, no emoji, overlaps laid out side by side. */
+function calDayTimeline(idx,iso){
+  const items=[],gd=gcalDay(idx);
+  if(gd)gd.items.forEach(it=>items.push({sm:it.sm,em:Math.max(it.em,it.sm+20),kind:it.mine?it.kind:'meeting',label:it.mine?calMineLabel(it,idx,false):calClean(it.title),idx:idx}));
+  calEventsOn(iso).forEach(ev=>{const mm=ev.time?hhmmToMin(ev.time):null;if(mm!=null)items.push({sm:mm,em:mm+(ev.mins||45),kind:ev.kind,label:calClean(ev.title),idx:idx});});
+  if(!items.length)return gcalConnected()
+    ?'<p class="note" style="margin:8px 0 0">No meetings or timed workouts today — the day is clear.</p>'
+    :'<p class="note" style="margin:8px 0 0">Connect Google Calendar (Settings) to see your meetings here, or add a workout with a time.</p>';
+  items.sort((a,b)=>a.sm-b.sm);
+  let lo=24*60,hi=0;items.forEach(it=>{lo=Math.min(lo,it.sm);hi=Math.max(hi,it.em);});
+  const h0=Math.min(8,clamp(Math.floor(lo/60),5,11)),h1=Math.max(18,clamp(Math.ceil(hi/60),13,23));
+  const PXH=44,pxMin=PXH/60,Hpx=(h1-h0)*PXH;
+  calLayout(items);
+  let gut='';for(let hh=h0;hh<=h1;hh++)gut+='<span class="ghr" style="top:'+((hh-h0)*PXH)+'px">'+calHourLbl(hh)+'</span>';
+  let blk='';
+  items.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(18,(it.em-it.sm)*pxMin),wpc=100/it.ncols,lpc=it.col*wpc;
+    blk+='<div class="cdblk'+(it.kind==='meeting'?' mtg':'')+'" style="top:'+top+'px;height:'+ht+'px;left:calc('+lpc+'% + 2px);width:calc('+wpc+'% - 4px);background:'+calColor(it)+'"><b>'+esc(it.label)+'</b><span>'+minToHHMM(it.sm)+'</span></div>';});
+  return '<div class="cdtl" style="height:'+Hpx+'px"><div class="cdgut">'+gut+'</div><div class="cdcol">'+blk+'</div></div>';
+}
 function calYMRange(){const lo=dAt(0),hi=dAt(N_DAYS-1);return [lo.getUTCFullYear()*12+lo.getUTCMonth(),hi.getUTCFullYear()*12+hi.getUTCMonth()];}
 function calCurYM(){if(ui.calYM==null){const d=dAt(clamp(rawT,0,N_DAYS-1));ui.calYM=d.getUTCFullYear()*12+d.getUTCMonth();}const r=calYMRange();ui.calYM=clamp(ui.calYM,r[0],r[1]);return ui.calYM;}
 
@@ -5461,10 +5512,10 @@ function calWeekView(){
   const cols=[];let HMIN=24*60,HMAX=0,anyTimed=false;
   for(let d=0;d<7;d++){
     const idx=w*7+d,iso=isoAt(idx),timed=[],allday=[],gd=gcalDay(idx);
-    if(gd){gd.items.forEach(it=>{timed.push({sm:it.sm,em:it.em,title:it.title,kind:it.mine?it.kind:'meeting',idx:idx});});}
-    else{const e=eff(idx);if(!(e.zone==='Rest'&&e.km<=0))allday.push({title:headline(e),kind:'run',zone:e.zone,idx:idx});}
-    calEventsOn(iso).forEach(ev=>{const k=CAL_KINDS[ev.kind]||CAL_KINDS.other,lbl=k.emoji+' '+ev.title,mm=ev.time?hhmmToMin(ev.time):null;
-      if(mm!=null)timed.push({sm:mm,em:mm+(ev.mins||45),title:lbl,kind:ev.kind,idx:idx});else allday.push({title:lbl,kind:ev.kind,idx:idx});});
+    if(gd){gd.items.forEach(it=>{const mine=it.mine;timed.push({sm:it.sm,em:Math.max(it.em,it.sm+20),kind:mine?it.kind:'meeting',label:mine?calMineLabel(it,idx,true):calClean(it.title),idx:idx});});}
+    else{const e=eff(idx);if(!(e.zone==='Rest'&&e.km<=0))allday.push({kind:'run',zone:e.zone,idx:idx,label:fmtKm(e.km)+'k'});}
+    calEventsOn(iso).forEach(ev=>{const lbl=calClean(ev.title),mm=ev.time?hhmmToMin(ev.time):null;
+      if(mm!=null)timed.push({sm:mm,em:mm+(ev.mins||45),kind:ev.kind,label:lbl,idx:idx});else allday.push({kind:ev.kind,label:lbl,idx:idx});});
     timed.sort((a,b)=>a.sm-b.sm);
     timed.forEach(t=>{anyTimed=true;HMIN=Math.min(HMIN,t.sm);HMAX=Math.max(HMAX,t.em);});
     cols.push({d,idx,iso,timed,allday});
@@ -5475,18 +5526,19 @@ function calWeekView(){
   let ad='';
   if(cols.some(c=>c.allday.length)){
     ad='<div class="calwk-allday"><span class="ccorner"></span>';
-    cols.forEach(c=>{ad+='<div class="calallcol">'+c.allday.map(it=>'<button class="calchip'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="background:'+calColor(it)+'">'+calShort(it.title)+'</button>').join('')+'</div>';});
+    cols.forEach(c=>{ad+='<div class="calallcol">'+c.allday.map(it=>'<button class="calchip'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="background:'+calColor(it)+'">'+esc(it.label)+'</button>').join('')+'</div>';});
     ad+='</div>';
   }
   let body;
   if(anyTimed){
-    const h0=clamp(Math.floor(HMIN/60),5,12),h1c=clamp(Math.ceil(HMAX/60),14,23),h1=h1c<=h0?h0+6:h1c,PXH=42,pxMin=PXH/60;
-    let gut='<div class="calgutter">';for(let hh=h0;hh<=h1;hh++)gut+='<span class="ghr" style="top:'+((hh-h0)*PXH)+'px">'+hh+'</span>';gut+='</div>';
+    const h0=clamp(Math.floor(HMIN/60),5,12),h1c=clamp(Math.ceil(HMAX/60),14,23),h1=h1c<=h0?h0+6:h1c,PXH=44,pxMin=PXH/60;
+    let gut='<div class="calgutter">';for(let hh=h0;hh<=h1;hh++)gut+='<span class="ghr" style="top:'+((hh-h0)*PXH)+'px">'+calHourLbl(hh)+'</span>';gut+='</div>';
     body='<div class="calwk-grid" style="height:'+((h1-h0)*PXH)+'px">'+gut;
     cols.forEach(c=>{
+      calLayout(c.timed);
       let col='<div class="calcol">';
-      c.timed.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(13,(it.em-it.sm)*pxMin);
-        col+='<button class="calblk'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="top:'+top+'px;height:'+ht+'px;background:'+calColor(it)+'">'+calShort(it.title)+'</button>';});
+      c.timed.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(15,(it.em-it.sm)*pxMin),wpc=100/it.ncols,lpc=it.col*wpc;
+        col+='<button class="calblk'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="top:'+top+'px;height:'+ht+'px;left:calc('+lpc+'% + 1px);width:calc('+wpc+'% - 2px);background:'+calColor(it)+'">'+esc(it.label)+'</button>';});
       col+='</div>';body+=col;
     });
     body+='</div>';
@@ -5520,20 +5572,17 @@ function calDayContent(iso){
         +'</div></section>';
     }
   }
-  const gd=gcalDay(idx),mtgs=gd?gd.items.filter(it=>!it.mine):[];
-  if(mtgs.length){
-    html+='<p class="mini" style="margin:14px 2px 0;font-weight:700;color:var(--ink)">Your calendar</p>';
-    mtgs.forEach(m=>{html+='<div class="row" style="justify-content:space-between;margin-top:5px;gap:8px"><span class="mini" style="flex:1;min-width:0">📅 '+esc(m.title)+(m.free?' <span style="color:var(--easy)">· free</span>':'')+'</span><span class="mini" style="flex:none">'+minToHHMM(m.sm)+'–'+minToHHMM(m.em)+'</span></div>';});
-  }
+  html+='<p class="mini" style="margin:16px 2px 6px;font-weight:700;color:var(--ink)">Your day</p>';
+  html+=calDayTimeline(idx,iso);
   const evs=calEventsOn(iso);
   html+='<div class="spread" style="margin-top:16px"><h2 style="margin:0;font-size:18px">Your workouts</h2><button class="btn3" data-action="caladd" data-iso="'+iso+'" style="color:var(--accent-text);padding:4px 8px">+ Add</button></div>';
   if(!evs.length){
     html+='<p class="note" style="margin:6px 0 0">Nothing added yet. Plan a gym session, cross-training, mobility — anything that isn’t in the running plan.</p>';
   }else{
-    evs.forEach(ev=>{const k=CAL_KINDS[ev.kind]||CAL_KINDS.other,sub=[ev.time||'',ev.mins?ev.mins+' min':'',ev.note||''].filter(Boolean).join(' · ');
+    evs.forEach(ev=>{const k=CAL_KINDS[ev.kind]||CAL_KINDS.other,sub=[k.label,ev.time||'',ev.mins?ev.mins+' min':'',ev.note||''].filter(Boolean).join(' · ');
       html+='<div class="sheetrow" style="cursor:default;gap:10px;align-items:center">'
         +'<button class="caldonebtn'+(ev.done?' on':'')+'" data-action="caldone" data-iso="'+iso+'" data-id="'+ev.id+'" aria-label="Mark '+esc(ev.title)+' done" aria-pressed="'+(!!ev.done)+'">'+(ev.done?'✓':'')+'</button>'
-        +'<span style="flex:1;min-width:0"><b style="'+(ev.done?'text-decoration:line-through;color:var(--sub)':'')+'">'+esc(k.emoji+' '+ev.title)+'</b>'+(sub?'<div class="mini">'+esc(sub)+'</div>':'')+'</span>'
+        +'<span style="flex:1;min-width:0"><b style="'+(ev.done?'text-decoration:line-through;color:var(--sub)':'')+'">'+esc(ev.title)+'</b>'+(sub?'<div class="mini">'+esc(sub)+'</div>':'')+'</span>'
         +'<button class="btn3" data-action="caladd" data-iso="'+iso+'" data-id="'+ev.id+'" style="color:var(--sub);padding:4px 8px">Edit</button></div>';});
   }
   html+='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button>';
@@ -5809,7 +5858,9 @@ document.addEventListener('click',ev=>{
     return;
   }
   const a=el.dataset.action;
-  if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);}
+  if(a==='tab'){ui.scroll[ui.tab]=window.scrollY;ui.tab=el.dataset.tab;render(true);
+    // opening the burn-facing tabs pulls fresh Oura active calories (short throttle, so today's number keeps up)
+    if((el.dataset.tab==='nut'||el.dataset.tab==='today')&&ouraConnected()&&Date.now()-ouraLastTry>120000)ouraSync(false);}
   else if(a==='status'){
     const id=el.dataset.sid,st=el.dataset.status,cur=sessLog(id)||{};
     if(cur.status===st){logSession(id,{status:null});} // untoggle clears the status; typed km/pace/note are kept (uncounted until re-logged)
