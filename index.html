@@ -1791,7 +1791,10 @@ function ouraSync(manual){
   const startIso=st.lastSync
     ?isoAt(Math.max(-7,isoToIdx(st.lastSync.slice(0,10))-2))
     :isoAt(-7);
-  const endIso=todayISO();
+  // end_date is exclusive on Oura's daily_* endpoints — ask through TOMORROW so today's
+  // record (active calories, readiness…) is actually returned, not cut off at the boundary.
+  const tom=new Date();tom.setDate(tom.getDate()+1);
+  const endIso=tom.getFullYear()+'-'+p2(tom.getMonth()+1)+'-'+p2(tom.getDate());
   const range='?start_date='+startIso+'&end_date='+endIso;
   const day=iso=>{ // bounded entry accessor: out-of-block writes go to a discarded stub
     if(!/^\d{4}-\d{2}-\d{2}$/.test(String(iso)))return {};
@@ -5377,8 +5380,10 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
           +'<div class="ballbl"><span>Ate '+fmtKcal(eatenK)+'</span><span style="color:'+defCol+'">'+(def>=0?fmtKcal(def)+' deficit':fmtKcal(-def)+' over')+'</span><span>Burn '+(est?'~':'')+fmtKcal(burned)+'</span></div>';
       })():'')
     +(hint?'<p class="mini" style="margin:11px 2px 0;color:var(--sub)">'+hint+'</p>':'')
+    // when today's Oura activity hasn't landed yet the burn is just resting + a forecast — say so, and let the user force a pull
+    +(est&&i===rawT&&ouraConnected()?'<p class="mini" style="margin:11px 2px 0;color:var(--warn-text,var(--warn))">Today’s Oura active calories haven’t synced yet — burn is an estimate. <button class="btn3" data-action="ourasync" style="padding:0;min-height:0;color:var(--accent-text);font-weight:700">Sync now</button></p>':'')
     +(burned!=null&&b.resting!=null?'<details class="nmath"><summary>How this is worked out</summary>'
-        +'<p class="mini" style="margin:6px 2px 0">Burned blends a resting estimate ('+fmtKcal(b.resting)+' kcal, from your profile) with the day’s active calories ('+fmtKcal(b.active)+' kcal — Oura, plus the run). Eaten is your logged food. Deficit is the gap.</p></details>':'')
+        +'<p class="mini" style="margin:6px 2px 0">Burned blends a resting estimate ('+fmtKcal(b.resting)+' kcal, from your profile) with the day’s active calories ('+fmtKcal(b.active)+' kcal — '+(b.measured?'from Oura':'estimated; today’s Oura activity hasn’t synced')+', plus the run). Eaten is your logged food. Deficit is the gap.</p></details>':'')
     +'<button class="btn3" style="margin-top:12px;color:var(--accent-text)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
     +'</section>';
 }
