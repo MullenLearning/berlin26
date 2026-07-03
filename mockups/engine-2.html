@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Engine · lab sheet concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&family=Azeret+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FAFAF7; --card:#FFFFFF;
+  --ink:#15171A; --sub:#575C66; --faint:#767B85;
+  --rule:#E5E4DE; --rule-soft:#F0EFEA;
+  --cobalt:#2B3FD6; --cobalt-soft:#DCE1FA;
+  --good:#20713C; --good-soft:#DDEEE3;
+  --warn:#96600F; --warn-soft:#F4E7CE;
+  --alert:#BC3D22; --alert-soft:#F3DDD7;
+  --neutral-soft:#EDECE6;
+  --mono:'Azeret Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --grot:'Schibsted Grotesk',-apple-system,'Helvetica Neue',sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--grot);
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.page{max-width:520px;margin:0 auto;padding:22px 20px 110px}
+.num{font-variant-numeric:tabular-nums}
+
+/* masthead */
+.eyebrow{font-family:var(--mono);font-weight:500;font-size:10px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+h1{margin:6px 0 0;font-weight:800;font-size:32px;letter-spacing:-.02em;line-height:1.05}
+.synced{margin-top:6px;font-size:13px;color:var(--sub)}
+.synced i{font-style:normal;color:var(--cobalt);font-weight:500}
+
+/* section head */
+.sec{margin:34px 0 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  border-top:1.5px solid var(--ink);padding-top:10px}
+.sec .t{font-family:var(--mono);font-weight:600;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}
+.sec .m{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.06em;text-align:right}
+
+/* hero form */
+.hero{display:flex;align-items:flex-start;gap:18px;margin-top:2px}
+.hero .n{font-weight:800;font-size:96px;line-height:.9;letter-spacing:-.045em}
+.hero .side{padding-top:12px;min-width:0}
+.hero .state{font-weight:700;font-size:21px;color:var(--cobalt);letter-spacing:-.01em}
+.hero .expl{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--sub);text-wrap:pretty}
+
+/* linear zone scale */
+.scale{margin-top:22px}
+.scale .ticks{position:relative;height:14px;font-family:var(--mono);font-size:9px;color:var(--faint)}
+.scale .ticks span{position:absolute;transform:translateX(-50%)}
+.scale .band{position:relative;display:flex;height:14px;border-radius:4px;overflow:hidden}
+.scale .band i{height:100%}
+.scale .marker{position:absolute;top:-7px;bottom:-7px;width:2.5px;background:var(--ink);border-radius:2px;
+  transform:translateX(-50%);transition:left 1s cubic-bezier(.3,1,.35,1)}
+.scale .marker::after{content:"";position:absolute;top:-5px;left:50%;transform:translateX(-50%);
+  width:9px;height:9px;border-radius:50%;background:var(--ink)}
+.scale .bandwrap{position:relative}
+.scale .zones{display:flex;margin-top:8px;font-family:var(--mono);font-size:8.5px;letter-spacing:.1em}
+.scale .zones span{text-align:center}
+@media (prefers-reduced-motion:reduce){.scale .marker{transition:none}}
+
+/* two forces */
+.forces{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.force{padding:4px 18px 0 0}
+.force+.force{border-left:1px solid var(--rule);padding:4px 0 0 18px}
+.force .lbl{font-family:var(--mono);font-weight:600;font-size:10px;letter-spacing:.16em;color:var(--sub)}
+.force .row{display:flex;align-items:flex-end;gap:8px;margin-top:4px}
+.force .v{font-weight:800;font-size:44px;line-height:.95;letter-spacing:-.03em}
+.force svg{width:88px;height:26px;flex:none;margin-bottom:5px}
+.force p{margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--sub);text-wrap:pretty}
+.formula{margin-top:18px;border:1px solid var(--rule);border-radius:10px;background:var(--card);
+  padding:10px 8px;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--sub);
+  text-align:center;white-space:nowrap}
+.formula b{color:var(--ink);font-weight:600}
+.formula .c{color:var(--cobalt);font-weight:600}
+
+/* chart panel */
+.chart{margin-top:4px}
+.chart svg{display:block;width:100%;height:auto}
+.keys{margin-top:10px;display:grid;gap:3px;font-size:12.5px;color:var(--sub)}
+.keys i{display:inline-block;width:16px;height:0;border-top:2.5px solid;vertical-align:4px;margin-right:8px}
+.keys .dotted i{border-top-style:dashed}
+
+/* morning tiles */
+.morning{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--rule);border-radius:12px;background:var(--card);overflow:hidden}
+.mt{padding:13px 10px 12px;min-width:0}
+.mt+.mt{border-left:1px solid var(--rule-soft)}
+.mt .lbl{font-family:var(--mono);font-weight:500;font-size:9px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;white-space:nowrap}
+.mt .v{font-weight:800;font-size:25px;letter-spacing:-.02em;margin-top:3px;line-height:1.1;white-space:nowrap}
+.mt .v small{font-size:12px;font-weight:500;color:var(--sub);letter-spacing:0}
+.mt .b{margin-top:4px;font-family:var(--mono);font-size:9px;letter-spacing:0;white-space:nowrap}
+.mt .b em{font-style:normal;font-weight:600}
+.morningline{margin:12px 2px 0;font-size:13.5px;line-height:1.55;color:var(--sub);text-wrap:pretty}
+.morningline b{color:var(--ink);font-weight:500}
+
+/* efficiency */
+.eff .row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.eff .v{font-weight:800;font-size:56px;letter-spacing:-.035em;line-height:1}
+.eff .u{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--sub);text-transform:uppercase;line-height:1.6}
+.eff .delta{margin-left:auto;font-family:var(--mono);font-weight:600;font-size:11px;color:var(--good);
+  background:var(--good-soft);border-radius:99px;padding:5px 11px}
+.eff p{margin:10px 0 0;font-size:13.5px;line-height:1.55;color:var(--sub);text-wrap:pretty}
+.eff p b{color:var(--ink);font-weight:500}
+.eff svg{display:block;width:100%;height:auto;margin-top:12px}
+
+/* ledger */
+.ledger{border:1px solid var(--rule);border-radius:12px;background:var(--card);overflow:hidden}
+.ledger table{width:100%;border-collapse:collapse;font-size:13px}
+.ledger td{padding:11px 9px;border-top:1px solid var(--rule-soft);vertical-align:middle}
+.ledger td:first-child{padding-left:13px}
+.ledger td:last-child{padding-right:13px}
+.ledger tr:first-child td{border-top:none}
+.ledger .d{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--faint);white-space:nowrap;width:44px}
+.ledger .s{font-weight:500;white-space:nowrap}
+.ledger .load{font-family:var(--mono);font-size:11px;color:var(--sub);text-align:right;white-space:nowrap}
+.ledger .st{text-align:right;white-space:nowrap}
+.tag{display:inline-block;font-family:var(--mono);font-weight:600;font-size:9px;letter-spacing:.1em;
+  border-radius:5px;padding:4px 8px}
+.tag.ok{color:var(--good);background:var(--good-soft)}
+.tag.owe{color:var(--warn);background:var(--warn-soft)}
+.ledgernote{margin:10px 2px 0;font-size:12.5px;line-height:1.55;color:var(--sub);text-wrap:pretty}
+.ledgernote em{font-style:normal;color:var(--warn);font-weight:500}
+
+/* footnote: how it's counted */
+.footnote{margin-top:36px;border-top:1.5px solid var(--ink);padding-top:12px}
+.footnote .t{font-family:var(--mono);font-weight:600;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
+.footnote p{margin:0 0 8px;font-size:12.5px;line-height:1.6;color:var(--sub);text-wrap:pretty}
+.footnote p b{color:var(--ink);font-weight:600;font-family:var(--mono);font-size:11px;letter-spacing:.04em}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(250,250,247,.92);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--rule);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
+.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabs button{position:relative;background:none;border:none;color:var(--faint);font-family:var(--mono);
+  font-size:8.5px;letter-spacing:.12em;display:flex;flex-direction:column;gap:5px;align-items:center;
+  padding:7px 0 4px;cursor:pointer;min-height:50px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor}
+.tabs button.on{color:var(--ink)}
+.tabs button.on::before{content:"";position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+  width:16px;height:3px;border-radius:2px;background:var(--cobalt)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <span class="eyebrow">Engine · fitness ledger</span>
+    <h1>Friday 3 July</h1>
+    <p class="synced">Synced 06:12 · <i>Strava</i> + <i>Oura</i></p>
+  </header>
+
+  <!-- ============ FORM ============ -->
+  <div class="sec"><span class="t">Form · today</span><span class="m">SCALE −30 TO +20</span></div>
+  <div class="hero">
+    <div class="n num">−8</div>
+    <div class="side">
+      <div class="state">Productive</div>
+      <p class="expl">You're carrying more recent work than your base is used to. Training here is what builds fitness.</p>
+    </div>
+  </div>
+
+  <div class="scale" aria-label="Form scale from minus 30 to plus 20, marker at minus 8, productive zone">
+    <div class="ticks num" id="ticks"></div>
+    <div class="bandwrap">
+      <div class="band">
+        <i style="flex:24;background:var(--alert-soft)"></i>
+        <i style="flex:32;background:var(--cobalt-soft)"></i>
+        <i style="flex:16;background:var(--neutral-soft)"></i>
+        <i style="flex:28;background:var(--good-soft)"></i>
+      </div>
+      <span class="marker" id="mk" style="left:0%"></span>
+    </div>
+    <div class="zones">
+      <span style="flex:24;color:var(--alert)">OVERREACHING</span>
+      <span style="flex:32;color:var(--cobalt)">PRODUCTIVE</span>
+      <span style="flex:16;color:var(--faint)">NEUTRAL</span>
+      <span style="flex:28;color:var(--good)">FRESH</span>
+    </div>
+  </div>
+
+  <!-- ============ THE TWO FORCES ============ -->
+  <div class="sec"><span class="t">The two forces</span><span class="m">12-WK TREND</span></div>
+  <div class="forces">
+    <div class="force">
+      <span class="lbl">FITNESS</span>
+      <div class="row"><span class="v num">43</span><svg id="spark-fit" viewBox="0 0 88 26"></svg></div>
+      <p>Your base: the daily work your body is used to. It takes about six weeks to move.</p>
+    </div>
+    <div class="force">
+      <span class="lbl">FATIGUE</span>
+      <div class="row"><span class="v num">51</span><svg id="spark-fat" viewBox="0 0 88 26"></svg></div>
+      <p>What the last few days left in your legs. It drains in about a week.</p>
+    </div>
+  </div>
+  <div class="formula num"><b>FORM</b> = <b>FITNESS</b> − <b>FATIGUE</b> = 43 − 51 = <span class="c">−8</span></div>
+
+  <!-- ============ TWELVE WEEKS ============ -->
+  <div class="sec"><span class="t">The last twelve weeks</span><span class="m">+2 WKS AT THIS RHYTHM</span></div>
+  <div class="chart"><svg id="strip" viewBox="0 0 360 170"></svg></div>
+  <div class="keys">
+    <span><i style="border-color:var(--ink)"></i><b style="font-weight:600">Fitness</b> climbs slowly and fades slowly</span>
+    <span><i style="border-color:var(--alert)"></i><b style="font-weight:600">Fatigue</b> spikes with hard days, drains in a week</span>
+    <span><i style="border-color:var(--cobalt)"></i><b style="font-weight:600">Form</b> is the gap between them</span>
+  </div>
+
+  <!-- ============ THIS MORNING ============ -->
+  <div class="sec"><span class="t">This morning</span><span class="m">VS YOUR 30-NIGHT NORMAL</span></div>
+  <div class="morning">
+    <div class="mt">
+      <span class="lbl">HRV</span>
+      <div class="v num">64<small> ms</small></div>
+      <div class="b num" style="color:var(--warn)"><em>low</em> · usual 71</div>
+    </div>
+    <div class="mt">
+      <span class="lbl">Resting HR</span>
+      <div class="v num">49<small> bpm</small></div>
+      <div class="b num" style="color:var(--good)"><em>good</em> · usual 50</div>
+    </div>
+    <div class="mt">
+      <span class="lbl">Body temp</span>
+      <div class="v num">+0.1<small> °C</small></div>
+      <div class="b num" style="color:var(--good)"><em>normal</em> · ±0.2</div>
+    </div>
+  </div>
+  <p class="morningline">Recovery is a touch behind: HRV hasn’t bounced back from Tuesday’s hard run.
+  <b>Take today easy and it should be back by tomorrow.</b></p>
+
+  <!-- ============ COST PER KM ============ -->
+  <div class="sec"><span class="t">Cost per kilometre</span><span class="m">EASY-PACE RUNS ONLY</span></div>
+  <div class="eff">
+    <div class="row">
+      <span class="v num">738</span>
+      <span class="u">heartbeats<br>per km</span>
+      <span class="delta num">▼ 30 in 6 weeks</span>
+    </div>
+    <svg id="spark-eff" viewBox="0 0 360 58"></svg>
+    <p>Six weeks ago the same easy kilometre cost <b>768 beats</b>. The pace hasn’t changed;
+    your heart is doing less work for it.</p>
+  </div>
+
+  <!-- ============ HARD DAYS, PAID BACK ============ -->
+  <div class="sec"><span class="t">Hard days, paid back</span><span class="m">LAST 10 DAYS</span></div>
+  <div class="ledger">
+    <table>
+      <tr><td class="d num">THU 2</td><td class="s">Strides 7k</td><td class="load num">38 pts</td><td class="st"><span class="tag owe">OWING</span></td></tr>
+      <tr><td class="d num">TUE 30</td><td class="s">Threshold 10k</td><td class="load num">62 pts</td><td class="st"><span class="tag ok">ABSORBED</span></td></tr>
+      <tr><td class="d num">SAT 27</td><td class="s">Long 22k</td><td class="load num">84 pts</td><td class="st"><span class="tag ok">ABSORBED</span></td></tr>
+      <tr><td class="d num">TUE 23</td><td class="s">Threshold 11k</td><td class="load num">66 pts</td><td class="st"><span class="tag ok">ABSORBED</span></td></tr>
+    </table>
+  </div>
+  <p class="ledgernote">A hard day counts as <b style="color:var(--good)">absorbed</b> once the night after shows
+  deep sleep and HRV back at your normal. <em>One is still owing.</em> An early night clears it.</p>
+
+  <!-- ============ HOW IT'S COUNTED ============ -->
+  <div class="footnote">
+    <div class="t">How it’s counted</div>
+    <p><b>LOAD</b> · Every run earns points: kilometres weighted by how hard your heart worked.
+    An easy 10 km is about 11 points; the same distance at threshold is about 17.</p>
+    <p><b>FITNESS</b> · Your average daily load over the last 42 days. <b>FATIGUE</b> · The same
+    average over the last 7. A hard week spikes fatigue in days; building fitness takes weeks of them.</p>
+    <p><b>BASELINES</b> · HRV and resting heart rate use your own 30-night median from Oura as
+    normal, not population numbers.</p>
+  </div>
+</div>
+
+<!-- ============ TABS ============ -->
+<nav class="tabs"><div class="in">
+  <button class="on" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14.5 15.5 9"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg>
+    ENGINE</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>
+    ATLAS</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3a9 9 0 0 1 9 9" stroke-dasharray="1.5 3.4"/><path d="M12 7v5l3 2"/></svg>
+    NIGHT &amp; DAY</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>
+    YEARBOOK</button>
+</div></nav>
+
+<script>
+/* ---- form scale: ticks + marker ---- */
+(function(){
+  const V0=-30,V1=20,val=-8;
+  const pct=v=>((v-V0)/(V1-V0)*100);
+  let t='';[-30,-20,-10,0,10,20].forEach(v=>{
+    t+='<span class="num" style="left:'+pct(v).toFixed(1)+'%">'+(v>0?'+'+v:v)+'</span>';});
+  document.getElementById('ticks').innerHTML=t;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.getElementById('mk').style.left=pct(val).toFixed(1)+'%';
+  }));
+})();
+
+/* ---- shared model: 12 weeks history + 2 weeks continuation ---- */
+const MODEL=(function(){
+  const wk=[34,36,40,38,44,47,45,50,54,46,52,49];       // last 12 weeks, km
+  const runs=[.16,.2,0,.16,.13,.35,0];                   // weekly shape
+  const daily=[];wk.forEach(k=>runs.forEach(f=>daily.push(k*f*4.4)));
+  const last=wk[wk.length-1];for(let d=0;d<14;d++)daily.push(last*runs[d%7]*4.4); // continuation
+  let ctl=30,atl=28;const C=[],A=[],F=[];
+  daily.forEach(l=>{ctl+=(l-ctl)/42;atl+=(l-atl)/7;C.push(ctl);A.push(atl);F.push(ctl-atl);});
+  const sm=arr=>arr.map((_,i)=>{let s=0,n=0;for(let k=Math.max(0,i-2);k<=Math.min(arr.length-1,i+2);k++){s+=arr[k];n++;}return s/n;});
+  return {C:sm(C),A:sm(A),F:sm(F),today:wk.length*7-1,N:daily.length};
+})();
+
+/* ---- twelve-week strip ---- */
+(function(){
+  const {C,A,F,today,N}=MODEL;
+  const W=360,H=170,L=8,Rm=10,T=12,B=24,ih=H-T-B;
+  const hi=Math.max(...A)+6,lo=Math.min(...F)-5;
+  const X=i=>L+(W-L-Rm)*i/(N-1);
+  const Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+  let g='';
+  // month gridlines: today is Fri 3 Jul; 12 weeks back ≈ 11 Apr. Month starts (approx day idx): May≈20, Jun≈51, Jul≈81
+  [['APR',0],['MAY',20],['JUN',51],['JUL',81]].forEach(m=>{const x=X(m[1]);
+    g+='<line x1="'+x+'" y1="'+T+'" x2="'+x+'" y2="'+(T+ih)+'" stroke="var(--rule)" stroke-width="1"/>'
+      +'<text x="'+(x+4)+'" y="'+(H-8)+'" font-family="Azeret Mono" font-size="8.5" letter-spacing="1" fill="var(--faint)">'+m[0]+'</text>';});
+  g+='<line x1="'+L+'" y1="'+Y(0)+'" x2="'+(W-Rm)+'" y2="'+Y(0)+'" stroke="var(--rule)" stroke-width="1" stroke-dasharray="2 3"/>'
+    +'<text x="'+(W-Rm)+'" y="'+(Y(0)-4)+'" text-anchor="end" font-family="Azeret Mono" font-size="8" fill="var(--faint)">0</text>';
+  const path=(arr,i0,i1)=>arr.slice(i0,i1+1).map((v,j)=>(j?'L':'M')+X(i0+j).toFixed(1)+' '+Y(v).toFixed(1)).join('');
+  // past
+  g+='<path d="'+path(A,0,today)+'" fill="none" stroke="var(--alert)" stroke-width="1.4" opacity=".8" stroke-linejoin="round"/>';
+  g+='<path d="'+path(F,0,today)+'" fill="none" stroke="var(--cobalt)" stroke-width="1.8" stroke-linejoin="round"/>';
+  g+='<path d="'+path(C,0,today)+'" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>';
+  // continuation, dotted
+  g+='<path d="'+path(A,today,N-1)+'" fill="none" stroke="var(--alert)" stroke-width="1.1" opacity=".5" stroke-dasharray="1.5 4"/>';
+  g+='<path d="'+path(F,today,N-1)+'" fill="none" stroke="var(--cobalt)" stroke-width="1.3" stroke-dasharray="1.5 4" opacity=".65"/>';
+  g+='<path d="'+path(C,today,N-1)+'" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="1.5 4" opacity=".6"/>';
+  // today
+  g+='<line x1="'+X(today)+'" y1="'+(T-2)+'" x2="'+X(today)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" opacity=".35"/>'
+    +'<circle cx="'+X(today)+'" cy="'+Y(C[today])+'" r="3.6" fill="var(--cobalt)"/>'
+    +'<text x="'+(X(today)-6)+'" y="'+(T+2)+'" text-anchor="end" font-family="Azeret Mono" font-weight="600" font-size="8.5" letter-spacing="1.5" fill="var(--faint)">TODAY</text>';
+  document.getElementById('strip').innerHTML=g;
+})();
+
+/* ---- force sparks (weekly samples, past only) ---- */
+(function(){
+  const {C,A,today}=MODEL;
+  const spark=(id,arr,col)=>{
+    const pts=[];for(let i=0;i<=today;i+=7)pts.push(arr[i]);pts.push(arr[today]);
+    const W=88,H=26,hi=Math.max(...pts)+2,lo=Math.min(...pts)-2;
+    const X=i=>2+(W-8)*i/(pts.length-1),Y=v=>4+(H-8)*(1-(v-lo)/(hi-lo));
+    let s='<path d="'+pts.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('')+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linejoin="round"/>';
+    s+='<circle cx="'+X(pts.length-1)+'" cy="'+Y(pts[pts.length-1])+'" r="2.8" fill="'+col+'"/>';
+    document.getElementById(id).innerHTML=s;
+  };
+  spark('spark-fit',C,'var(--ink)');
+  spark('spark-fat',A,'var(--alert)');
+})();
+
+/* ---- efficiency spark ---- */
+(function(){
+  const v=[768,761,755,752,747,738];
+  const W=360,H=58,L=30,Rm=36,T=10,B=12;
+  const hi=Math.max(...v)+3,lo=Math.min(...v)-3;
+  const X=i=>L+(W-L-Rm)*i/(v.length-1),Y=x=>T+(H-T-B)*(1-(x-lo)/(hi-lo));
+  let g='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-Rm)+'" y2="'+(H-B)+'" stroke="var(--rule)" stroke-width="1"/>';
+  g+='<path d="'+v.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x).toFixed(1)).join('')+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>';
+  v.forEach((x,i)=>{g+='<circle cx="'+X(i)+'" cy="'+Y(x)+'" r="'+(i===v.length-1?3.4:2)+'" fill="'+(i===v.length-1?'var(--cobalt)':'var(--ink)')+'"/>';});
+  g+='<text x="'+(X(0))+'" y="'+(Y(v[0])-7)+'" font-family="Azeret Mono" font-size="8.5" fill="var(--faint)">6 WKS AGO</text>'
+    +'<text x="'+(X(v.length-1)+8)+'" y="'+(Y(v[v.length-1])+3)+'" font-family="Azeret Mono" font-size="8.5" fill="var(--faint)">NOW</text>';
+  document.getElementById('spark-eff').innerHTML=g;
+})();
+</script>
+</body>
+</html>

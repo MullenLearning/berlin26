@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Engine — concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;500;600&family=Saira+Condensed:wght@500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --asphalt:#181813;        /* warm graphite, the garage floor */
+  --panel:#201F18;          /* instrument housing */
+  --panel-deep:#14140F;
+  --hair:rgba(233,225,204,.14);
+  --hair-soft:rgba(233,225,204,.08);
+  --cream:#E9E1CC;          /* headlight cream — primary ink on dark */
+  --dim:#A8A292;            /* muted ink on dark (AA on asphalt) */
+  --face:#E9E1CC;           /* the gauge face */
+  --face-ink:#1C1B14;
+  --face-sub:#6B665A;
+  --face-grid:rgba(28,27,20,.12);
+  --red:#D8442B;            /* the needle + redline */
+  --red-deep:#B23A24;
+  --amber:#D89C2B;
+  --amber-text:#E2B558;
+  --green:#6FA878;
+  --green-text:#8FBF97;
+  --brass:#AE9560;
+  --mono:'Spline Sans Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --cond:'Saira Condensed','Arial Narrow',sans-serif;
+  --body:'Saira',-apple-system,'Helvetica Neue',sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--asphalt);color:var(--cream);font-family:var(--body);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-size:15px;line-height:1.55}
+.page{max-width:520px;margin:0 auto;padding:18px 16px 108px}
+
+/* ---------- serial plate header ---------- */
+.plate{border:1px solid var(--hair);border-radius:6px;padding:11px 14px 10px;position:relative;
+  background:linear-gradient(180deg,rgba(233,225,204,.04),rgba(233,225,204,0))}
+.plate::before,.plate::after{content:"";position:absolute;top:8px;width:5px;height:5px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#CBB98C,#6E5F3C 70%);}
+.plate::before{left:8px}.plate::after{right:8px}
+.plate .r1{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.plate h1{margin:0;font-family:var(--cond);font-weight:700;font-size:27px;letter-spacing:.06em;line-height:1}
+.plate .u1{font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--dim);white-space:nowrap}
+.plate .u1 b{color:var(--cream);font-weight:600}
+.plate .r2{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:7px;
+  border-top:1px solid var(--hair-soft);padding-top:7px;font-family:var(--mono);font-size:8.5px;
+  letter-spacing:.14em;color:var(--dim);white-space:nowrap}
+.plate .r2 b{color:var(--cream);font-weight:600}
+
+/* ---------- section labels ---------- */
+.slbl{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--dim);display:flex;align-items:center;gap:10px;margin:26px 2px 10px}
+.slbl::after{content:"";flex:1;height:1px;background:var(--hair-soft)}
+.slbl .tag{color:var(--amber-text);letter-spacing:.12em}
+
+/* ---------- the tachometer ---------- */
+.tach{background:var(--face);border-radius:26px;padding:18px 14px 16px;color:var(--face-ink);position:relative;
+  box-shadow:inset 0 0 0 1px rgba(28,27,20,.18), inset 0 0 0 5px var(--face), inset 0 0 0 6px rgba(28,27,20,.12),
+  0 24px 48px -20px rgba(0,0,0,.7)}
+.tach .facelbl{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);
+  font-size:9.5px;letter-spacing:.2em;color:var(--face-sub);margin:0 8px 2px}
+.tach svg{display:block;width:100%;height:auto}
+.needle{transform-origin:170px 164px;transition:transform 1.1s cubic-bezier(.34,1.3,.4,1)}
+@media (prefers-reduced-motion:reduce){.needle{transition:none}}
+
+/* spec row under the gauge */
+.specrow{display:grid;grid-template-columns:1fr 1fr 1fr;margin:16px 2px 0}
+.specrow>div{padding:2px 14px;border-left:1px solid var(--hair)}
+.specrow>div:first-child{border-left:none;padding-left:2px}
+.specrow b{display:block;font-family:var(--cond);font-weight:600;font-size:27px;line-height:1.05;font-variant-numeric:tabular-nums}
+.specrow b i{font-style:normal;font-family:var(--mono);font-size:12px;font-weight:500;color:var(--dim);letter-spacing:0}
+.specrow span{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.specrow .up{color:var(--green-text)}
+.specrow .dn{color:var(--amber-text)}
+
+/* verdict prose */
+.verdict{margin:16px 2px 0;font-size:15.5px;line-height:1.6;color:var(--cream);text-wrap:pretty}
+.verdict em{font-style:normal;color:var(--green-text);font-weight:500}
+
+/* ---------- panels ---------- */
+.panel{background:var(--panel);border:1px solid var(--hair-soft);border-radius:18px;padding:16px 14px}
+.panel .ph{display:flex;justify-content:space-between;align-items:baseline;margin:0 2px 4px}
+.panel .ph .h{font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.panel .ph .v{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 2px 0;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.legend i{display:inline-block;width:14px;height:2px;vertical-align:3px;margin-right:6px;border-radius:2px}
+
+/* telemetry tiles */
+.telerow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.tile{background:var(--panel);border:1px solid var(--hair-soft);border-radius:14px;padding:12px 11px 11px}
+.tile .tl{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.tile b{display:block;font-family:var(--cond);font-weight:600;font-size:30px;line-height:1.05;margin-top:3px;font-variant-numeric:tabular-nums}
+.tile b i{font-style:normal;font-size:14px;font-family:var(--mono);font-weight:500;color:var(--dim)}
+.tile .band{position:relative;height:3px;border-radius:2px;background:var(--hair-soft);margin:10px 0 4px}
+.tile .band .rng{position:absolute;top:0;bottom:0;background:rgba(233,225,204,.22);border-radius:2px}
+.tile .band .mk{position:absolute;top:-3.5px;width:2.5px;height:10px;border-radius:2px;background:var(--cream)}
+.tile .band .mk.warn{background:var(--amber)}
+.tile .bl{font-family:var(--mono);font-size:8.5px;color:var(--dim);letter-spacing:.03em;white-space:nowrap}
+
+/* efficiency */
+.eff .big{display:flex;align-items:baseline;gap:10px;margin:2px 2px 0}
+.eff .big b{font-family:var(--cond);font-weight:700;font-size:46px;line-height:1;font-variant-numeric:tabular-nums}
+.eff .big .u{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--dim);line-height:1.5}
+.eff .chip{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--green-text);
+  border:1px solid rgba(111,168,120,.4);border-radius:99px;padding:4px 10px;white-space:nowrap}
+.eff .note{margin:10px 2px 0;font-size:13.5px;color:var(--dim);line-height:1.55;text-wrap:pretty}
+.eff .note em{font-style:normal;color:var(--cream)}
+
+/* ledger */
+.ledger table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+.ledger td{padding:10px 4px;border-top:1px solid var(--hair-soft);vertical-align:middle;font-variant-numeric:tabular-nums}
+.ledger tr:first-child td{border-top:none}
+.ledger .d{color:var(--dim);white-space:nowrap;font-size:10.5px;letter-spacing:.04em}
+.ledger .s{color:var(--cream);font-weight:500;white-space:nowrap}
+.ledger .l{text-align:right;color:var(--dim);white-space:nowrap}
+.ledger .l b{color:var(--cream);font-weight:600}
+.stamp{display:inline-block;font-family:var(--mono);font-weight:600;font-size:9px;letter-spacing:.14em;
+  padding:3px 7px;border:1.5px solid;border-radius:4px;transform:rotate(-3.5deg);opacity:.92}
+.stamp.ok{color:var(--green-text);border-color:rgba(111,168,120,.55)}
+.stamp.owe{color:var(--amber-text);border-color:rgba(216,156,43,.55);transform:rotate(2.5deg)}
+.balance{display:flex;gap:10px;align-items:baseline;border-top:1px dashed var(--hair);margin-top:4px;padding:12px 2px 2px}
+.balance .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+.balance p{margin:0;font-size:13.5px;color:var(--cream);line-height:1.5;text-wrap:pretty}
+.balance p em{font-style:normal;color:var(--amber-text)}
+
+/* service note */
+.service{border:1px solid rgba(216,156,43,.38);background:rgba(216,156,43,.07);border-radius:14px;
+  padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.service .glyph{flex:none;width:30px;height:30px;border-radius:50%;border:1.5px solid rgba(216,156,43,.5);
+  display:grid;place-items:center;color:var(--amber-text);font-family:var(--cond);font-weight:700;font-size:17px}
+.service p{margin:0;font-size:13.5px;line-height:1.55;color:var(--cream);text-wrap:pretty}
+.service p b{color:var(--amber-text);font-weight:600;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;display:block;margin-bottom:2px}
+
+/* serial footer */
+.serial{margin-top:30px;text-align:center;font-family:var(--mono);font-size:9px;letter-spacing:.22em;
+  color:rgba(168,162,146,.6);text-transform:uppercase;line-height:2}
+
+/* ---------- tab bar ---------- */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:rgba(20,20,15,.92);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--hair-soft);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom))}
+.tabs .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+.tabs button{position:relative;background:none;border:none;color:var(--dim);font-family:var(--mono);
+  font-size:8.5px;letter-spacing:.14em;display:flex;flex-direction:column;gap:5px;align-items:center;
+  padding:7px 0 4px;cursor:pointer;min-height:50px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor}
+.tabs button.on{color:var(--cream)}
+.tabs button.on::before{content:"";position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+  width:16px;height:3px;border-radius:2px;background:var(--red)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="plate">
+    <div class="r1"><h1>THE ENGINE</h1><span class="u1">UNIT <b>L.MULLEN</b> · MK.I</span></div>
+    <div class="r2"><span>FORM · LOAD · RECOVERY</span><span>DAY <b>26/112</b> · BERLIN <b>T−86</b></span></div>
+  </header>
+
+  <!-- ================= FORM GAUGE ================= -->
+  <div class="slbl" style="margin-top:22px">Form under load <span class="tag">DOWN WEEK</span></div>
+  <section class="tach" aria-label="Form gauge: minus 8.4, productive zone">
+    <div class="facelbl"><span>FORM · TSB</span><span>FR 3 JUL · 06:12</span></div>
+    <svg id="dial" viewBox="0 0 340 240"></svg>
+  </section>
+
+  <div class="specrow">
+    <div><span>Fitness</span><b>42.6 <i class="up">▲9.8</i></b></div>
+    <div><span>Fatigue</span><b>51.0 <i class="dn">▼3.1</i></b></div>
+    <div><span>Race-day</span><b>+11 <i>FRESH</i></b></div>
+  </div>
+
+  <p class="verdict">Fitness has climbed <em>9.8 points</em> in four weeks. This is a down week, so
+  fatigue is draining faster than fitness — hold the easy paces and the needle drifts
+  toward zero by Sunday, right where Build&nbsp;1 should begin.</p>
+
+  <!-- ================= TELEMETRY STRIP ================= -->
+  <div class="slbl">Block telemetry <span style="letter-spacing:.1em">W1–W16</span></div>
+  <section class="panel">
+    <svg id="strip" viewBox="0 0 360 168"></svg>
+    <div class="legend">
+      <span><i style="background:var(--cream)"></i>Fitness</span>
+      <span><i style="background:var(--red)"></i>Fatigue</span>
+      <span><i style="background:var(--green)"></i>Form</span>
+      <span style="margin-left:auto">DOTTED = PROJECTED ON PLAN</span>
+    </div>
+  </section>
+
+  <!-- ================= MORNING TELEMETRY ================= -->
+  <div class="slbl">This morning · vs 30-night baseline</div>
+  <div class="telerow">
+    <div class="tile">
+      <span class="tl">HRV</span>
+      <b>64<i> ms</i></b>
+      <div class="band"><span class="rng" style="left:34%;width:44%"></span><span class="mk warn" style="left:30%"></span></div>
+      <span class="bl"><span style="color:var(--amber-text)">LOW −10%</span> · BASE 71</span>
+    </div>
+    <div class="tile">
+      <span class="tl">Resting HR</span>
+      <b>49<i> bpm</i></b>
+      <div class="band"><span class="rng" style="left:30%;width:42%"></span><span class="mk" style="left:44%"></span></div>
+      <span class="bl"><span style="color:var(--green-text)">GOOD −1</span> · BASE 50</span>
+    </div>
+    <div class="tile">
+      <span class="tl">Body temp</span>
+      <b>+0.1<i> °C</i></b>
+      <div class="band"><span class="rng" style="left:28%;width:44%"></span><span class="mk" style="left:52%"></span></div>
+      <span class="bl"><span style="color:var(--green-text)">NORMAL</span> · BASE ±0.2</span>
+    </div>
+  </div>
+
+  <!-- ================= EFFICIENCY ================= -->
+  <div class="slbl">Engine efficiency</div>
+  <section class="panel eff">
+    <div class="ph"><span class="h">Heartbeats per kilometre · easy pace</span></div>
+    <div class="big">
+      <b>738</b><span class="u">beats<br>/ km</span>
+      <span class="chip">▼ 3.9% this block</span>
+    </div>
+    <svg id="spark" viewBox="0 0 360 64" style="display:block;width:100%;height:auto;margin-top:10px"></svg>
+    <p class="note">Same easy pace, <em>30 fewer heartbeats</em> per kilometre than week one.
+    This is the compounding number — when it falls while volume climbs, the engine is growing.</p>
+  </section>
+
+  <!-- ================= THE LEDGER ================= -->
+  <div class="slbl">The ledger <span style="letter-spacing:.1em">WORK ➞ ABSORBED</span></div>
+  <section class="panel ledger">
+    <table>
+      <tr><td class="d">THU 2</td><td class="s">Strides 7k</td><td class="l"><b>38</b> load</td><td class="l"><span class="stamp owe">OWING</span></td></tr>
+      <tr><td class="d">TUE 30</td><td class="s">Threshold 10k</td><td class="l"><b>62</b> load</td><td class="l"><span class="stamp ok">ABSORBED</span></td></tr>
+      <tr><td class="d">SAT 27</td><td class="s">Long 22k</td><td class="l"><b>84</b> load</td><td class="l"><span class="stamp ok">ABSORBED</span></td></tr>
+      <tr><td class="d">TUE 23</td><td class="s">Threshold 11k</td><td class="l"><b>66</b> load</td><td class="l"><span class="stamp ok">ABSORBED</span></td></tr>
+    </table>
+    <div class="balance">
+      <span class="k">Balance</span>
+      <p>One session owing — last night's HRV didn't rebound. <em>Lights out by 22:30</em> pays it down before Saturday's long run.</p>
+    </div>
+  </section>
+
+  <!-- ================= SERVICE NOTE ================= -->
+  <div class="slbl">Service notes</div>
+  <aside class="service">
+    <span class="glyph">!</span>
+    <p><b>Inspection due</b>Three hard efforts in five days and HRV is 10% under baseline.
+    Keep today at recovery effort — the plan's Sunday rest lands exactly where the engine wants it.</p>
+  </aside>
+
+  <footer class="serial">Berlin Engine Works · commissioned 8 Jun 2026<br>service interval 7 days · next: Sun 5 Jul</footer>
+</div>
+
+<!-- ================= TABS ================= -->
+<nav class="tabs"><div class="in">
+  <button class="on" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14.5 15.5 9"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg>
+    ENGINE</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>
+    ATLAS</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3a9 9 0 0 1 9 9" stroke-dasharray="1.5 3.4"/><path d="M12 7v5l3 2"/></svg>
+    NIGHT &amp; DAY</button>
+  <button>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>
+    YEARBOOK</button>
+</div></nav>
+
+<script>
+/* ---------------- the tachometer ---------------- */
+(function(){
+  const svg=document.getElementById('dial');
+  const CX=170,CY=164,R=132;                    // face geometry
+  const A0=-115,A1=115;                          // sweep
+  const V0=-30,V1=20;                            // TSB scale
+  const val=-8.4;
+  const a=v=>A0+(v-V0)/(V1-V0)*(A1-A0);
+  const P=(ang,r)=>{const t=(ang-90)*Math.PI/180;return [CX+r*Math.cos(t),CY+r*Math.sin(t)];};
+  const arc=(v0,v1,r,w,col)=>{
+    const s=P(a(v0),r),e=P(a(v1),r),large=(a(v1)-a(v0))>180?1:0;
+    return `<path d="M${s[0].toFixed(1)} ${s[1].toFixed(1)} A${r} ${r} 0 ${large} 1 ${e[0].toFixed(1)} ${e[1].toFixed(1)}"
+      fill="none" stroke="${col}" stroke-width="${w}"/>`;
+  };
+  let g='';
+  // concentric face ring
+  g+=`<circle cx="${CX}" cy="${CY}" r="${R+13}" fill="none" stroke="var(--face-grid)" stroke-width="1"/>`;
+  // zone bands: overreached / productive / neutral / fresh
+  g+=arc(-30,-18,R,9,'var(--red)');
+  g+=arc(-18,-2 ,R,9,'var(--green)');
+  g+=arc(-2 ,6  ,R,9,'rgba(28,27,20,.14)');
+  g+=arc( 6 ,20 ,R,9,'var(--amber)');
+  // ticks + numerals
+  for(let v=V0;v<=V1;v+=5){
+    const major=v%10===0,r1=R-9,r2=major?R-23:R-16;
+    const s=P(a(v),r1),e=P(a(v),r2);
+    g+=`<line x1="${s[0]}" y1="${s[1]}" x2="${e[0]}" y2="${e[1]}" stroke="var(--face-ink)" stroke-width="${major?2.2:1}" opacity="${major?0.85:0.4}"/>`;
+    if(major){const t=P(a(v),R-37);
+      g+=`<text x="${t[0]}" y="${t[1]}" text-anchor="middle" dominant-baseline="middle"
+        font-family="Saira Condensed" font-weight="600" font-size="15.5" fill="var(--face-ink)">${v>0?'+'+v:v}</text>`;}
+  }
+  // needle (starts at V0, springs to val) — drawn before the window so it slides beneath it
+  g+=`<g class="needle" id="ndl" transform="rotate(${a(V0)} ${CX} ${CY})">
+    <path d="M${CX} ${CY-R+4} L${CX-3.4} ${CY-2} L${CX+3.4} ${CY-2} Z" fill="var(--red)"/>
+  </g>
+  <circle cx="${CX}" cy="${CY}" r="8.5" fill="var(--face-ink)"/>
+  <circle cx="${CX}" cy="${CY}" r="3" fill="var(--face)"/>`;
+  // odometer window: the state readout, set into the face like a real instrument
+  g+=`<rect x="${CX-72}" y="186" width="144" height="50" rx="10" fill="rgba(28,27,20,.055)"
+        stroke="var(--face-grid)" stroke-width="1.2"/>
+      <text x="${CX}" y="216" text-anchor="middle" font-family="Saira Condensed" font-weight="700"
+        font-size="33" fill="var(--face-ink)" style="font-variant-numeric:tabular-nums">−8.4</text>
+      <text x="${CX}" y="230" text-anchor="middle" font-family="Spline Sans Mono" font-weight="600"
+        font-size="8.5" letter-spacing="3" fill="#3E7A49">PRODUCTIVE</text>`;
+  svg.innerHTML=g;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    document.getElementById('ndl').setAttribute('transform',`rotate(${a(val)} ${CX} ${CY})`);
+  }));
+})();
+
+/* ---------------- block telemetry strip ---------------- */
+(function(){
+  // impulse-response model over the plan's weekly km — honest curve shapes
+  const wk=[45,50,54,46,56,63,70,56,72,78,85,68,80,60,44,28];
+  const daily=[];wk.forEach(k=>{const runs=[.16,.2,0,.16,.13,.35,0];runs.forEach(f=>daily.push(k*f*4.4));});
+  let ctl=26,atl=24;const C=[],A=[],F=[];
+  daily.forEach(l=>{ctl+=(l-ctl)/42;atl+=(l-atl)/7;C.push(ctl);A.push(atl);F.push(ctl-atl);});
+  // smooth to 3-day means for display — telemetry, not sawtooth
+  const sm=arr=>arr.map((_,i)=>{let s=0,n=0;for(let k=Math.max(0,i-2);k<=Math.min(arr.length-1,i+2);k++){s+=arr[k];n++;}return s/n;});
+  const Cs=sm(C),As=sm(A),Fs=sm(F);
+  const today=25,N=daily.length;
+  const W=360,H=168,L=10,Rm=24,T=14,B=26,ih=H-T-B;
+  const hi=Math.max(...As)+7,lo=Math.min(...Fs)-6;
+  const X=i=>L+(W-L-Rm)*i/(N-1);
+  const Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+  let g='';
+  for(let w2=0;w2<=16;w2+=4){const x=X(Math.min(w2*7,N-1));
+    g+=`<line x1="${x}" y1="${T}" x2="${x}" y2="${T+ih}" stroke="var(--hair-soft)" stroke-width="1"/>
+        <text x="${x}" y="${H-8}" text-anchor="middle" font-family="Spline Sans Mono" font-size="8.5" letter-spacing="1" fill="var(--dim)">${w2===0?'W1':w2===16?'RACE':'W'+w2}</text>`;}
+  g+=`<line x1="${L}" y1="${Y(0)}" x2="${W-Rm}" y2="${Y(0)}" stroke="var(--hair)" stroke-width="1" stroke-dasharray="2 3"/>`;
+  const path=(arr,i0,i1)=>arr.slice(i0,i1+1).map((v,j)=>(j?'L':'M')+X(i0+j).toFixed(1)+' '+Y(v).toFixed(1)).join('');
+  // past solid
+  g+=`<path d="${path(As,0,today)}" fill="none" stroke="var(--red)" stroke-width="1.3" opacity=".85" stroke-linejoin="round"/>`;
+  g+=`<path d="${path(Fs,0,today)}" fill="none" stroke="var(--green)" stroke-width="1.6" stroke-linejoin="round"/>`;
+  g+=`<path d="${path(Cs,0,today)}" fill="none" stroke="var(--cream)" stroke-width="2.2" stroke-linejoin="round"/>`;
+  // future dotted (projected on plan)
+  g+=`<path d="${path(As,today,N-1)}" fill="none" stroke="var(--red)" stroke-width="1" opacity=".45" stroke-dasharray="1.5 4.5"/>`;
+  g+=`<path d="${path(Fs,today,N-1)}" fill="none" stroke="var(--green)" stroke-width="1.2" stroke-dasharray="1.5 4.5" opacity=".7"/>`;
+  g+=`<path d="${path(Cs,today,N-1)}" fill="none" stroke="var(--cream)" stroke-width="1.4" stroke-dasharray="1.5 4.5" opacity=".7"/>`;
+  // you-are-here
+  g+=`<line x1="${X(today)}" y1="${T-2}" x2="${X(today)}" y2="${T+ih}" stroke="var(--cream)" stroke-width="1" opacity=".5"/>
+      <circle cx="${X(today)}" cy="${Y(Cs[today])}" r="3.4" fill="var(--cream)"/>`;
+  // race-day form flag (checkered)
+  const fx=X(N-1),fy=Y(Fs[N-1]);
+  g+=`<circle cx="${fx}" cy="${fy}" r="3.4" fill="var(--green)"/>`;
+  let ck='';for(let r=0;r<2;r++)for(let c=0;c<3;c++){if((r+c)%2===0)ck+=`<rect x="${c*3.4}" y="${r*3.4}" width="3.4" height="3.4"/>`;}
+  g+=`<g transform="translate(${fx-8},${fy-30})" fill="var(--cream)"><rect x="0" y="0" width="10.2" height="6.8" fill="var(--panel-deep)" stroke="var(--hair)" stroke-width=".6"/>${ck}</g>
+      <text x="${fx-14}" y="${fy-24}" text-anchor="end" font-family="Spline Sans Mono" font-weight="600" font-size="9" letter-spacing="1" fill="var(--green-text)">+11 FRESH</text>`;
+  document.getElementById('strip').innerHTML=g;
+})();
+
+/* ---------------- efficiency spark ---------------- */
+(function(){
+  const v=[768,763,755,749,752,744,741,738];      // weekly beats/km, W1..now
+  const W=360,H=64,L=4,Rm=64,T=8,B=10;
+  const hi=Math.max(...v)+4,lo=Math.min(...v)-4;
+  const X=i=>L+(W-L-Rm)*i/(v.length-1);
+  const Y=x=>T+(H-T-B)*(1-(x-lo)/(hi-lo));
+  let g=`<line x1="${L}" y1="${H-B}" x2="${W-Rm}" y2="${H-B}" stroke="var(--hair-soft)" stroke-width="1"/>`;
+  g+='<path d="'+v.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x).toFixed(1)).join('')+'" fill="none" stroke="var(--cream)" stroke-width="1.8" stroke-linejoin="round"/>';
+  v.forEach((x,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(x)}" r="${i===v.length-1?3.2:1.8}" fill="${i===v.length-1?'var(--green)':'var(--cream)'}"/>`;});
+  g+=`<text x="${X(v.length-1)+10}" y="${Y(v[v.length-1])+3}" font-family="Spline Sans Mono" font-size="9" fill="var(--dim)">NOW</text>
+      <text x="${X(0)+2}" y="${Y(v[0])-6}" font-family="Spline Sans Mono" font-size="9" fill="var(--dim)">W1 · 768</text>`;
+  document.getElementById('spark').innerHTML=g;
+})();
+</script>
+</body>
+</html>
