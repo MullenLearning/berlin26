@@ -41,7 +41,7 @@
   --rec:#0C6E73; --rec-bg:#E2F3F4; --easy:#1C7D3F; --easy-bg:#E8F4EC; --long:#1D4ED8; --long-bg:#E7EEFB;
   --hard:#C62A1F; --hard-bg:#FBE7E4; --rest:#52606F; --rest-bg:#EEF0F2; --blue:#1D4ED8; --blue-bg:#E7EEFB;
   --qual:#5A35B0; --qual-bg:#EFEAFC; --warn:#8A5E12; --warn-bg:#F7EFD9;
-  --track:#EAE7DF; --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-hero:0 10px 30px rgba(21,23,28,.10);
+  --track:#EAE7DF; --shadow:0 1px 2px rgba(0,0,0,.04); --shadow-hero:0 10px 30px rgba(21,23,28,.10); --shadow-sheet:0 -1px 1px rgba(21,23,28,.04),0 -8px 18px rgba(21,23,28,.10),0 -20px 48px rgba(21,23,28,.12);
   --disp:-apple-system,'SF Pro Display','SF Pro Text','Inter',system-ui,'Helvetica Neue',Arial,sans-serif;
   --ease-out:cubic-bezier(0,0,.2,1); --ease-drawer:cubic-bezier(.32,.72,0,1); --ease-press:cubic-bezier(.2,.7,.3,1);
   /* the one motion system: fast snap for acknowledgements, soft settle for sheets/cards */
@@ -54,9 +54,8 @@ html[data-skin="berlin"] .card{border-radius:20px;border:1px solid var(--line);b
 html[data-skin="berlin"] .card.heroc{box-shadow:var(--shadow-hero)}
 html[data-skin="berlin"] h1{font-weight:700;letter-spacing:-.4px;text-transform:none}
 html[data-skin="berlin"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
-html[data-skin="berlin"] #tabbar .inner{grid-template-columns:repeat(3,1fr)}
 html[data-skin="berlin"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
-html[data-skin="berlin"] #tabbar button{color:#8E8E93}
+html[data-skin="berlin"] #tabbar button{color:var(--sub)}
 html[data-skin="berlin"] #tabbar button.sel{color:var(--accent-text)}
 html[data-skin="berlin"] #tabbar button.sel::after{display:none}
 html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
@@ -67,6 +66,7 @@ html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
 .aActions{display:flex;gap:8px;flex:none;align-items:flex-start}
 .aAvatar{width:34px;height:34px;border-radius:50%;background:var(--raised);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--txt2);font-size:16px;border:none;cursor:pointer;flex:none;margin-top:6px;position:relative}
 .aAvatar::before{content:"";position:absolute;inset:-5px}
+.aAvatar svg{width:20px;height:20px} /* beat the global svg{width:100%} */
 .aSec{font-size:22px;font-weight:700;color:#000;margin:24px 2px 9px;display:flex;justify-content:space-between;align-items:baseline}
 .aSec .lnk{font-size:17px;font-weight:400;color:var(--accent-text);cursor:pointer}
 .aActivity{background:#000 !important;color:#fff;border-radius:13px;padding:18px;display:flex;align-items:center;gap:16px}
@@ -103,7 +103,7 @@ body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;}
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-tap-highlight-color:transparent;}
 #app{max-width:520px;margin:0 auto;}
 main{padding:calc(14px + env(safe-area-inset-top)) 14px calc(86px + env(safe-area-inset-bottom));}
 h1{font-size:24px;margin:6px 2px 2px;letter-spacing:0;font-family:var(--disp);font-weight:600;text-wrap:balance}
@@ -133,12 +133,13 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 .btn2{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--card);border:1px solid var(--bord);
   color:var(--ink);font-weight:600;font-size:15px;border-radius:14px;padding:12px 14px;min-height:48px}
 .btn3{color:var(--sub);font-size:13px;font-weight:600;padding:8px 10px;min-height:44px}
-.btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:transform .16s var(--ease-press)}
-.btn:active,.btn2:active,.btn3:active,.seg button:active,.sheetrow:active,.daystrip button:active,.weekchips button:active,#tabbar button:active,button.chip:active{transform:scale(.96)}
+.btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip,.aAvatar,.calcell,.aRow,.calchip,.cwh,.calkindb,.caldonebtn{transition:transform .16s var(--ease-press)}
+.btn:active,.btn2:active,.btn3:active,.seg button:active,.sheetrow:active,.daystrip button:active,.weekchips button:active,#tabbar button:active,button.chip:active,.aAvatar:active,.calcell:not(.out):active,.aRow:active,.calchip:active,.cwh:active,.calkindb:active,.caldonebtn:active{transform:scale(.96)}
+.calblk:active{filter:brightness(.92)}
 .seg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px}
 .seg button{border:1.5px solid var(--line);border-radius:12px;padding:10px 4px;font-size:14px;font-weight:700;color:var(--sub);min-height:46px;background:var(--card)}
 .seg button.on-done{background:var(--easy-bg);border-color:var(--easy);color:var(--easy)}
-.seg button.selb{background:var(--blue-bg);border-color:var(--accent-text);color:var(--accent-text)}
+.seg button.selb{background:var(--raised);border-color:var(--accent);color:var(--ink)}
 .seg button.on-partial{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
 .seg button.on-missed{background:var(--hard-bg);border-color:var(--hard);color:var(--hard)}
 .loggrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -146,7 +147,7 @@ button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:p
 label.f{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--sub);margin:0 0 4px 2px}
 input,select{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:10px 12px;width:100%;min-height:44px;appearance:none;-webkit-appearance:none}
 input::placeholder{color:var(--sub);opacity:1}
-select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23C7C7CC' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23656A72' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
 .err{color:var(--hard);font-size:12px;font-weight:600;margin:6px 2px 0}
 .coachta{width:100%;min-height:128px;max-height:300px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.5;color:var(--ink);background:var(--bg);border:1px solid var(--bord);border-radius:12px;padding:11px 12px;resize:vertical;-webkit-appearance:none}
 #coachbrief{color:var(--txt2)}
@@ -193,6 +194,10 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);
 td{padding:9px 6px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr[data-action]:active{background:var(--bg)}
+/* dense variant: the 6-column schedule fits a 320px card without horizontal scroll */
+table.dense th,table.dense td{padding-left:4px;padding-right:4px}
+table.dense th:first-child,table.dense td:first-child{padding-left:0}
+table.dense th:last-child,table.dense td:last-child{padding-right:0}
 .pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:3px 9px;white-space:nowrap}
 .p-hit{background:var(--easy-bg);color:var(--easy)} .p-partial{background:var(--warn-bg);color:var(--warn)}
 .p-under{background:var(--hard-bg);color:var(--hard)} .p-prog{background:var(--blue-bg);color:var(--blue)}
@@ -210,12 +215,12 @@ tr[data-action]:active{background:var(--bg)}
 .daystrip button{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:8px 2px;text-align:center;min-height:58px}
 .daystrip button.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .daystrip .d{font-size:10px;font-weight:700;color:var(--sub);text-transform:uppercase}
-.daystrip .k{font-size:12px;font-weight:800;margin-top:3px}
+.daystrip .k{font-size:12px;font-weight:800;margin-top:3px;font-variant-numeric:tabular-nums}
 .nbar{height:56px;display:flex;align-items:flex-end;justify-content:center;position:relative;margin:4px 0 2px;width:100%}
 .nbar i{display:block;width:14px;border-radius:5px 5px 2px 2px;opacity:.85;transition:height .2s var(--ease-out)}
 .nbar.ed{touch-action:none}
 .nbar.ed i{opacity:1}
-.ndelta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--accent-text);white-space:nowrap}
+.ndelta{position:absolute;top:-4px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:var(--accent-text);white-space:nowrap;font-variant-numeric:tabular-nums}
 body.nutdrag{-webkit-user-select:none;user-select:none}
 body.nutdrag .nbar i{transition:none}
 /* fuel card: slim macro bars + meal dots */
@@ -245,7 +250,7 @@ svg{display:block;width:100%;height:auto}
 #tabbar svg{width:23px;height:23px}
 #sheet{position:fixed;inset:0;z-index:100}
 #sheet .scrim{position:absolute;inset:0;background:rgba(8,12,20,.45);opacity:0;transition:opacity .2s ease}
-#sheet .panel{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);
+#sheet .panel{position:absolute;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);box-shadow:var(--shadow-sheet);
   border-radius:24px 24px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:78vh;max-height:78dvh;
   overflow-y:auto;overscroll-behavior:contain;will-change:transform;
   transform:translateY(100%);transition:transform .2s cubic-bezier(.4,0,.7,1)} /* exit: quick ease-in */
@@ -256,7 +261,8 @@ svg{display:block;width:100%;height:auto}
 .sheetrow .t{flex:1;font-size:13px;color:var(--sub);line-height:1.3}
 .todayhead{padding:4px 2px 0}
 /* the always-present countdown: a designed coral element + thin 16-week rail */
-.cd{display:flex;align-items:baseline;gap:7px;margin:14px 2px 0;width:100%;background:none;border:none;padding:0;text-align:left;cursor:pointer}
+.cd{display:flex;align-items:baseline;gap:7px;margin:14px 2px 0;width:100%;background:none;border:none;padding:0;text-align:left;cursor:pointer;position:relative}
+.cd::before{content:"";position:absolute;inset:-8px 0} /* extend the ~30px row to a 44px+ touch target */
 .cd b{font-size:30px;font-weight:800;color:var(--coral);font-family:var(--disp);letter-spacing:-1px;line-height:.95;font-variant-numeric:tabular-nums}
 .cd .u{font-size:13px;font-weight:700;color:var(--coral-text);letter-spacing:.01em}
 .cd .meta{margin-left:auto;text-align:right;font-size:12px;color:var(--sub);font-weight:600;line-height:1.3;align-self:center}
@@ -265,8 +271,7 @@ svg{display:block;width:100%;height:auto}
 .rail i.done{background:var(--ink)}
 .rail i.now{height:7px;background:var(--coral);box-shadow:0 0 0 3px var(--coral-bg)}
 .rail .fin{flex:0 0 8px;height:8px;border-radius:50%;background:var(--coral);margin-left:3px}
-/* hero session card: a state-colour spine + a real title (the screen's one hero) */
-.sesshero{border-left:5px solid var(--rest);padding-left:16px}
+/* hero session card: zone identity lives in the chip — the card itself stays neutral */
 .lblrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .seclbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--sub)}
 .herottl{font-size:30px;font-weight:700;letter-spacing:-.6px;font-family:var(--disp);margin-top:8px;line-height:1.06;text-wrap:balance}
@@ -275,7 +280,7 @@ svg{display:block;width:100%;height:auto}
 .prow .pl{flex:1;min-width:0}
 .prow .pt{font-weight:700;font-size:15px}
 .prow .ps{font-size:13px;color:var(--sub);margin-top:1px}
-.prow .pk{font-weight:800;font-family:var(--disp);font-size:18px;color:var(--coral);font-variant-numeric:tabular-nums}
+.prow .pk{font-weight:800;font-family:var(--disp);font-size:18px;color:var(--coral-text);font-variant-numeric:tabular-nums}
 /* reconciliation row (demoted catch-up) */
 .recon{display:flex;align-items:center;gap:10px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:12px}
 .recon .rt{flex:1;min-width:0;font-size:14px;color:var(--txt2)}
@@ -306,8 +311,17 @@ svg{display:block;width:100%;height:auto}
 .nmath[open] summary::after{content:" ⌄"}
 .fade{animation:fade .18s var(--ease-out)}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* navigation entrance: assemble the screen as staggered chunks (header, then cards) — principle #5.
+   backwards fill holds the pre-delay hidden state for the stagger but RELEASES transform when done,
+   so swipe/drag gestures (which set inline transform on these cards) keep working. */
+@keyframes navin{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:none;filter:blur(0)}}
+.nav-in>*{animation:navin .34s var(--ease-out) backwards}
+.nav-in>*:nth-child(2){animation-delay:.08s}
+.nav-in>*:nth-child(3){animation-delay:.16s}
+.nav-in>*:nth-child(4){animation-delay:.24s}
+.nav-in>*:nth-child(n+5){animation-delay:.3s}
 .hl{animation:hl 2s ease}
-@keyframes hl{0%{background:var(--long-bg)}100%{background:transparent}}
+@keyframes hl{0%{background:var(--track)}100%{background:transparent}} /* neutral 'changed' flash — zone hues stay semantic */
 .pop{animation:pop var(--dur-snap) var(--snap)}
 @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:none;opacity:1}}
 .ringfg{filter:drop-shadow(0 0 3px rgba(91,155,255,.55))}
@@ -318,7 +332,8 @@ html[data-theme="light"] .ringfg{filter:none}
 .right{text-align:right}
 .weights li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line-soft);font-size:14px}
 .weights li:last-child{border-bottom:none}
-.weights .del{color:var(--hard);font-weight:700;font-size:13px;padding:8px 10px;min-height:44px}
+.weights .del,.sheetrow .del{color:var(--hard);font-weight:700;font-size:13px;padding:8px 10px;min-height:44px}
+.sheetrow .del{margin:-8px -6px -8px 0} /* full 44px target without inflating the 12px-padded row */
 .center{text-align:center}
 .footlinks{display:flex;justify-content:center;gap:18px;margin-top:18px}
 .note,.banner{text-wrap:pretty}
@@ -327,7 +342,7 @@ html[data-theme="light"] .ringfg{filter:none}
   transform:translate(-50%,16px);opacity:0;pointer-events:none;transition:transform var(--dur-snap) var(--snap),opacity .2s ease}
 #snack.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
 .snackin{display:flex;gap:14px;align-items:center;background:var(--raised);border:1px solid var(--line);
-  border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.12);white-space:nowrap}
+  border-radius:14px;padding:10px 16px;font-size:14px;font-weight:600;box-shadow:0 1px 2px rgba(21,23,28,.06),0 6px 16px rgba(21,23,28,.10),0 16px 32px rgba(21,23,28,.10);white-space:nowrap}
 .snackin button{color:var(--accent-text);font-weight:700;min-height:40px;padding:0 4px}
 /* swipeable cards */
 [data-swipe]{touch-action:pan-y;position:relative;will-change:transform;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
@@ -338,7 +353,7 @@ html[data-theme="light"] .ringfg{filter:none}
 [data-lp] input,[data-lp] select,[data-lp] textarea{-webkit-user-select:auto;user-select:auto}
 .ndot{width:5px;height:5px;border-radius:50%;margin:3px auto 0;background:transparent}
 .swipe-snapback{transition:transform var(--dur-snap) var(--snap)}
-.swipe-hint{position:absolute;top:12px;right:12px;z-index:5;background:var(--raised);border:1px solid var(--line);
+.swipe-hint{position:absolute;top:12px;right:12px;z-index:5;background:var(--card);border:1px solid var(--line);
   border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;white-space:nowrap}
 .swipe-hint.r{color:var(--easy)} .swipe-hint.l{color:var(--sub)}
 /* ruler tape (weight + pace) */
@@ -378,11 +393,11 @@ html[data-theme="light"] .ringfg{filter:none}
 .arcword{font-size:13px;color:var(--txt2);font-weight:600;min-height:18px}
 .swipe-onboard{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 /* drag-and-drop the week */
-.card.dragging{z-index:40;box-shadow:0 18px 44px rgba(0,0,0,.55);transition:none;position:relative}
+.card.dragging{z-index:40;box-shadow:0 1px 2px rgba(21,23,28,.08),0 18px 44px rgba(21,23,28,.18);transition:none;position:relative}
 .card.droptarget{border-color:var(--accent-text);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .card.dropinert{opacity:.45}
 body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
-.dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(0,0,0,.4);background:var(--raised);color:var(--txt2)}
+.dragghost{position:absolute;right:10px;top:-14px;box-shadow:0 6px 18px rgba(21,23,28,.16);background:var(--raised);color:var(--txt2)}
 .dragpreview{font-size:12.5px;font-weight:700;color:var(--accent-text);margin-top:8px;font-variant-numeric:tabular-nums}
 #wchart{touch-action:pan-y}
 /* week wrapped */
@@ -398,9 +413,9 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .tabfab{position:absolute;left:50%;bottom:calc(100% - 26px);transform:translateX(-50%);width:54px;height:54px;border-radius:50%;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 20px rgba(0,0,0,.5);cursor:pointer;z-index:2}
 .tabfab svg{width:26px;height:26px}
 @media (prefers-reduced-motion: reduce){
-  .fade,.hl,.pop{animation:none}
+  .fade,.hl,.pop,.nav-in>*{animation:none}
   #sheet .panel,#sheet .scrim,#sheet.open .panel,#sheet.open .scrim,#snack,.swipe-snapback{transition:none}
-  .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip{transition:none}
+  .btn,.btn2,.btn3,.seg button,.sheetrow,.daystrip button,.weekchips button,#tabbar button,button.chip,.aAvatar,.calcell,.aRow,.calchip,.cwh,.calkindb,.caldonebtn,.switch::after,.wdragrow{transition:none}
   .rtrack{scroll-behavior:auto}
   .skel-bar{animation:none;background:var(--track)} /* loading rests static under reduced motion */
 }
@@ -422,16 +437,19 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .state .glyph{font-size:clamp(20px,5vw,26px);display:block;margin-bottom:4px;line-height:1}
 .state .st-t{display:block;font-weight:700}
 .state.err .st-t{color:var(--hard)}
-/* error-tone toast accent (info toasts unchanged) — token only */
-.snackin.err{box-shadow:inset 3px 0 0 var(--hard),0 6px 20px rgba(0,0,0,.12)}
+/* error-tone toast accent (info toasts unchanged) — full border, token only */
+.snackin.err{border-color:var(--hard);box-shadow:0 1px 2px rgba(21,23,28,.06),0 6px 16px rgba(21,23,28,.10),0 16px 32px rgba(21,23,28,.10)}
 
 /* ---- Calendar tab ----------------------------------------------------- */
 .calseg{margin-top:10px}
 .calbar{display:flex;align-items:center;justify-content:space-between;margin:16px 2px 8px}
 .calbar b{font:inherit;font-size:17px;font-weight:800;letter-spacing:-.3px;color:var(--ink);text-align:center;flex:1}
 .calnav{display:flex;gap:6px;flex:none}
-.calnav button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.calnav button{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.calnav button::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px}
 .calnav button[disabled]{opacity:.3;cursor:default}
+.calnav button[data-d="-1"]{padding-right:1px}
+.calnav button[data-d="1"]{padding-left:1px}
 /* month grid */
 .caldow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:5px}
 .caldow span{font-size:10px;font-weight:700;color:var(--sub);text-align:center;text-transform:uppercase;letter-spacing:.05em}
@@ -440,15 +458,16 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .calcell .cdate{font-size:12px;font-weight:700;color:var(--txt2);line-height:1}
 .calcell.out{background:transparent;border-color:transparent;cursor:default}
 .calcell.out .cdate{color:var(--chevron)}
-.calcell.past{opacity:.6}
+/* past days recede by losing the white-card pop — never by alpha, which breaks text contrast */
+.calcell.past{background:var(--bg)}
+.calcell.past .cdate{color:var(--sub)}
 .calcell.today{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
 .calcell.today .cdate{color:var(--accent-text)}
 .calpill{margin-top:auto;font-size:10px;font-weight:800;line-height:1.3;border-radius:6px;padding:2px 4px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.calcell.logged .calpill{opacity:.5}
 .cdots{display:flex;gap:2px;margin-top:3px;flex-wrap:wrap}
 .cdot{width:5px;height:5px;border-radius:50%;flex:none}
 .cdone{position:absolute;top:4px;right:5px;font-size:11px;font-weight:800;color:var(--easy);line-height:1}
-.callegend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:14px}
+.callegend{display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:6px 12px;margin-top:14px}
 .callegend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--sub)}
 .callegend i{width:9px;height:9px;border-radius:50%}
 /* week time-grid */
@@ -459,7 +478,7 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .cwh.td b,.cwh.td small{color:var(--accent-text)}
 .calwk-allday{display:grid;grid-template-columns:34px repeat(7,1fr);border-bottom:1px solid var(--line);padding-bottom:3px}
 .calallcol{min-width:0;padding:0 1px}
-.calchip{display:block;width:100%;font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:2px 3px;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;text-align:left;cursor:pointer}
+.calchip{display:block;width:100%;font-size:10px;font-weight:800;color:#fff;border-radius:4px;padding:3px 4px;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:none;text-align:left;cursor:pointer}
 .calchip.mtg{color:var(--ink);border:1px solid var(--line)}
 .calwk-grid{display:flex;position:relative;border-top:1.5px solid var(--bord);margin-top:2px}
 .calgutter{width:34px;flex:none;position:relative}
@@ -476,15 +495,17 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .cdcol{flex:1;min-width:0;position:relative;border-left:1px solid var(--bord);background-image:repeating-linear-gradient(to bottom,var(--line) 0,var(--line) 1px,transparent 1px,transparent 44px)}
 .cdblk{position:absolute;border-radius:6px;padding:3px 7px;color:#fff;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(255,255,255,.4) inset}
 .cdblk b{font-size:12px;font-weight:700;line-height:1.15;overflow:hidden}
-.cdblk span{font-size:10px;font-weight:600;opacity:.85;margin-top:1px}
+.cdblk span{font-size:10px;font-weight:600;margin-top:1px} /* full-opacity: .85 white dipped under AA on easy-zone fills */
 .cdblk.mtg{color:var(--txt2);background:var(--raised);box-shadow:none;border:1px solid var(--bord)}
 /* day-detail + add-workout sheet */
 .calkinds{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.calkindb{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:9px 4px;font-size:19px;cursor:pointer;color:var(--ink)}
+.calkindb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:12px 4px;cursor:pointer;color:var(--ink);min-height:58px}
+.calkindb i{width:10px;height:10px;border-radius:50%;background:var(--kc);flex:none}
 .calkindb span{font-size:11px;font-weight:700;color:var(--sub)}
 .calkindb.on{border-color:var(--kc);box-shadow:inset 0 0 0 1.5px var(--kc)}
 .calkindb.on span{color:var(--ink)}
-.caldonebtn{width:24px;height:24px;flex:none;border-radius:50%;border:1.5px solid var(--bord);background:var(--card);color:var(--easy);font-weight:800;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.caldonebtn{width:24px;height:24px;flex:none;border-radius:50%;border:1.5px solid var(--bord);background:var(--card);color:var(--easy);font-weight:800;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.caldonebtn::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px}
 .caldonebtn.on{background:var(--easy-bg);border-color:var(--easy)}
 /* brand lockups on the integrations cards */
 .brandhd{display:inline-flex;align-items:center;gap:7px;line-height:1;text-transform:none;letter-spacing:normal}
@@ -2396,7 +2417,7 @@ function wSteps(){
   const shown=sr.actual!=null?sr.actual:sr.projected;
   const pct=sr.goal>0?(shown/sr.goal*100):0;
   const big=sr.actual!=null?fmtKcal(sr.actual):'~'+fmtKcal(sr.projected);
-  const sub=sr.actual!=null?((sr.src==='oura'?'Oura':'Apple Health')+(sr.covered?' · 10k covered ✓':'')):(healthRef().d[isoAt(todayIdx)]&&healthRef().d[isoAt(todayIdx)].steps!=null?'':'forecast — run the Health Shortcut for live steps');
+  const sub=sr.actual!=null?((sr.src==='oura'?'Oura':'Apple Health')+(sr.covered?' · 10k covered ✓':'')):(healthRef().d[isoAt(todayIdx)]&&healthRef().d[isoAt(todayIdx)].steps!=null?'':'Forecast — run the Health Shortcut for live steps');
   // fit-it-in list: labels always come from the live plan; borrow the reconciler's
   // chosen times when its snapshot is for today (else a generic placement hint)
   const plan=(gcalPlanToday&&gcalPlanToday.date===isoAt(todayIdx))?gcalPlanToday.items:null;
@@ -2406,11 +2427,10 @@ function wSteps(){
   if(f.diariseWalks&&sr.remaining>=500)items.push({kind:'walk',label:'Walk · ~'+fmtKcal(sr.remaining)+' steps',time:timeFor('walk')||'in the gaps'});
   const wd=todayIdx%7,c=wd===2?'B':wd===6?'A':wd===3?'C':null;
   if(f.diariseStrength&&c)items.push({kind:'strength',label:'Strength · circuit '+c,time:timeFor('strength')||(wd===3?'after the run':'free gap')});
-  items.push({kind:'foot',label:'Foot & calf',time:'on waking + evening'});
-  const glyph={run:'🏃',walk:'🚶',strength:'🏋️',learning:'📚',foot:'🦶'};
+  items.push({kind:'foot',label:'Foot & calf',time:'morning + evening'});
   let list='';
-  items.forEach(it=>{list+='<div class="row" style="gap:8px;align-items:baseline;margin-top:6px;justify-content:space-between">'
-    +'<span style="font-size:13px"><span aria-hidden="true">'+(glyph[it.kind]||'•')+'</span> '+esc(it.label)+'</span>'
+  items.forEach(it=>{list+='<div class="row" style="gap:8px;align-items:baseline;margin-top:6px;justify-content:space-between;flex-wrap:nowrap">'
+    +'<span style="font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(it.label)+'</span>'
     +'<span class="mini" style="flex:none">'+esc(it.time)+'</span></div>';});
   return '<section class="card"><div class="spread"><h2>Steps</h2>'
     +(sr.covered?'<span class="chip c-easy">10k covered ✓</span>':'<span class="chip neutral">'+fmtKcal(sr.remaining)+' to go</span>')+'</div>'
@@ -3464,7 +3484,9 @@ function nutAdjChip(e){
 /* ---------------- 7. Charts (inline SVG) ---------------- */
 
 function volumeChart(){
-  const W=360,H=190,L=24,Rm=6,T=20,B=28,max=90,ih=H-T-B;
+  const W=360,H=190,L=24,Rm=6,T=20,B=28,ih=H-T-B;
+  let max=90; // grows with the data so a >90 km plan or logged week never clips
+  for(let w=0;w<16;w++)max=Math.max(max,effWeekTarget(w),weekActualKm(w));
   const iw=(W-L-Rm)/16,bw=Math.min(13,iw*0.58),rad=bw/2;
   let g='';
   [0,30,60,90].forEach(v=>{
@@ -3479,8 +3501,8 @@ function volumeChart(){
     const x=L+iw*w+(iw-bw)/2,isNow=w===rawW;
     const ph=Math.max(bw,ih*effWeekTarget(w)/max);            // planned — light track behind
     const act=weekActualKm(w);
-    const ah=act>0?Math.max(bw,ih*Math.min(act,max)/max):0;   // actual — filled bar in front, gap visible
-    g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ph).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ph.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="'+(isNow?'var(--coral-bg)':'var(--track)')+'"/>';
+    const ah=act>0?Math.max(bw,ih*act/max):0;   // actual — filled bar in front, gap visible
+    g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ph).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ph.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="var(--track)"/>';
     if(ah>0)g+='<rect x="'+x.toFixed(1)+'" y="'+(T+ih-ah).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+ah.toFixed(1)+'" rx="'+rad.toFixed(1)+'" fill="'+(isNow?'var(--coral)':'var(--accent)')+'"/>';
     if(w===peakW)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(T+ih-ph-6).toFixed(1)+'" text-anchor="middle" fill="var(--sub)" font-size="9.5" font-weight="700">'+Math.round(peakV)+' km</text>';
     if((w+1)===1||(w+1)%4===0)g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" fill="var(--sub)" font-size="10" font-weight="600">W'+(w+1)+'</text>';
@@ -3562,7 +3584,7 @@ function weightChart(){
   // the goal: a coral reference line at race weight + label
   {const gw=goalWeightVal(),gy=Y(gw);
    g+='<line x1="'+L+'" y1="'+gy.toFixed(1)+'" x2="'+(W-Rm)+'" y2="'+gy.toFixed(1)+'" stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="1 4" opacity="0.85"/>'
-     +'<text x="'+(W-Rm)+'" y="'+(gy-4).toFixed(1)+'" text-anchor="end" fill="var(--coral)" font-size="10" font-weight="700">'+fmtLb(gw)+' lb goal</text>';}
+     +'<text x="'+(W-Rm)+'" y="'+(gy-4).toFixed(1)+'" text-anchor="end" fill="var(--coral-text)" font-size="10" font-weight="700">'+fmtLb(gw)+' lb goal</text>';}
   {const bk=Math.min(goalDateIdx(),RACE_IDX),glide=[[0,planWtAt(0)],[bk,planWtAt(bk)],[RACE_IDX,planWtAt(RACE_IDX)]];
    g+='<path d="'+glide.map((q,j)=>(j?'L':'M')+X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1)).join('')+'" fill="none" stroke="var(--sub)" stroke-width="1.6" stroke-dasharray="5 4" opacity="0.85"/>';}
   if(rawT>=0&&rawT<=RACE_IDX)g+='<line x1="'+X(rawT)+'" y1="'+T+'" x2="'+X(rawT)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3" opacity="0.5"/>';
@@ -3584,7 +3606,7 @@ function weightChart(){
       const startV=tw.lb,projV=startV+r*((RACE_IDX-lp.x)/7);
       g+='<path d="M'+X(lp.x).toFixed(1)+' '+Y(startV).toFixed(1)+' L'+X(RACE_IDX).toFixed(1)+' '+Y(clamp(projV,lo,hi)).toFixed(1)+'" fill="none" stroke="var(--coral)" stroke-width="1.8" stroke-dasharray="3 3" stroke-linecap="round"/>'
         +'<circle cx="'+X(RACE_IDX).toFixed(1)+'" cy="'+Y(clamp(projV,lo,hi)).toFixed(1)+'" r="3" fill="var(--coral)"/>'
-        +'<text x="'+(X(RACE_IDX)-2).toFixed(1)+'" y="'+(Y(clamp(projV,lo,hi))+(projV>startV-6?14:-6)).toFixed(1)+'" text-anchor="end" fill="var(--coral)" font-size="10" font-weight="700">≈'+fmtLb(projV)+'</text>';
+        +'<text x="'+(X(RACE_IDX)-2).toFixed(1)+'" y="'+(Y(clamp(projV,lo,hi))+(projV>startV-6?14:-8)).toFixed(1)+'" text-anchor="end" fill="var(--coral-text)" font-size="10" font-weight="700">≈'+fmtLb(projV)+'</text>';
     }
     g+='<text x="'+X(lp.x).toFixed(1)+'" y="'+(Y(lp.y)-9).toFixed(1)+'" text-anchor="middle" fill="var(--ink)" font-size="10.5" font-weight="800">'+fmtLb(lp.y)+'</text>';
   }
@@ -3632,16 +3654,15 @@ function wSession(){
   const e=eff(todayIdx),l=sessLog(e.id)||{};
   const isRest=e.zone==='Rest'&&e.km<=0;
   const imported=!!(l.status&&l.source==='strava');
-  const spine='var(--'+(ZONECLR[e.zone]||'rest')+')';
   if(isRest) // rest days just happen — no logging, no status
-    return '<section class="card sesshero" style="border-left-color:'+spine+'">'
+    return '<section class="card">'
       +'<div class="lblrow"><span class="seclbl">Today’s session</span>'+zoneChip(e)+'</div>'
       +'<div class="herottl">'+headline(e)+'</div>'
       +(e.text!==headline(e)?'<p class="detail">'+esc(e.text)+'</p>':'')
       +'</section>';
   const bud=budgetAt(todayIdx);
   const fuelChip=bud!=null?'<span class="chip c-'+DAYTYPE[e.type].c+'">'+fmtKcal(bud)+' kcal fuel</span>':'';
-  return '<section class="card heroc sesshero" style="border-left-color:'+spine+'" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
+  return '<section class="card heroc" data-swipe="sess" data-i="'+todayIdx+'" data-lp data-qa="sess">'
     +'<span class="swipe-hint r" aria-hidden="true">Log done</span><span class="swipe-hint l" aria-hidden="true">Options</span>'
     +'<div class="lblrow"><span class="seclbl">Today’s session</span>'
     +(l.status?'<span class="chip '+(l.status==='done'?'c-easy':l.status==='partial'?'c-warn':'c-hard')+'">'+(l.status==='done'?'Logged':l.status==='partial'?'Partial':'Missed')+'</span>':'')+'</div>'
@@ -3680,7 +3701,7 @@ function wCatchup(){ // demoted to a single reconciliation row (swipe or tap the
     +'<span class="swipe-hint r" aria-hidden="true">Done</span><span class="swipe-hint l" aria-hidden="true">Skipped</span>'
     +'<div class="rt"><b style="color:var(--ink)">'+(j===rawT-1?'Yesterday':shortDate(j))+'</b> · '+esc(headline(ce))+(more>0?' · <span style="color:var(--sub)">+'+more+' more</span>':'')+'</div>'
     +'<div class="rb"><button class="btn3" data-action="deckskip" data-i="'+j+'" style="padding:6px 8px">Skipped</button>'
-    +'<button class="chip c-easy" data-action="quickdone" data-i="'+j+'" style="border:none;font-weight:700;cursor:pointer;min-height:44px;padding:0 14px">Done</button></div>'
+    +'<button class="btn3" data-action="quickdone" data-i="'+j+'" style="color:var(--easy);padding:6px 10px">Done</button></div>'
     +'</div>';
 }
 
@@ -3692,7 +3713,7 @@ function wMorning(){ // first open of the day: one interaction, then it folds aw
   if(!ui.morningOpen) // a slim prompt, not a card — collapses the moment it is logged
     return '<button class="prow" data-action="mopen" aria-label="Log this morning’s weight">'
       +'<div class="pl"><div class="pt">Morning weigh-in</div><div class="ps">Tap to log today’s weight</div></div>'
-      +'<span class="pk">'+fmtLb(start)+' →</span></button>';
+      +'<span class="pk">'+fmtLb(start)+' lb →</span></button>';
   return '<section class="card"><div class="lblrow"><span class="seclbl">Morning weigh-in</span><span class="chip neutral">'+shortDate(todayIdx)+'</span></div>'
     +rulerHTML('mruler',Math.max(120,Math.round(start)-15),Math.min(280,Math.round(start)+15),0.1,start,'lb',1,1)
     +'<div class="loggrid" style="margin-top:12px">'
@@ -3743,7 +3764,7 @@ function wFuel(){
   const heroRow=bud!=null
     ?'<div class="row" style="align-items:baseline;gap:6px"><span class="hero num">'+fmtKcal(bud)+'</span><span class="sub" style="font-weight:600">kcal to eat · −'+fmtKcal(deficitGoal())+' target</span></div>'
       +'<p class="mini" style="margin:6px 2px 0">Scales with today’s '+esc(e.zone.toLowerCase())+' load — eat more on hard days.</p>'
-    :'<p class="note" style="margin:8px 0 0">Add your weight and connect Oura (Training tab) to see a daily target.</p>';
+    :'<p class="note" style="margin:8px 0 0">Add your weight and connect Oura — behind the gear, top right — to see a daily target.</p>';
   return '<section class="card">'
     +'<div class="spread"><h2>Fuel today</h2>'+typeChip(e.type)+'</div>'
     +heroRow
@@ -3768,9 +3789,9 @@ function wWeight(){
   return '<section class="card" data-lp data-qa="wt"><div class="spread"><h2>Weight</h2>'
     +(dlt!=null?'<span class="chip c-'+deltaClass(dlt)+'" id="wverdict">'+(tw?'trend ':'')+(dlt>0?'+':'')+fmtLb(dlt)+' lb vs plan</span>':'<span class="chip neutral">no log yet</span>')+'</div>'
     +'<div class="row" style="gap:18px;margin-top:4px">'
-    +'<div><span class="mini">Plan today</span><div class="big num">'+fmtLb(pw)+'</div></div>'
-    +(tw?'<div><span class="mini">7-day trend</span><div class="big num">'+fmtLb(tw.lb)+'</div></div>':'')
-    +(lw?'<div><span class="mini">Latest · '+isoShort(lw.date)+'</span><div class="big num">'+fmtLb(lw.lb)+'</div></div>':'')
+    +'<div><span class="mini">Plan today</span><div class="big num">'+fmtLb(pw)+' <span class="aUnit">lb</span></div></div>'
+    +(tw?'<div><span class="mini">7-day trend</span><div class="big num">'+fmtLb(tw.lb)+' <span class="aUnit">lb</span></div></div>':'')
+    +(lw?'<div><span class="mini">Latest · '+isoShort(lw.date)+'</span><div class="big num">'+fmtLb(lw.lb)+' <span class="aUnit">lb</span></div></div>':'')
     +'</div>'
     +body
     +'</section>';
@@ -3883,7 +3904,7 @@ function pcPreviewBlock(){
 }
 function pcRow(sk){
   const c=PC_SECTIONS[sk],edited=S.plan[c.key]!=null,open=ui.pcOpen===sk;
-  let h='<div class="sheetrow" style="cursor:'+(open?'default':'pointer')+';flex-wrap:wrap" '+(open?'':'data-action="pcedit" data-sk="'+sk+'"')+'>'
+  let h='<div class="sheetrow" style="cursor:'+(open?'default':'pointer')+';flex-wrap:wrap" '+(open?'':'role="button" tabindex="0" data-action="pcedit" data-sk="'+sk+'"')+'>'
     +'<div style="flex:1"><div style="font-weight:700">'+c.label+'</div><div class="mini" style="margin-top:2px">'+c.fmt(c.cur())+(edited?' · edited':'')+'</div></div>'
     +(edited?'<button class="btn3" data-action="pcreset" data-sk="'+sk+'" style="flex:none;color:var(--sub)">reset</button>':'<span class="mini" style="color:var(--sub)">edit ›</span>')
     +'</div>';
@@ -4036,7 +4057,7 @@ function coachSheetContent(){
   const p=S.plan||{},active=coachActive();
   let h='<div class="spread"><h2 style="margin:0">Coach with Claude</h2><button class="btn3" data-action="closesheet" style="color:var(--accent-text)">Done</button></div>'
     +'<p class="note" style="margin:6px 0 10px">Talk your plan over with Claude — it can pull your Strava via the MCP — then paste its adjustment back. You preview every change before it lands; nothing applies on its own.</p>';
-  if(active)h+='<div class="card heroc" style="margin-top:0;border-color:var(--coral)"><div class="lblrow"><span class="seclbl" style="color:var(--coral)">Coach active</span>'+(p.coachAt?'<span class="mini">'+isoShort(p.coachAt)+'</span>':'')+'</div>'
+  if(active)h+='<div class="card heroc" style="margin-top:0;border-color:var(--coral)"><div class="lblrow"><span class="seclbl" style="color:var(--coral-text)">Coach active</span>'+(p.coachAt?'<span class="mini">'+isoShort(p.coachAt)+'</span>':'')+'</div>'
     +(p.coachNote?'<p class="detail" style="margin-top:6px">'+esc(p.coachNote)+'</p>':'')
     +'<button class="btn3" data-action="coachclear" style="color:var(--hard);padding:8px 0;margin-top:2px">Clear coach adjustments</button></div>';
   h+='<h2 style="margin:18px 0 6px">1 · Copy the brief</h2>'
@@ -4174,7 +4195,8 @@ function wDeficit(){
   const e=eff(todayIdx),b=dayBurn(todayIdx),ea=eaten(todayIdx);
   if(b.burned==null)
     return '<section class="card"><div class="spread"><h2>Energy balance</h2><span class="chip neutral">needs Oura</span></div>'
-      +'<p class="note" style="margin:8px 0 0">Connect Oura (Training tab) and this card tracks eaten vs burned, live.</p></section>';
+      +'<p class="note" style="margin:8px 0 0">Connect Oura and this card tracks eaten vs burned, live.</p>'
+      +'<button class="btn3" data-action="opensettings" style="padding:8px 0;color:var(--accent-text)">Open Settings ›</button></section>';
   const def=b.burned-ea.kcal; // positive = deficit
   const goal=deficitGoal(),real=ateLogged(todayIdx),onTarget=def>=goal-150;
   const chip=real?'<span class="chip c-blue">logged</span>'
@@ -4264,7 +4286,7 @@ function wForecast(){
   const confBar='<div class="fconf"><div class="fct"><i style="width:'+conf+'%"></i></div><span class="mini">'+(f.state==='early'?'Firming up':'Sharpening')+' · '+f.n+' run'+(f.n===1?'':'s')+' in</span></div>';
   if(f.state==='early')
     return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast" style="cursor:pointer">'
-      +'<div class="lblrow"><span class="seclbl" style="color:var(--coral)">Berlin forecast</span><span class="chip neutral">firming up</span></div>'
+      +'<div class="lblrow"><span class="seclbl" style="color:var(--coral-text)">Berlin forecast</span><span class="chip neutral">firming up</span></div>'
       +'<div class="row" style="align-items:baseline;gap:8px;margin-top:4px"><span class="hero num" style="color:var(--coral)">'+fmtFinishT(f.secs)+'</span><span class="sub" style="font-weight:600">goal · '+fmtBand(f.band)+'</span></div>'
       +forecastDial(f)+confBar
       +'<p class="note" style="margin:8px 0 0">'+forecastMover(f)+'</p></section>';
@@ -4273,7 +4295,7 @@ function wForecast(){
     :d<0?'<span class="chip c-easy">▲ '+Math.abs(d)+'s faster</span>':'<span class="chip c-hard">▼ '+d+'s slower</span>';
   const vsGoal=Math.round(f.secs-f.goalT);
   return '<section class="card" data-action="forecastopen" role="button" tabindex="0" aria-label="Berlin race forecast, tap for the trends behind it" style="cursor:pointer">'
-    +'<div class="lblrow"><span class="seclbl" style="color:var(--coral)">Berlin forecast</span>'+deltaChip+'</div>'
+    +'<div class="lblrow"><span class="seclbl" style="color:var(--coral-text)">Berlin forecast</span>'+deltaChip+'</div>'
     +'<div class="row" style="align-items:baseline;gap:8px;margin-top:4px"><span class="hero num" style="color:var(--coral)">'+fmtFinishT(f.secs)+'</span>'
     +'<span class="sub" style="font-weight:600">'+fmtBand(f.band)+' · '+(vsGoal<=0?Math.abs(vsGoal)+'s under goal':vsGoal+'s over goal')+'</span></div>'
     +forecastDial(f)+confBar
@@ -4609,7 +4631,7 @@ function openWidgetSheet(){
   cfg.forEach((w,i)=>{
     const d=WIDGET_DEFS.find(x=>x.id===w.id);
     rows+='<div class="sheetrow wdragrow" data-wid="'+w.id+'">'
-      +'<button class="switch" role="switch" aria-pressed="'+w.on+'" data-action="wtoggle" data-id="'+w.id+'" aria-label="'+esc(d.label)+'"></button>'
+      +'<button class="switch" role="switch" aria-checked="'+w.on+'" aria-pressed="'+w.on+'" data-action="wtoggle" data-id="'+w.id+'" aria-label="'+esc(d.label)+'"></button>'
       +'<span class="t" style="color:var(--ink);font-weight:600">'+esc(d.label)+'</span>'
       +'<span class="worder">'
       +'<button data-action="wmove" data-id="'+w.id+'" data-dir="-1" aria-label="Move '+esc(d.label)+' up" '+(i===0?'disabled':'')+'><svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 4-5 4 5"/></svg></button>'
@@ -4791,10 +4813,10 @@ function dayCard(i){
       body+='<button class="btn3" data-action="logsheet" data-i="'+i+'" style="margin-top:8px">Log fuelling (g/hr)</button>';
   }else if(!isRest&&i<rawT){
     body='<div class="row" style="margin-top:10px">'
-      +'<button class="btn3" data-action="missed" data-i="'+i+'">Missed?</button>'
-      +'<span class="mini" style="color:var(--sub)">imports from Strava on sync</span></div>';
+      +'<button class="btn3" data-action="missed" data-i="'+i+'">Mark missed</button>'
+      +'<span class="mini" style="color:var(--sub)">Imports from Strava on sync</span></div>';
   }
-  return '<section class="card sesshero" style="border-left-color:var(--'+(ZONECLR[e.zone]||'rest')+')" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
+  return '<section class="card" id="day-'+i+'" data-day="'+(i%7)+'" data-lp>'
     +'<div class="spread"><div class="row">'
     +'<b>'+shortDate(i)+'</b>'+(isToday?'<span class="chip c-blue">Today</span>':'')
     +zoneChip(e)+movedChip(e)+(e.coach?'<span class="chip" style="background:var(--coral-bg);color:var(--coral-text)">Coach</span>':'')
@@ -4802,7 +4824,7 @@ function dayCard(i){
     +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
     +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
     +rebalLine(e)
-    +(detailLine(e)?'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(detailLine(e))+'</p>':'')
+    +((detailLine(e)&&detailLine(e)!==headline(e))?'<p class="detail" style="font-size:13px;color:var(--sub)">'+esc(detailLine(e))+'</p>':'')
     +'<div class="row" style="margin-top:8px"><span class="chip c-'+DAYTYPE[e.type].c+'">'+DAYTYPE[e.type].label+' · '+fmtKcal(e.kcal)+' kcal</span></div>'
     +body
     +'</section>';
@@ -4815,7 +4837,7 @@ function vTrain(){
   let chips='<div class="weekchips">';
   for(let j=0;j<16;j++){
     const stCls=j<cw?'wk-done':j===cw?'wk-now':'wk-future';
-    chips+='<button data-action="selweek" data-w="'+j+'" class="'+stCls+(j===w?' sel':'')+'"'+(j===w?' aria-current="true"':'')+'>W'+(j+1)+(j<cw?' ✓':'')+'</button>';
+    chips+='<button data-action="selweek" data-w="'+j+'" class="'+stCls+(j===w?' sel':'')+'" aria-pressed="'+(j===w)+'"'+(j===cw?' aria-current="date"':'')+'>W'+(j+1)+(j<cw?' ✓':'')+'</button>';
   }
   chips+='</div>';
 
@@ -4825,15 +4847,15 @@ function vTrain(){
   for(let j=0;j<16;j++){
     const k=WEEKS[j],[lbl,cls]=weekStatus(j),act=weekActualKm(j);
     rows+='<tr data-action="selweek" data-w="'+j+'" tabindex="0" style="cursor:pointer'+(j===w?';background:var(--bg)':'')+'">'
-      +'<td><b>'+k.n+'</b></td><td>'+k.phase+'</td><td class="num">'+shortDate(j*7).slice(4)+'</td>'
+      +'<td><b>'+k.n+'</b></td><td>'+k.phase.replace('/Sharpen','')+'</td><td class="num" style="white-space:nowrap">'+shortDate(j*7).slice(4)+'</td>'
       +'<td class="num right">'+fmtKm(effWeekTarget(j))+'</td><td class="num right">'+(act>0?fmtKm(act):'–')+'</td>'
-      +'<td class="num right">'+fmtKm(effLong(j))+'</td><td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
+      +'<td><span class="pill '+cls+'">'+lbl+'</span></td></tr>';
   }
 
   return '<div>'+appleNav('Training','','opensettings')
     +countdownRail()
-    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:block;background:none;border:none;padding:8px 2px 0;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
-    +(coachActive()?'<button data-action="opencoach" aria-haspopup="dialog" style="display:block;width:100%;background:var(--coral-bg);border:1px solid var(--coral);border-radius:14px;padding:10px 14px;margin-top:10px;text-align:left;cursor:pointer;font:inherit"><span class="seclbl" style="color:var(--coral-text)">Coach plan active</span><div class="detail" style="margin:4px 0 0;color:var(--txt2)">'+esc((S.plan.coachNote||'Your plan has been re-coached.').slice(0,140))+'</div><div class="mini" style="color:var(--coral-text);font-weight:700;margin-top:4px">Re-plan with Claude ›</div></button>':'')
+    +'<button class="aSub" data-action="plancenter" aria-haspopup="dialog" style="display:flex;align-items:center;min-height:44px;background:none;border:none;padding:4px 2px 0;text-align:left;cursor:pointer;color:var(--accent-text);font:inherit;font-size:15px">Goal '+goalLabel()+' · peak '+fmtKm(effWeekTarget(10))+' km (W11)'+(planChanged()?' · edited':'')+' · adjust ›</button>'
+    +(coachActive()?'<button data-action="opencoach" aria-haspopup="dialog" style="display:block;width:100%;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-top:10px;text-align:left;cursor:pointer;font:inherit"><span class="seclbl" style="color:var(--coral-text)">Coach plan active</span><div class="detail" style="margin:4px 0 0;color:var(--txt2)">'+esc((S.plan.coachNote||'Your plan has been re-coached.').slice(0,140))+'</div><div class="mini" style="color:var(--coral-text);font-weight:700;margin-top:4px">Re-plan with Claude ›</div></button>':'')
     +'<section class="card"><h2>Weekly volume — planned vs actual</h2><div class="svgwrap">'+volumeChart()+'</div></section>'
     +'<div style="margin-top:14px">'+chips+'</div>'
     +'<section class="card" data-lp data-qa="week" data-w="'+w+'"><div class="spread"><h2 style="margin:0">Week '+wk.n+' · '+wk.phase+'</h2><span class="pill '+stCls+'">'+stLbl+'</span></div>'
@@ -4859,7 +4881,7 @@ function vTrain(){
     +'</section>'
     +(w===15?racePack():'')
     +days
-    +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table style="min-width:520px"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Long</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<section class="card"><h2>16-week schedule</h2><div class="scroll-x"><table class="dense"><thead><tr><th>W</th><th>Phase</th><th>w/c</th><th class="right">Tgt</th><th class="right">Act</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<p class="mini" style="margin:8px 2px 0">Hit ≥90% of target · Partial ≥60% · tap a week to load its sessions.</p></section>'
     +loopShelf()
     +specimenCard()
@@ -4972,7 +4994,7 @@ function cutCard(){
   }
   if(!days)
     return '<section class="card"><div class="spread"><h2>The cut</h2><span class="chip neutral">no data yet</span></div>'
-      +'<p class="note" style="margin:8px 0 0">Connect Oura on the Training tab and the banked deficit starts counting here.</p></section>';
+      +'<p class="note" style="margin:8px 0 0">Connect Oura — behind the gear, top right — and the banked deficit starts counting here.</p></section>';
   const lb=total/3500;
   const first=S.weights.length?S.weights[0]:null,twn=trendWeight(),lwn=latestWeight();
   const cur=twn?twn.lb:(lwn?lwn.lb:null);
@@ -5311,6 +5333,7 @@ function foodSheetHTML(){
         +res
         +'<section class="card" style="margin-top:14px"><b class="mini" style="text-transform:uppercase;letter-spacing:.06em;color:var(--sub)">Can’t find it? Add manually</b>'
         +'<div class="loggrid" style="margin-top:8px"><input id="foodmn" type="text" placeholder="Name" autocomplete="off"><input id="foodmk" type="number" inputmode="numeric" placeholder="kcal"></div>'
+        +'<p class="err" id="foodmk-err" role="alert" hidden>Enter the calories — a whole number between 1 and 5,000.</p>'
         +'<button class="btn2" style="width:100%;margin-top:8px" data-action="foodquick">Add to '+esc(mlabel)+'</button></section>';
     }
     return '<div class="spread" style="align-items:center"><button class="btn3" data-action="foodback" style="color:var(--accent-text)">‹ '+esc(mlabel)+'</button>'+headTotal+'</div>'+body
@@ -5393,13 +5416,13 @@ function nutWeightLog(){ // "Log weight" → reveals the date + ruler in place (
 function nutTodayBalance(i){ // reactive: what you burned − what you logged = today's deficit
   const b=dayBurn(i),eatenK=Math.round(foodTotal(i)),hasEat=ateLogged(i)||eatenK>0;
   const burned=b.burned,est=burned!=null&&!b.measured;
-  const burnedVal=burned!=null?(est?'~':'')+fmtKcal(burned):'–';
+  const burnedVal=burned!=null?(est?'~':'')+fmtKcal(burned):'—';
   const eatenVal=hasEat?fmtKcal(eatenK):'—';
   let defVal='—',defCol='var(--sub)';
   if(burned!=null&&hasEat){const def=burned-eatenK;defVal=(def>=0?'−':'+')+fmtKcal(Math.abs(def));defCol=def>=0?'var(--easy)':'var(--warn)';}
   const num='font-size:24px;font-weight:800;line-height:1',lbl='margin-top:5px;letter-spacing:.05em';
   const opDiv='<div class="num" style="display:flex;align-items:center;color:var(--sub);font-size:18px">';
-  const hint=burned==null?'Connect Oura on the Training tab to see what you’ve burned.':(!hasEat?'Log a meal to see today’s deficit.':'');
+  const hint=burned==null?'Connect Oura — behind the gear, top right — to see what you’ve burned.':(!hasEat?'Log a meal to see today’s deficit.':'');
   return '<section class="card">'
     +'<div class="spread" style="align-items:center"><h2 style="margin:0">Today</h2><span class="mini">so far</span></div>'
     +'<div class="row" style="align-items:stretch;gap:6px;margin-top:14px">'
@@ -5407,17 +5430,22 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
       +opDiv+'−</div>'
       +'<div style="flex:1;text-align:center"><div class="num" style="'+num+'">'+eatenVal+'</div><div class="mini" style="'+lbl+'">EATEN</div></div>'
       +opDiv+'=</div>'
-      +'<div style="flex:1;text-align:center;background:var(--inset);border:1px solid var(--line);border-radius:10px;padding:6px 2px"><div class="num" style="'+num+';color:'+defCol+'">'+defVal+'</div><div class="mini" style="'+lbl+';color:'+(defVal==='—'?'var(--sub)':defCol)+'">DEFICIT</div></div>'
+      +'<div style="flex:1;text-align:center"><div class="num" style="'+num+';color:'+defCol+'">'+defVal+'</div><div class="mini" style="'+lbl+';color:'+(defVal==='—'?'var(--sub)':defCol)+'">DEFICIT</div></div>'
     +'</div>'
     // the bar carries the relationship: eaten (ink) inside the burn budget; the coloured remainder is the deficit
     +(burned!=null&&hasEat?(function(){
-        const def=burned-eatenK,over=eatenK>burned,fill=clamp(eatenK/burned*100,0,100);
+        // over budget: ink fill = the burn inside what you ate, so the warn-tinted remainder IS the overshoot
+        const def=burned-eatenK,over=eatenK>burned,fill=over?clamp(burned/eatenK*100,0,100):clamp(eatenK/burned*100,0,100);
         return '<div class="balbar'+(over?' over':'')+'"><div class="bf" style="width:'+fill.toFixed(0)+'%"></div></div>'
-          +'<div class="ballbl"><span>Ate '+fmtKcal(eatenK)+'</span><span style="color:'+defCol+'">'+(def>=0?fmtKcal(def)+' deficit':fmtKcal(-def)+' over')+'</span><span>Burn '+(est?'~':'')+fmtKcal(burned)+'</span></div>';
+          +'<div class="ballbl">'
+          +(over?'<span>Burn '+(est?'~':'')+fmtKcal(burned)+'</span>':'<span>Ate '+fmtKcal(eatenK)+'</span>')
+          +'<span style="color:'+defCol+'">'+(def>=0?fmtKcal(def)+' deficit':fmtKcal(-def)+' over')+'</span>'
+          +(over?'<span>Ate '+fmtKcal(eatenK)+'</span>':'<span>Burn '+(est?'~':'')+fmtKcal(burned)+'</span>')
+          +'</div>';
       })():'')
     +(hint?'<p class="mini" style="margin:11px 2px 0;color:var(--sub)">'+hint+'</p>':'')
     // when today's Oura activity hasn't landed yet the burn is just resting + a forecast — say so, and let the user force a pull
-    +(est&&i===rawT&&ouraConnected()?'<p class="mini" style="margin:11px 2px 0;color:var(--warn-text,var(--warn))">Today’s Oura active calories haven’t synced yet — burn is an estimate. <button class="btn3" data-action="ourasync" style="padding:0;min-height:0;color:var(--accent-text);font-weight:700">Sync now</button></p>':'')
+    +(est&&i===rawT&&ouraConnected()?'<p class="mini" style="margin:11px 2px 0;color:var(--warn-text,var(--warn))">Today’s Oura active calories haven’t synced yet — burn is an estimate. <button class="btn3" data-action="ourasync" style="padding:12px 8px;margin:-12px 0 -12px -2px;color:var(--accent-text);font-weight:700">Sync now</button></p>':'')
     +(burned!=null&&b.resting!=null?'<details class="nmath"><summary>How this is worked out</summary>'
         +'<p class="mini" style="margin:6px 2px 0">Burned blends a resting estimate ('+fmtKcal(b.resting)+' kcal, from your profile) with the day’s active calories ('+fmtKcal(b.active)+' kcal — '+(b.measured?'from Oura':'estimated; today’s Oura activity hasn’t synced')+', plus the run). Eaten is your logged food. Deficit is the gap.</p></details>':'')
     +'<button class="btn3" style="margin-top:12px;color:var(--accent-text)" data-action="foodlog" data-i="'+i+'">'+(hasEat?'Edit meals':'+ Log a meal')+'</button>'
@@ -5431,12 +5459,12 @@ function nutTodayBalance(i){ // reactive: what you burned − what you logged = 
    store is S.cal.events — extra sessions (gym, cross-training, physio…) the plan
    itself doesn't carry, keyed by ISO date so they live alongside everything else. */
 const CAL_KINDS={
-  strength:{label:'Strength',c:'qual',emoji:'🏋️'},
-  cross:{label:'Cross-train',c:'rec',emoji:'🚴'},
-  mobility:{label:'Mobility',c:'easy',emoji:'🧘'},
-  xrun:{label:'Extra run',c:'long',emoji:'🏃'},
-  physio:{label:'Physio',c:'warn',emoji:'🩹'},
-  other:{label:'Other',c:'blue',emoji:'📌'},
+  strength:{label:'Strength',c:'qual'},
+  cross:{label:'Cross-train',c:'rec'},
+  mobility:{label:'Mobility',c:'easy'},
+  xrun:{label:'Extra run',c:'long'},
+  physio:{label:'Physio',c:'warn'},
+  other:{label:'Other',c:'rest'},
 };
 function calEvents(){if(!S.cal||typeof S.cal!=='object')S.cal={events:{}};if(!S.cal.events||typeof S.cal.events!=='object')S.cal.events={};return S.cal.events;}
 function calEventsOn(iso){const e=calEvents()[iso];return Array.isArray(e)?e:[];}
@@ -5529,18 +5557,26 @@ function calMonthView(){
     let inner='<span class="cdate">'+dd+'</span>';
     if(e&&!(e.zone==='Rest'&&e.km<=0)){
       const c=ZONECLR[e.zone]||'rest';
-      inner+='<span class="calpill" style="background:var(--'+c+')">'+(isRace(e)?'RACE':fmtKm(e.km)+'k')+'</span>';
+      // logged/past days go quiet: zone text on its 12% tint (AA pairs) — the future plan keeps the solid fill
+      inner+=(logged||(inPlan&&idx<rawT))
+        ?'<span class="calpill" style="background:var(--'+c+'-bg);color:var(--'+c+')">'+(isRace(e)?'RACE':fmtKm(e.km)+'k')+'</span>'
+        :'<span class="calpill" style="background:var(--'+c+')">'+(isRace(e)?'RACE':fmtKm(e.km)+'k')+'</span>';
     }
-    if(evs.length)inner+='<span class="cdots">'+evs.slice(0,4).map(ev=>'<span class="cdot" style="background:'+calColor({kind:ev.kind})+'"></span>').join('')+'</span>';
+    if(evs.length)inner+='<span class="cdots">'+evs.slice(0,4).map(()=>'<span class="cdot" style="background:var(--ink)"></span>').join('')+'</span>';
     if(logged)inner+='<span class="cdone">✓</span>';
     g+='<button class="'+cls+'" data-action="calday" data-iso="'+iso+'">'+inner+'</button>';
   });
   g+='</div>';
   const leg='<div class="callegend">'
     +[['easy','Easy'],['rec','Recovery'],['long','Long / MP'],['qual','Threshold'],['rest','Rest']].map(z=>'<span><i style="background:var(--'+z[0]+')"></i>'+z[1]+'</span>').join('')
-    +'<span><i style="background:var(--blue)"></i>Your workout</span></div>';
+    +'<span><i style="background:var(--ink)"></i>Your workout</span></div>';
+  // add into the month being browsed (falling back to its first in-plan day), not blindly into today
+  let addIso=isoAt(clamp(rawT,0,N_DAYS-1));
+  if(addIso.slice(0,7)!==y+'-'+p2(m+1)){
+    for(let dd=1;dd<=dim;dd++){const cand=y+'-'+p2(m+1)+'-'+p2(dd),ci=isoToIdx(cand);if(ci>=0&&ci<N_DAYS){addIso=cand;break;}}
+  }
   return '<div class="calmonth">'+h+g+leg
-    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="caladd" data-iso="'+isoAt(clamp(rawT,0,N_DAYS-1))+'">+ Add a workout</button></div>';
+    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="caladd" data-iso="'+addIso+'">+ Add a workout</button></div>';
 }
 
 function calWeekView(){
@@ -5578,15 +5614,17 @@ function calWeekView(){
     cols.forEach(c=>{
       calLayout(c.timed);
       let col='<div class="calcol">';
-      c.timed.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(15,(it.em-it.sm)*pxMin),wpc=100/it.ncols,lpc=it.col*wpc;
+      c.timed.forEach(it=>{const top=Math.max(0,(it.sm-h0*60)*pxMin),ht=Math.max(24,(it.em-it.sm)*pxMin),wpc=100/it.ncols,lpc=it.col*wpc;
         col+='<button class="calblk'+(it.kind==='meeting'?' mtg':'')+'" data-action="calday" data-iso="'+c.iso+'" style="top:'+top+'px;height:'+ht+'px;left:calc('+lpc+'% + 1px);width:calc('+wpc+'% - 2px);background:'+calColor(it)+'">'+esc(it.label)+'</button>';});
       col+='</div>';body+=col;
     });
     body+='</div>';
   }else{
-    body='<p class="calwk-empty">Nothing timed this week yet. Runs and added workouts with a set time land on the grid — tap a day to plan one.</p>';
+    body='<div class="state" style="text-align:center;padding:20px 8px"><b class="st-t">Nothing timed this week</b>'
+      +'<p class="note" style="margin:4px 0 0">Runs and workouts with a set time land on the grid — tap a day to plan one.</p></div>';
   }
-  return '<div class="calweek">'+h+hd+ad+body+'</div>';
+  return '<div class="calweek">'+h+hd+ad+body
+    +'<button class="btn2" style="width:100%;margin-top:14px" data-action="caladd" data-iso="'+isoAt(clamp(rawT,w*7,w*7+6))+'">+ Add a workout</button></div>';
 }
 
 /* Day detail — the planning hub for one day: the plan session (move / log), your
@@ -5602,7 +5640,7 @@ function calDayContent(iso){
       html+='<p class="note" style="margin:6px 0 0">Rest day — no run planned.</p>';
     }else{
       const gd=gcalDay(idx),run=gd?gd.items.find(it=>it.mine&&it.kind==='run'):null;
-      html+='<section class="card" style="margin-top:8px;border-left:4px solid var(--'+(ZONECLR[e.zone]||'rest')+')">'
+      html+='<section class="card" style="margin-top:8px">'
         +'<div class="row">'+zoneChip(e)+movedChip(e)+(e.coach?'<span class="chip" style="background:var(--coral-bg);color:var(--coral-text)">Coach</span>':'')+(l&&l.status?'<span class="chip c-easy" style="margin-left:auto">Logged</span>':'')+'</div>'
         +'<div style="font-weight:700;font-size:15px;margin-top:5px">'+headline(e)+'</div>'
         +(paceLine(e)?'<div class="pace">'+paceLine(e)+'</div>':'')
@@ -5642,7 +5680,7 @@ function calFormCapture(){const f=ui.calForm;if(!f)return;const g=id=>{const el=
 function calAddRefresh(){const p=document.querySelector('#sheet .panel');if(p&&ui.calForm)p.innerHTML=calAddContent();}
 function calAddContent(){
   const f=ui.calForm;
-  const kinds=Object.keys(CAL_KINDS).map(k=>'<button class="calkindb'+(f.kind===k?' on':'')+'" data-action="calkind" data-k="'+k+'" aria-pressed="'+(f.kind===k)+'" style="--kc:var(--'+CAL_KINDS[k].c+')">'+CAL_KINDS[k].emoji+'<span>'+CAL_KINDS[k].label+'</span></button>').join('');
+  const kinds=Object.keys(CAL_KINDS).map(k=>'<button class="calkindb'+(f.kind===k?' on':'')+'" data-action="calkind" data-k="'+k+'" aria-pressed="'+(f.kind===k)+'" style="--kc:var(--'+CAL_KINDS[k].c+')"><i aria-hidden="true"></i><span>'+CAL_KINDS[k].label+'</span></button>').join('');
   return '<h2 style="margin:0 0 2px">'+(f.id?'Edit workout':'Add workout')+'</h2>'
     +'<p class="mini" style="margin:0 0 12px;color:var(--sub)">'+calLongDate(f.iso)+'</p>'
     +'<label class="f" for="calt">What</label><input id="calt" type="text" maxlength="60" placeholder="e.g. Lower-body strength" value="'+esc(f.title)+'" style="width:100%">'
@@ -5666,11 +5704,13 @@ function vNut(){
       +'<span class="sub" style="flex:1">'+isoShort(wn.date)+'</span>'
       +'<button class="del" data-action="delweight" data-idx="'+idx+'">Delete</button></li>';
   });
+  // the goal lives where its data lives — inside the weight card, in both states
+  const goalBtn='<button class="btn3" data-action="nutgoal" style="padding:10px 0 0;color:var(--accent-text)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button>';
   let weightCard;
   if(curW==null){
     weightCard='<section class="card"><h2 style="margin:0">Weight</h2>'
       +'<p class="note" style="margin:8px 0 0">Log your weight a few mornings and your trend toward race weight appears here.</p>'
-      +nutWeightLog()+'</section>';
+      +nutWeightLog()+goalBtn+'</section>';
   }else{
     const toGo=Math.max(0,curW-goal),rateStr=rate!=null?((rate<=0?'−':'+')+fmtLb(Math.abs(rate))+' lb/wk'):'';
     weightCard='<section class="card">'
@@ -5679,15 +5719,15 @@ function vNut(){
       +'<div class="svgwrap" style="margin-top:10px">'+weightChart()+'</div>'
       +nutRaceLine(curW)
       +nutWeightLog()
+      +(hist?'<details class="nmath"><summary>Weigh-in history</summary><ul class="weights" style="list-style:none;margin:8px 0 0;padding:0">'+hist+'</ul></details>':'')
+      +goalBtn
       +'</section>';
   }
-  return '<div>'+appleNav('Nutrition','The scale is the spine')
+  return '<div>'+appleNav('Nutrition','The 7-day trend decides, not single weigh-ins')
     +countdownRail()
     +weightCard
     +nutTodayBalance(i)
-    +'<div style="text-align:center;margin:18px 2px 6px"><button class="btn3" data-action="nutgoal" style="color:var(--accent-text)">Goal '+fmtLb(goal)+' lb by '+goalDateLbl(goalDateIdx())+' · edit ›</button></div>'
-    +(hist?'<details style="margin-top:6px"><summary class="mini" style="cursor:pointer;color:var(--sub);padding:6px 2px;list-style:none">Weigh-in history</summary><ul class="weights" style="list-style:none;margin:8px 0 0;padding:0">'+hist+'</ul></details>':'')
-    +'<div class="footlinks" style="margin-top:14px"><button class="btn3" data-action="export">Back up data</button>'
+    +'<div class="footlinks" style="margin-top:18px"><button class="btn3" data-action="export">Back up data</button>'
     +'<button class="btn3" data-action="importpick">Restore backup</button>'
     +'<input type="file" id="importfile" accept="application/json" style="display:none"></div>'
     +'<p class="mini center" style="margin-top:6px">All logs live on this device'+(S.lastBackup?' · last backup '+isoShort(S.lastBackup):' · never backed up')+'.</p>'
@@ -5805,7 +5845,8 @@ function appleNav(title,sub,avatarAction){
   // edit-widgets) sits to its left so the gear stays in the same top-right spot everywhere.
   const gearBtn='<button class="aAvatar" data-action="opensettings" aria-haspopup="dialog" aria-label="Settings and integrations" style="color:var(--txt2)">'+gear+'</button>';
   const extra=(avatarAction&&avatarAction!=='opensettings')
-    ?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen">L</button>':'';
+    ?'<button class="aAvatar" data-action="'+esc(avatarAction)+'" aria-haspopup="dialog" aria-label="Edit home screen" style="color:var(--txt2)">'
+      +'<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8h9M19 8h1M4 16h1M11 16h9"/><circle cx="16" cy="8" r="2.5"/><circle cx="8" cy="16" r="2.5"/></svg></button>':'';
   return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div><div class="aActions">'+extra+gearBtn+'</div></div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
@@ -5819,10 +5860,14 @@ function render(anim){ // anim=true only on navigation — entrances must not re
     renderTabBar(skin);
     const screen=skin.screens[ui.tab]||skin.screens[skin.defaultTab];
     view.innerHTML=screen();
-    if(anim&&!document.startViewTransition&&view.firstElementChild)view.firstElementChild.classList.add('fade');
+    if(anim&&!document.startViewTransition&&view.firstElementChild)view.firstElementChild.classList.add('nav-in');
     fieldDirty=false; // any full render supersedes a pending field re-render
     bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
     window.scrollTo(0,ui.scroll[ui.tab]||0);
+    // keep the selected (or current) week chip in view — the strip otherwise re-opens at W1
+    const wc=view.querySelector('.weekchips');
+    if(wc){const sc=wc.querySelector('.sel')||wc.querySelector('.wk-now');
+      if(sc)wc.scrollLeft=Math.max(0,sc.offsetLeft-(wc.clientWidth-sc.offsetWidth)/2);}
   };
   if(anim&&document.startViewTransition&&!REDUCE.matches)document.startViewTransition(doRender);
   else doRender();
@@ -6508,6 +6553,12 @@ document.addEventListener('keydown',ev=>{
   if(ev.key==='Escape'&&nutDragRevert){nutDragRevert();return;}
   if(ev.key==='Escape'&&document.getElementById('wrap')){closeWrapped();return;}
   if(ev.key==='Escape'&&!document.getElementById('sheet').hidden){closeSheet();return;}
+  if(ev.key==='Enter'&&ev.target&&ev.target.id==='foodq'){ // the keyboard's Search key runs the search
+    ev.preventDefault();
+    const btn=document.querySelector('[data-action="foodsearch"]');
+    if(btn)btn.click();
+    return;
+  }
   if(ev.key==='Enter'||ev.key===' '){
     const t=ev.target.closest&&ev.target.closest('tr[data-action],[role="button"][data-action]');
     if(t){ev.preventDefault();t.click();}
@@ -6534,7 +6585,11 @@ if(location.hash.indexOf('#log=')===0||location.hash.indexOf('#steps=')===0){
   }catch(e){}
 }
 
-render(true);
+render(); // first paint is the default state — entrances play only on later navigation (principle #13)
+
+/* principle #4 — the nav entrance is interruptible: the first pointerdown cancels it so a swipe/drag
+   begun within the ~0.6s entrance window tracks immediately instead of fighting the running animation */
+document.addEventListener('pointerdown',e=>{const n=e.target.closest&&e.target.closest('.nav-in');if(n)n.classList.remove('nav-in');},true);
 
 /* Ask WebKit to exempt this origin from storage eviction — 16 weeks of logs live here */
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
