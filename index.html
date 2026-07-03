@@ -600,6 +600,25 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .e-soon{min-height:52vh;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:6px}
 .e-soon .big{font-family:var(--e-grot);font-weight:800;font-size:30px;letter-spacing:-.02em}
 .e-soon p{margin:0 auto;max-width:30ch;font-size:14px;color:var(--e-sub);line-height:1.6;text-wrap:pretty}
+/* interactive layer */
+#estrip{touch-action:pan-y}
+button.e-mt{text-align:left;cursor:pointer;transition:background .15s ease}
+button.e-mt:active{background:var(--e-rule-soft)}
+.e-ledger tr[data-action]{cursor:pointer}
+.e-sheet{font-family:var(--e-grot)}
+.e-sheet .ttl{font-weight:800;font-size:20px;letter-spacing:-.02em;line-height:1.2}
+.e-sheet .sub{font-family:var(--e-mono);font-size:10px;letter-spacing:.12em;color:var(--e-faint);text-transform:uppercase;margin-top:3px}
+.e-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 8px;margin-top:14px}
+.e-facts b{display:block;font-weight:800;font-size:20px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.e-facts b small{font-size:11px;font-weight:500;color:var(--e-sub)}
+.e-facts span{font-family:var(--e-mono);font-size:8.5px;letter-spacing:.12em;color:var(--e-faint);text-transform:uppercase}
+.e-check{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 2px;border-top:1px solid var(--e-rule-soft);font-size:13.5px}
+.e-check:first-of-type{border-top:none}
+.e-check .k{color:var(--e-sub)}
+.e-check .v{font-variant-numeric:tabular-nums;font-weight:500;margin-left:auto}
+.e-check .m{font-family:var(--e-mono);font-weight:600;font-size:10px;width:52px;text-align:right;flex:none}
+.e-teach{margin:12px 0 0;font-size:12.5px;line-height:1.55;color:var(--e-sub);text-wrap:pretty}
+@media (prefers-reduced-motion:reduce){button.e-mt{transition:none}}
 </style>
 </head>
 <body>
@@ -6029,12 +6048,14 @@ function engineMorning(){
   else m.line='The night flagged more than one thing: '+worries.join(', ')+'. <b>Make today genuinely easy.</b>';
   return m;
 }
+let engineScrub=null; // {pts:[{cx,cy,i,ctl,atl,tsb,proj}],T,ih} — rebuilt on every Engine render
 function engineStripSVG(S2){
   const {all,today}=S2;if(all.length<8)return '';
   const N=all.length,W=360,H=170,L=8,Rm=10,T=12,B=24,ih=H-T-B;
   const A=all.map(p=>p.atl),C=all.map(p=>p.ctl),F=all.map(p=>p.tsb);
   const hi=Math.max(...A,...C)+6,lo=Math.min(...F,0)-5;
   const X=i=>L+(W-L-Rm)*i/(N-1),Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+  engineScrub={T:T,ih:ih,pts:all.map((p,i)=>({cx:X(i),cy:Y(p.ctl),i:i,ctl:p.ctl,atl:p.atl,tsb:p.tsb,proj:i>today}))};
   let g='';
   let lastM='';
   for(let i=0;i<N;i+=1){ // month gridlines at first-of-month
@@ -6054,8 +6075,44 @@ function engineStripSVG(S2){
     +'<path d="'+path(C,today,N-1)+'" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="1.5 4" opacity=".6"/>'
     +'<line x1="'+X(today)+'" y1="'+(T-2)+'" x2="'+X(today)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" opacity=".35"/>'
     +'<circle cx="'+X(today)+'" cy="'+Y(C[today])+'" r="3.6" fill="var(--e-cobalt)"/>'
-    +'<text x="'+(X(today)-6)+'" y="'+(T+2)+'" text-anchor="end" font-family="Azeret Mono" font-weight="600" font-size="8.5" letter-spacing="1.5" fill="var(--e-faint)">TODAY</text>';
-  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Fitness, fatigue and form over the block">'+g+'</svg>';
+    +'<text id="estripToday" x="'+(X(today)-6)+'" y="'+(T+2)+'" text-anchor="end" font-family="Azeret Mono" font-weight="600" font-size="8.5" letter-spacing="1.5" fill="var(--e-faint)">TODAY</text>';
+  // scrub affordances: a follower line + dot + readout, shown while a finger is on the chart
+  g+='<g id="escrubg" style="display:none"><line id="escrubln" y1="'+T+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" opacity=".45"/>'
+    +'<circle id="escrubdot" r="4.5" fill="var(--e-cobalt)" stroke="var(--card)" stroke-width="1.6"/>'
+    +'<text id="escrubtx" text-anchor="middle" font-family="Azeret Mono" font-weight="600" font-size="9.5" fill="var(--ink)"></text></g>';
+  return '<svg id="estrip" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Fitness, fatigue and form over the block — touch and drag to read any day">'+g+'</svg>';
+}
+function bindEngineScrub(){ // drag along the strip: date + fitness/fatigue/form under the finger
+  const svg=document.getElementById('estrip');
+  if(!svg||svg._scrub||!engineScrub||!engineScrub.pts.length)return;
+  svg._scrub=1;
+  const g=()=>svg.querySelector('#escrubg');
+  const show=e=>{
+    const r=svg.getBoundingClientRect();
+    if(!r.width)return;
+    const sx=(e.clientX-r.left)*360/r.width;
+    let best=null,bd=1e9;
+    engineScrub.pts.forEach(p=>{const d=Math.abs(p.cx-sx);if(d<bd){bd=d;best=p;}});
+    if(!best)return;
+    const gr=g();gr.style.display='';
+    const td=svg.querySelector('#estripToday');if(td)td.style.display='none';
+    gr.querySelector('#escrubln').setAttribute('x1',best.cx);
+    gr.querySelector('#escrubln').setAttribute('x2',best.cx);
+    const dot=gr.querySelector('#escrubdot');
+    dot.setAttribute('cx',best.cx);dot.setAttribute('cy',best.cy);
+    const tx=gr.querySelector('#escrubtx');
+    tx.setAttribute('x',Math.max(122,Math.min(238,best.cx)));
+    tx.setAttribute('y',engineScrub.T+2);
+    tx.textContent=(best.proj?'~ ':'')+isoShort(isoAt(best.i)).toUpperCase()
+      +' · FIT '+Math.round(best.ctl)+' · FAT '+Math.round(best.atl)
+      +' · FORM '+(best.tsb>0?'+':'')+Math.round(best.tsb);
+  };
+  svg.addEventListener('pointerdown',e=>{show(e);});
+  svg.addEventListener('pointermove',e=>{if(e.buttons||e.pointerType==='mouse')show(e);});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>svg.addEventListener(ev,()=>{
+    const gr=g();if(gr)gr.style.display='none';
+    const td=svg.querySelector('#estripToday');if(td)td.style.display='';
+  }));
 }
 function engineSparkSVG(arr,today,col){
   const pts=[];for(let i=0;i<=today;i+=7)pts.push(arr[i]);pts.push(arr[today]);
@@ -6150,12 +6207,12 @@ function vEngine(){
       :'<div class="e-empty"><b>Mornings come from Oura.</b> Connect the ring behind the gear and HRV, resting HR and body temp land here each day against your own baseline.</div>';
   }else{
     h+='<div class="e-morning">'
-      +'<div class="e-mt"><span class="lbl">HRV</span><div class="v num">'+(m.hrv?m.hrv.v+'<small> ms</small>':'—')+'</div>'
-      +(m.hrv?'<div class="b num" style="color:'+m.hrv.col+'"><em>'+m.hrv.state+'</em>'+(m.hrv.base!=null?' · usual '+m.hrv.base:'')+'</div>':'')+'</div>'
-      +'<div class="e-mt"><span class="lbl">Resting HR</span><div class="v num">'+(m.rhr?m.rhr.v+'<small> bpm</small>':'—')+'</div>'
-      +(m.rhr?'<div class="b num" style="color:'+m.rhr.col+'"><em>'+m.rhr.state+'</em>'+(m.rhr.base!=null?' · usual '+m.rhr.base:'')+'</div>':'')+'</div>'
-      +'<div class="e-mt"><span class="lbl">Body temp</span><div class="v num">'+(m.tmp?(m.tmp.v>0?'+':'')+m.tmp.v.toFixed(1)+'<small> °C</small>':'—')+'</div>'
-      +(m.tmp?'<div class="b num" style="color:'+m.tmp.col+'"><em>'+m.tmp.state+'</em> · ±0.2</div>':'')+'</div>'
+      +'<button class="e-mt" data-action="emorning" data-k="hrv" aria-haspopup="dialog"><span class="lbl">HRV</span><div class="v num">'+(m.hrv?m.hrv.v+'<small> ms</small>':'—')+'</div>'
+      +(m.hrv?'<div class="b num" style="color:'+m.hrv.col+'"><em>'+m.hrv.state+'</em>'+(m.hrv.base!=null?' · usual '+m.hrv.base:'')+'</div>':'')+'</button>'
+      +'<button class="e-mt" data-action="emorning" data-k="rhr" aria-haspopup="dialog"><span class="lbl">Resting HR</span><div class="v num">'+(m.rhr?m.rhr.v+'<small> bpm</small>':'—')+'</div>'
+      +(m.rhr?'<div class="b num" style="color:'+m.rhr.col+'"><em>'+m.rhr.state+'</em>'+(m.rhr.base!=null?' · usual '+m.rhr.base:'')+'</div>':'')+'</button>'
+      +'<button class="e-mt" data-action="emorning" data-k="tmp" aria-haspopup="dialog"><span class="lbl">Body temp</span><div class="v num">'+(m.tmp?(m.tmp.v>0?'+':'')+m.tmp.v.toFixed(1)+'<small> °C</small>':'—')+'</div>'
+      +(m.tmp?'<div class="b num" style="color:'+m.tmp.col+'"><em>'+m.tmp.state+'</em> · ±0.2</div>':'')+'</button>'
       +'</div>'
       +(m.line?'<p class="e-line">'+m.line+'</p>':'');
   }
@@ -6180,7 +6237,7 @@ function vEngine(){
         :r.ab.label==='absorbed'?'<span class="e-tag ok">ABSORBED</span>'
         :r.ab.label==='mostly absorbed'?'<span class="e-tag ok">MOSTLY</span>'
         :'<span class="e-tag owe">OWING</span>';
-      tr+='<tr><td class="d num">'+shortDate(r.i).toUpperCase().slice(0,6)+'</td><td class="s">'+esc(r.label.length>22?r.label.slice(0,21)+'…':r.label)+'</td>'
+      tr+='<tr data-action="eledger" data-i="'+r.i+'" tabindex="0" aria-haspopup="dialog"><td class="d num">'+shortDate(r.i).toUpperCase().slice(0,6)+'</td><td class="s">'+esc(r.label.length>22?r.label.slice(0,21)+'…':r.label)+'</td>'
         +'<td class="load num">'+r.load+' pts</td><td class="st">'+tag+'</td></tr>';
     });
     h+='<div class="e-sec"><span class="t">Hard days, paid back</span><span class="m">RECENT</span></div>'
@@ -6194,6 +6251,95 @@ function vEngine(){
     +'<p><b>FITNESS</b> · Your average daily load over the last 42 days. <b>FATIGUE</b> · The same average over the last 7. A hard week spikes fatigue in days; building fitness takes weeks of them.</p>'
     +'<p><b>BASELINES</b> · HRV and resting heart rate use your own recent nights from Oura as normal, not population numbers.</p></div>';
   return h+'</div>';
+}
+/* ledger evidence: the run, then the night that judged it */
+function engineLedgerSheet(i){
+  const t=clamp(rawT,0,RACE_IDX),e=eff(i),l=sessLog(e.id)||{};
+  const tr=Math.round(trimpOf(l,e));
+  const paceS=(l.secs&&l.km)?l.secs/l.km:null;
+  let h='<div class="e-sheet"><div class="ttl">'+esc(headline(e))+'</div>'
+    +'<div class="sub">'+isoShort(isoAt(i)).toUpperCase()+' · '+tr+' LOAD PTS</div>'
+    +'<div class="e-facts">'
+    +(l.km?'<div><b>'+fmtKm(l.km)+'<small> km</small></b><span>Distance</span></div>':'')
+    +(paceS?'<div><b>'+fmtPace(paceS)+'<small> /km</small></b><span>Pace</span></div>':'')
+    +(l.secs?'<div><b>'+fmtDur(l.secs)+'</b><span>Time</span></div>':'')
+    +(l.hrA?'<div><b>'+l.hrA+'<small> bpm</small></b><span>Avg HR</span></div>':'')
+    +(l.hrM?'<div><b>'+l.hrM+'<small> bpm</small></b><span>Max HR</span></div>':'')
+    +'<div><b>'+tr+'<small> pts</small></b><span>Load</span></div>'
+    +'</div>'
+    +(typeof runVisual==='function'?runVisual(l,i):'');
+  // the night after
+  const nIso=isoAt(i+1),h2=healthRef().d[nIso];
+  h+='<div class="e-sec" style="margin-top:22px"><span class="t">The night after</span><span class="m">'+isoShort(nIso).toUpperCase()+'</span></div>';
+  if(i>=t){
+    h+='<p class="e-teach">Tonight decides. Sleep on it and the verdict lands here tomorrow.</p>';
+  }else if(!h2){
+    h+='<p class="e-teach">No night data — the ring didn’t sync that night, so this one stays unjudged.</p>';
+  }else{
+    const hb=ouraBase('hrv',nIso),rb=ouraBase('rhr',nIso);
+    const checks=[];
+    if(h2.hrv!=null&&hb)checks.push({k:'HRV rebound',v:h2.hrv+' ms vs usual '+Math.round(hb),ok:h2.hrv>=hb*0.95});
+    if(h2.rhr!=null&&rb)checks.push({k:'Resting HR settled',v:h2.rhr+' vs usual '+Math.round(rb),ok:h2.rhr<=rb+3});
+    if(h2.deep!=null)checks.push({k:'Deep sleep',v:fmtSleep(h2.deep),ok:h2.deep>=3600});
+    if(h2.slp!=null)checks.push({k:'Total sleep',v:fmtSleep(h2.slp),ok:h2.slp>=25200});
+    checks.forEach(c=>{h+='<div class="e-check"><span class="k">'+c.k+'</span><span class="v">'+c.v+'</span>'
+      +'<span class="m" style="color:'+(c.ok?'var(--e-good)':'var(--e-warn)')+'">'+(c.ok?'PASS':'SHORT')+'</span></div>';});
+    const ab=absorption(i);
+    if(ab)h+='<p class="e-teach">Verdict: <b style="color:'+(ab.label==='absorbed'?'var(--e-good)':ab.label==='mostly absorbed'?'var(--e-good)':'var(--e-warn)')+';font-weight:600">'+ab.label.toUpperCase()+'</b> — '
+      +(ab.label==='absorbed'?'the night paid for the day.':ab.label==='mostly absorbed'?'most of the bill got paid; nothing owing worth chasing.':'the night didn’t cover it. The debt rolls forward until an easy day and a good night clear it.')+'</p>';
+  }
+  h+='<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button></div>';
+  return h;
+}
+/* one metric, thirty nights, your own baseline */
+const ENGINE_NIGHT={
+  hrv:{label:'HRV',unit:'ms',teach:'Higher than your usual is good. A dip of 10% or more after a hard day is the debt showing; it should bounce within a night or two.'},
+  rhr:{label:'Resting HR',unit:'bpm',teach:'Lower is fitter. Four or more beats over your usual generally means stress, heat, alcohol or a cold on the way.'},
+  tmp:{label:'Body temp',unit:'°C',teach:'Deviation from your own normal. Inside ±0.2 °C is noise; +0.3 sustained across nights often arrives before you feel ill.'},
+};
+function engineNightSheet(k){
+  const cfg=ENGINE_NIGHT[k]||ENGINE_NIGHT.hrv;
+  const t=clamp(rawT,0,RACE_IDX),H2=healthRef().d;
+  const pts=[];
+  for(let i=Math.max(0,t-29);i<=t;i++){
+    const e=H2[isoAt(i)];
+    if(e&&e[k]!=null)pts.push({i:i,v:e[k]});
+  }
+  let h='<div class="e-sheet"><div class="ttl">'+cfg.label+'</div>'
+    +'<div class="sub">LAST 30 NIGHTS · YOUR OWN BASELINE</div>';
+  if(pts.length<3){
+    h+='<p class="e-teach" style="margin-top:14px">Not enough nights yet — a few more ring syncs and the trend draws itself.</p>';
+  }else{
+    const W=360,Hh=150,L=34,Rm=10,T=14,B=22,ih=Hh-T-B;
+    const vs=pts.map(p=>p.v);
+    const base=k==='tmp'?0:ouraBase(k,isoAt(t));
+    let hi=Math.max(...vs),lo=Math.min(...vs);
+    if(base!=null){hi=Math.max(hi,base);lo=Math.min(lo,base);}
+    if(k==='tmp'){hi=Math.max(hi,0.35);lo=Math.min(lo,-0.35);}
+    const pad=(hi-lo)*0.15||1;hi+=pad;lo-=pad;
+    const X=i=>L+(W-L-Rm)*(i-pts[0].i)/Math.max(1,(pts[pts.length-1].i-pts[0].i));
+    const Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+    let g='';
+    if(k==='tmp')g+='<rect x="'+L+'" y="'+Y(0.2)+'" width="'+(W-L-Rm)+'" height="'+(Y(-0.2)-Y(0.2))+'" fill="var(--e-neutral-soft)" opacity=".7"/>';
+    [lo+pad,(hi+lo)/2,hi-pad].forEach(v=>{g+='<line x1="'+L+'" y1="'+Y(v)+'" x2="'+(W-Rm)+'" y2="'+Y(v)+'" stroke="var(--e-rule-soft)" stroke-width="1"/>'
+      +'<text x="'+(L-5)+'" y="'+(Y(v)+3)+'" text-anchor="end" font-family="Azeret Mono" font-size="8.5" fill="var(--e-faint)">'+(k==='tmp'?v.toFixed(1):Math.round(v))+'</text>';});
+    if(base!=null&&k!=='tmp')g+='<line x1="'+L+'" y1="'+Y(base)+'" x2="'+(W-Rm)+'" y2="'+Y(base)+'" stroke="var(--e-cobalt)" stroke-width="1.2" stroke-dasharray="3 4" opacity=".8"/>'
+      +'<text x="'+(W-Rm)+'" y="'+(Y(base)-4)+'" text-anchor="end" font-family="Azeret Mono" font-size="8.5" fill="var(--e-cobalt)">USUAL '+Math.round(base)+'</text>';
+    g+='<path d="'+pts.map((p,j)=>(j?'L':'M')+X(p.i).toFixed(1)+' '+Y(p.v).toFixed(1)).join('')+'" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"/>';
+    pts.forEach((p,j)=>{const last=j===pts.length-1;
+      g+='<circle cx="'+X(p.i)+'" cy="'+Y(p.v)+'" r="'+(last?3.6:1.7)+'" fill="'+(last?'var(--e-cobalt)':'var(--ink)')+'"/>';});
+    g+='<text x="'+L+'" y="'+(Hh-6)+'" font-family="Azeret Mono" font-size="8.5" fill="var(--e-faint)">'+isoShort(isoAt(pts[0].i)).toUpperCase()+'</text>'
+      +'<text x="'+(W-Rm)+'" y="'+(Hh-6)+'" text-anchor="end" font-family="Azeret Mono" font-size="8.5" fill="var(--e-faint)">LAST NIGHT</text>';
+    h+='<svg viewBox="0 0 '+W+' '+Hh+'" style="margin-top:12px" role="img" aria-label="'+cfg.label+' over the last 30 nights">'+g+'</svg>';
+    const last=pts[pts.length-1].v;
+    h+='<div class="e-facts" style="grid-template-columns:1fr 1fr">'
+      +'<div><b>'+(k==='tmp'?(last>0?'+':'')+last.toFixed(1):Math.round(last))+'<small> '+cfg.unit+'</small></b><span>Last night</span></div>'
+      +(base!=null&&k!=='tmp'?'<div><b>'+Math.round(base)+'<small> '+cfg.unit+'</small></b><span>Your usual</span></div>':'')
+      +'</div>';
+  }
+  h+='<p class="e-teach">'+cfg.teach+'</p>'
+    +'<button class="sheetrow" data-action="closesheet" style="justify-content:center;color:var(--sub);font-weight:700;border:none;margin-top:14px">Close</button></div>';
+  return h;
 }
 function vAtlas(){
   return '<div class="e-page"><div class="e-soon"><span class="e-eyebrow">Atlas</span>'
@@ -6222,7 +6368,7 @@ function render(anim){ // anim=true only on navigation — entrances must not re
     view.innerHTML=screen();
     if(anim&&!document.startViewTransition&&view.firstElementChild)view.firstElementChild.classList.add('nav-in');
     fieldDirty=false; // any full render supersedes a pending field re-render
-    bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();
+    bindSwipes();bindLongPress();initRulers();bindNutBars();bindChartScrub();bindEngineScrub();
     window.scrollTo(0,ui.scroll[ui.tab]||0);
     // keep the selected (or current) week chip in view — the strip otherwise re-opens at W1
     const wc=view.querySelector('.weekchips');
@@ -6430,6 +6576,8 @@ document.addEventListener('click',ev=>{
   }
   else if(a==='editwidgets'){openWidgetSheet();}
   else if(a==='opensettings'){openSettingsSheet();}
+  else if(a==='eledger'){openSheet(engineLedgerSheet(Number(el.dataset.i)),null,null,'Hard day');}
+  else if(a==='emorning'){openSheet(engineNightSheet(el.dataset.k),null,null,'Night history');}
   else if(a==='opencoach'){openCoachSheet();}
   else if(a==='coachcopy'){
     const b=document.getElementById('coachbrief');if(b){b.focus();b.select();}
