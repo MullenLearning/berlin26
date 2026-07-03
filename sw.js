@@ -2,7 +2,7 @@
    so cache updates can never touch user logs.
    DEPLOY NOTE: bump CACHE whenever icons or manifest change — index.html
    updates land automatically (navigations are network-first). */
-const CACHE = 'berlin26-v9';
+const CACHE = 'berlin26-v10';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icon-180.png', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

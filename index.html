@@ -6,12 +6,15 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Berlin 26">
-<meta name="theme-color" content="#F6F5F2">
+<meta name="apple-mobile-web-app-title" content="Engine">
+<meta name="theme-color" content="#FAFAF7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>Berlin 2026 — Train + Fuel</title>
+<title>Engine · fitness ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&family=Azeret+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
   /* Apple Health, light-locked: the app's single design language. ONE accent — iOS
@@ -22,7 +25,7 @@
      hairlines (not shadows), near-black ink. The single accent is INK (--accent) for
      primary buttons + default chart series; CORAL (--coral) is reserved for the goal —
      countdown, forecast, goal lines, current week — and for links/active-tab text. */
-  --bg:#F6F5F2; --card:#FFFFFF; --raised:#EFEDE7; --inset:#EFEDE7; --ink:#15171C;
+  --bg:#FAFAF7; --card:#FFFFFF; --raised:#EFEDE7; --inset:#EFEDE7; --ink:#15171C;
   /* ink-secondary (body/support) and ink-tertiary (labels/captions) — both clear WCAG AA on the warm canvas + white cards */
   --txt2:#565B63; --sub:#656A72;
   --line:#E9E6DF; --line-soft:#F0EEE7; --bord:#E0DCD2; --grid:#EDEAE2; --tick:#C9C4B8;
@@ -47,17 +50,26 @@
   /* the one motion system: fast snap for acknowledgements, soft settle for sheets/cards */
   --snap:cubic-bezier(.3,1.5,.45,1); --dur-snap:280ms;
   --settle:cubic-bezier(.22,1,.36,1); --dur-settle:420ms;
-  --statusbar:#F6F5F2;
+  --statusbar:#FAFAF7;
+  /* Engine lab-sheet tokens (the new surface language; old tokens keep the sheets working) */
+  --e-sub:#575C66; --e-faint:#767B85; --e-rule:#E5E4DE; --e-rule-soft:#F0EFEA;
+  --e-cobalt:#2B3FD6; --e-cobalt-soft:#DCE1FA;
+  --e-good:#20713C; --e-good-soft:#DDEEE3;
+  --e-warn:#96600F; --e-warn-soft:#F4E7CE;
+  --e-alert:#BC3D22; --e-alert-soft:#F3DDD7;
+  --e-neutral-soft:#EDECE6;
+  --e-mono:'Azeret Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --e-grot:'Schibsted Grotesk',-apple-system,'Helvetica Neue',sans-serif;
 }
 
 html[data-skin="berlin"] .card{border-radius:20px;border:1px solid var(--line);box-shadow:none;background:#fff;padding:20px;margin-top:12px}
 html[data-skin="berlin"] .card.heroc{box-shadow:var(--shadow-hero)}
 html[data-skin="berlin"] h1{font-weight:700;letter-spacing:-.4px;text-transform:none}
 html[data-skin="berlin"] #tabbar{background:rgba(249,249,249,.86);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--bord)}
-html[data-skin="berlin"] #tabbar .tlbl{text-transform:none;letter-spacing:0;font-size:10px;font-weight:500}
-html[data-skin="berlin"] #tabbar button{color:var(--sub)}
-html[data-skin="berlin"] #tabbar button.sel{color:var(--accent-text)}
-html[data-skin="berlin"] #tabbar button.sel::after{display:none}
+html[data-skin="berlin"] #tabbar .tlbl{font-family:var(--e-mono);text-transform:uppercase;letter-spacing:.12em;font-size:8.5px;font-weight:500}
+html[data-skin="berlin"] #tabbar button{color:var(--e-faint)}
+html[data-skin="berlin"] #tabbar button.sel{color:var(--ink)}
+html[data-skin="berlin"] #tabbar button.sel::after{background:var(--e-cobalt);top:-5px}
 html[data-skin="berlin"] #tabbar svg{width:26px;height:26px}
 /* Apple components */
 .aNav{display:flex;justify-content:space-between;align-items:flex-start;margin:2px 2px 0}
@@ -511,6 +523,83 @@ body.dragactive{overflow:hidden;touch-action:none;-webkit-user-select:none;user-
 .brandhd{display:inline-flex;align-items:center;gap:7px;line-height:1;text-transform:none;letter-spacing:normal}
 .brandhd b{font-size:15px;font-weight:700;letter-spacing:-.1px}
 .brandhd svg{flex:none;display:block;width:19px;height:19px} /* beat the global svg{width:100%} */
+
+/* ==== Engine lab sheet ==================================================== */
+.e-page{font-family:var(--e-grot);font-size:15px;line-height:1.6;padding-bottom:8px}
+.e-eyebrow{font-family:var(--e-mono);font-weight:500;font-size:10px;letter-spacing:.16em;color:var(--e-faint);text-transform:uppercase}
+.e-page h1{margin:6px 0 0;font-family:var(--e-grot);font-weight:800;font-size:32px;letter-spacing:-.02em;line-height:1.05;text-transform:none}
+.e-synced{margin-top:6px;font-size:13px;color:var(--e-sub)}
+.e-synced i{font-style:normal;color:var(--e-cobalt);font-weight:500}
+.e-mast{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.e-sec{margin:34px 0 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-top:1.5px solid var(--ink);padding-top:10px}
+.e-sec .t{font-family:var(--e-mono);font-weight:600;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);white-space:nowrap}
+.e-sec .m{font-family:var(--e-mono);font-size:10px;color:var(--e-faint);letter-spacing:.06em;text-align:right}
+.e-hero{display:flex;align-items:flex-start;gap:18px;margin-top:2px}
+.e-hero .n{font-weight:800;font-size:88px;line-height:.9;letter-spacing:-.045em;font-variant-numeric:tabular-nums}
+.e-hero .side{padding-top:10px;min-width:0}
+.e-hero .state{font-weight:700;font-size:21px;letter-spacing:-.01em}
+.e-hero .expl{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--e-sub);text-wrap:pretty}
+.e-scale{margin-top:22px}
+.e-scale .ticks{position:relative;height:14px;font-family:var(--e-mono);font-size:9px;color:var(--e-faint)}
+.e-scale .ticks span{position:absolute;transform:translateX(-50%)}
+.e-scale .bandwrap{position:relative}
+.e-scale .band{display:flex;height:14px;border-radius:4px;overflow:hidden}
+.e-scale .band i{height:100%}
+.e-scale .marker{position:absolute;top:-7px;bottom:-7px;width:2.5px;background:var(--ink);border-radius:2px;transform:translateX(-50%)}
+.e-scale .marker::after{content:"";position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:9px;height:9px;border-radius:50%;background:var(--ink)}
+.e-scale .zones{display:flex;margin-top:8px;font-family:var(--e-mono);font-size:8.5px;letter-spacing:.1em}
+.e-scale .zones span{text-align:center}
+.e-forces{display:grid;grid-template-columns:1fr 1fr}
+.e-force{padding:4px 16px 0 0;min-width:0}
+.e-force+.e-force{border-left:1px solid var(--e-rule);padding:4px 0 0 16px}
+.e-force .lbl{font-family:var(--e-mono);font-weight:600;font-size:10px;letter-spacing:.16em;color:var(--e-sub)}
+.e-force .row{display:flex;align-items:flex-end;gap:8px;margin-top:4px}
+.e-force .v{font-weight:800;font-size:44px;line-height:.95;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.e-force svg{width:84px;height:26px;flex:none;margin-bottom:5px}
+.e-force p{margin:8px 0 0;font-size:12.5px;line-height:1.5;color:var(--e-sub);text-wrap:pretty}
+.e-formula{margin-top:18px;border:1px solid var(--e-rule);border-radius:10px;background:var(--card);padding:10px 8px;font-family:var(--e-mono);font-size:11px;letter-spacing:.02em;color:var(--e-sub);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.e-formula b{color:var(--ink);font-weight:600}
+.e-formula .c{color:var(--e-cobalt);font-weight:600}
+.e-keys{margin-top:10px;display:grid;gap:3px;font-size:12.5px;color:var(--e-sub)}
+.e-keys i{display:inline-block;width:16px;height:0;border-top:2.5px solid;vertical-align:4px;margin-right:8px}
+.e-morning{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--e-rule);border-radius:12px;background:var(--card);overflow:hidden}
+.e-mt{padding:13px 10px 12px;min-width:0}
+.e-mt+.e-mt{border-left:1px solid var(--e-rule-soft)}
+.e-mt .lbl{font-family:var(--e-mono);font-weight:500;font-size:9px;letter-spacing:.12em;color:var(--e-faint);text-transform:uppercase;white-space:nowrap}
+.e-mt .v{font-weight:800;font-size:25px;letter-spacing:-.02em;margin-top:3px;line-height:1.1;white-space:nowrap;font-variant-numeric:tabular-nums}
+.e-mt .v small{font-size:12px;font-weight:500;color:var(--e-sub);letter-spacing:0}
+.e-mt .b{margin-top:4px;font-family:var(--e-mono);font-size:9px;letter-spacing:0;white-space:nowrap}
+.e-mt .b em{font-style:normal;font-weight:600}
+.e-line{margin:12px 2px 0;font-size:13.5px;line-height:1.55;color:var(--e-sub);text-wrap:pretty}
+.e-line b{color:var(--ink);font-weight:500}
+.e-eff .row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.e-eff .v{font-weight:800;font-size:54px;letter-spacing:-.035em;line-height:1;font-variant-numeric:tabular-nums}
+.e-eff .u{font-family:var(--e-mono);font-size:10.5px;letter-spacing:.08em;color:var(--e-sub);text-transform:uppercase;line-height:1.6}
+.e-eff .delta{margin-left:auto;font-family:var(--e-mono);font-weight:600;font-size:11px;color:var(--e-good);background:var(--e-good-soft);border-radius:99px;padding:5px 11px;white-space:nowrap}
+.e-eff svg{display:block;width:100%;height:auto;margin-top:12px}
+.e-ledger{border:1px solid var(--e-rule);border-radius:12px;background:var(--card);overflow:hidden}
+.e-ledger table{width:100%;border-collapse:collapse;font-size:13px}
+.e-ledger td{padding:11px 9px;border-top:1px solid var(--e-rule-soft);border-bottom:none;vertical-align:middle}
+.e-ledger td:first-child{padding-left:13px}
+.e-ledger td:last-child{padding-right:13px}
+.e-ledger tr:first-child td{border-top:none}
+.e-ledger .d{font-family:var(--e-mono);font-size:10px;letter-spacing:.06em;color:var(--e-faint);white-space:nowrap;width:48px}
+.e-ledger .s{font-weight:500;white-space:nowrap;font-family:var(--e-grot)}
+.e-ledger .load{font-family:var(--e-mono);font-size:11px;color:var(--e-sub);text-align:right;white-space:nowrap}
+.e-ledger .st{text-align:right;white-space:nowrap}
+.e-tag{display:inline-block;font-family:var(--e-mono);font-weight:600;font-size:9px;letter-spacing:.1em;border-radius:5px;padding:4px 8px}
+.e-tag.ok{color:var(--e-good);background:var(--e-good-soft)}
+.e-tag.mid{color:var(--e-warn);background:var(--e-warn-soft)}
+.e-tag.owe{color:var(--e-warn);background:var(--e-warn-soft)}
+.e-foot{margin-top:36px;border-top:1.5px solid var(--ink);padding-top:12px}
+.e-foot .t{font-family:var(--e-mono);font-weight:600;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px;color:var(--ink)}
+.e-foot p{margin:0 0 8px;font-size:12.5px;line-height:1.6;color:var(--e-sub);text-wrap:pretty}
+.e-foot p b{color:var(--ink);font-weight:600;font-family:var(--e-mono);font-size:11px;letter-spacing:.04em}
+.e-empty{border:1px solid var(--e-rule);border-radius:12px;background:var(--card);padding:16px 14px;font-size:13.5px;line-height:1.55;color:var(--e-sub);text-wrap:pretty}
+.e-empty b{color:var(--ink);font-weight:600}
+.e-soon{min-height:52vh;display:flex;flex-direction:column;justify-content:center;text-align:center;gap:6px}
+.e-soon .big{font-family:var(--e-grot);font-weight:800;font-size:30px;letter-spacing:-.02em}
+.e-soon p{margin:0 auto;max-width:30ch;font-size:14px;color:var(--e-sub);line-height:1.6;text-wrap:pretty}
 </style>
 </head>
 <body>
@@ -2136,6 +2225,8 @@ function gcalReconcileSoon(){ // after an in-app edit that changes a day
 }
 function gcalReconcile(opts){
   opts=opts||{};
+  return; // retired with the plan pivot — the Engine never writes training blocks to the calendar
+  /* eslint-disable no-unreachable */
   const st=gcalState();
   if(!st||!storageOK)return;
   if(st.needsAuth&&!opts.manual)return;
@@ -2465,10 +2556,15 @@ function trimpOf(l,e){
   const hrr=l.hrA?clamp((l.hrA-a.rest)/(a.max-a.rest),0.3,0.98):(ZONE_HRR[e.zone]||0.66);
   return mins*hrr*0.64*Math.exp(1.92*hrr);
 }
-/* fitness (42d) / fatigue (7d) / form, day by day from block start */
+/* fitness (42d) / fatigue (7d) / form, day by day from block start.
+   Warm start: seed both averages with the first fortnight's mean load, so the
+   first weeks read as a real training state rather than a climb out of zero. */
 function formSeries(){
   const t=clamp(rawT,0,RACE_IDX),out=[];
-  let ctl=0,atl=0;
+  let seed=0,n=0;
+  for(let i=0;i<=Math.min(t,13);i++){const e0=eff(i);seed+=trimpOf(sessLog(e0.id),e0);n++;}
+  seed=n?seed/n:0;
+  let ctl=seed,atl=seed;
   for(let i=0;i<=t;i++){
     const e=eff(i),tr=trimpOf(sessLog(e.id),e);
     ctl+=(tr-ctl)/42;atl+=(tr-atl)/7;
@@ -3405,20 +3501,20 @@ function renderTabBar(skin){
 }
 /* Tab-bar glyphs (skins may override per tab) */
 const TAB_ICONS={
-  today:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg>',
-  train:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="16.5" cy="4.5" r="1.8"/><path d="M13.5 8.5 16 7l3 2.5 2 .5"/><path d="m13.5 8.5-3 3 3.5 3-1.5 5"/><path d="m10 18-2.5 2M9 12.5 5 13"/></svg>',
-  nut:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21c4 0 6.5-2.6 6.5-6.2C18.5 10 14.5 7 12.6 3c-1 2.7-2.4 4.2-3.9 6C6.8 11.2 5.5 12.7 5.5 15c0 3.5 2.5 6 6.5 6Z"/></svg>',
-  cal:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3.2v3.4M16 3.2v3.4"/></svg>',
+  engine:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 19a9 9 0 1 1 15 0"/><path d="M12 14.5 15.5 9"/><circle cx="12" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg>',
+  atlas:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 4 6v14l5-2 6 2 5-2V4l-5 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>',
+  nightday:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3a9 9 0 0 1 9 9" stroke-dasharray="1.5 3.4"/><path d="M12 7v5l3 2"/></svg>',
+  yearbook:'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4Z"/><path d="M5 17a3 3 0 0 1 3-3h11"/><path d="M9 8h6"/></svg>',
 };
-const BERLIN={
-  defaultTab:'today',
+const BERLIN={ // registry key kept as 'berlin' so the stored S.skin keeps resolving
+  defaultTab:'engine',
   tabs:[
-    {id:'today',label:'Today',icon:TAB_ICONS.today},
-    {id:'train',label:'Training',icon:TAB_ICONS.train},
-    {id:'cal',label:'Calendar',icon:TAB_ICONS.cal},
-    {id:'nut',label:'Nutrition',icon:TAB_ICONS.nut},
+    {id:'engine',label:'Engine',icon:TAB_ICONS.engine},
+    {id:'atlas',label:'Atlas',icon:TAB_ICONS.atlas},
+    {id:'nightday',label:'Night & Day',icon:TAB_ICONS.nightday},
+    {id:'yearbook',label:'Yearbook',icon:TAB_ICONS.yearbook},
   ],
-  screens:{today:()=>vToday(),train:()=>vTrain(),cal:()=>vCal(),nut:()=>vNut()},
+  screens:{engine:()=>vEngine(),atlas:()=>vAtlas(),nightday:()=>vNightDay(),yearbook:()=>vYearbook()},
 };
 const SKIN_REG={berlin:BERLIN};
 
@@ -4309,8 +4405,15 @@ function wForecast(){
 function settingsSheetContent(){
   return '<div class="spread"><h2 style="margin:0">Settings &amp; integrations</h2>'
     +'<button class="btn3" data-action="closesheet" style="color:var(--accent-text)">Done</button></div>'
-    +'<p class="note" style="margin:6px 0 2px">Connect your data sources and tune how the week is written to your calendar. Set once — it stays out of the daily scroll.</p>'
-    +stravaCard()+ouraCard()+gcalCard()+fitCard();
+    +'<p class="note" style="margin:6px 0 2px">Connect your data sources once; the Engine reads them on every open.</p>'
+    +stravaCard()+ouraCard()
+    +'<section class="card"><h2 style="margin:0 0 6px">Your data</h2>'
+    +'<p class="note">Everything lives on this device'+(S.lastBackup?' · last backup '+isoShort(S.lastBackup):' · never backed up')+'.</p>'
+    +'<div class="loggrid" style="margin-top:10px">'
+    +'<button class="btn2" data-action="export">Back up</button>'
+    +'<button class="btn2" data-action="importpick">Restore</button></div>'
+    +'<input type="file" id="importfile" accept="application/json" style="display:none">'
+    +'</section>';
 }
 function openSettingsSheet(){ui.settingsOpen=true;openSheet(settingsSheetContent());}
 function settingsRefresh(){
@@ -5850,6 +5953,263 @@ function appleNav(title,sub,avatarAction){
   return '<div class="aNav"><div><h1 class="aTitle">'+title+'</h1>'+(sub?'<div class="aSub">'+sub+'</div>':'')+'</div><div class="aActions">'+extra+gearBtn+'</div></div>';
 }
 function appleSeg(opts){return '<div class="aSeg">'+opts.map((o,i)=>'<button class="'+(i===1?'on':'')+'">'+o+'</button>').join('')+'</div>';}
+
+/* ---------------- 9c. The Engine (the live app) ----------------
+   One screen: form under load, computed from what's actually in S —
+   Strava-logged runs through trimpOf(), Oura nights through ouraBase()/
+   absorption(). No plan, no race references: a continuing instrument. */
+function engineZone(tsb){
+  if(tsb>6)return {word:'Fresh',col:'var(--e-good)',expl:'Recent work has drained out and your base is carrying you. Great for racing; fitness slips if you stay here long.'};
+  if(tsb>=-2)return {word:'Neutral',col:'var(--e-faint)',expl:'Work in and recovery out are level. A holding pattern.'};
+  if(tsb>=-18)return {word:'Productive',col:'var(--e-cobalt)',expl:'You’re carrying more recent work than your base is used to. Training here is what builds fitness.'};
+  return {word:'Overreaching',col:'var(--e-alert)',expl:'A lot more work than your base can absorb. Useful in short doses; risky if it lingers.'};
+}
+function engineSeries(){ // real history + 14 days continuing at the last week's rhythm
+  const hist=formSeries();
+  if(!hist.length)return {hist:[],all:[],today:-1};
+  let ctl=hist[hist.length-1].ctl,atl=hist[hist.length-1].atl;
+  const all=hist.map(p=>({ctl:p.ctl,atl:p.atl,tsb:p.tsb}));
+  const n=hist.length;
+  for(let d=0;d<14;d++){
+    const src=hist[Math.max(0,n-7+(d%7))].trimp||0;
+    ctl+=(src-ctl)/42;atl+=(src-atl)/7;
+    all.push({ctl:ctl,atl:atl,tsb:ctl-atl});
+  }
+  return {hist:hist,all:all,today:n-1};
+}
+function engineCostSeries(){ // weekly mean beats/km on easyish runs (pace 5:30+/km)
+  const t=clamp(rawT,0,RACE_IDX),out=[];
+  for(let w=0;w<=Math.floor(t/7);w++){
+    const vals=[];
+    for(let d=0;d<7;d++){
+      const i=w*7+d;if(i>t)break;
+      const l=sessLog(eff(i).id);
+      const b=beatsPerKm(l);
+      if(b!=null&&(l.secs/l.km)>=330)vals.push(b);
+    }
+    if(vals.length)out.push({w:w,v:vals.reduce((s,x)=>s+x,0)/vals.length});
+  }
+  return out;
+}
+function engineLedger(){ // recent hard days and whether the night after banked them
+  const t=clamp(rawT,0,RACE_IDX),rows=[];
+  for(let i=t;i>=0&&rows.length<4;i--){
+    const e=eff(i),l=sessLog(e.id);
+    const tr=trimpOf(l,e);
+    if(tr<100)continue; // hard days only — long runs and quality, not the daily easy work
+    const ab=i<t?absorption(i):null;
+    rows.push({i:i,label:headline(e),load:Math.round(tr),ab:ab,
+      state:i>=t?'tonight':(ab?null:'nodata')});
+  }
+  return rows;
+}
+function engineMorning(){
+  const t=clamp(rawT,0,RACE_IDX),iso=isoAt(t),h=healthRef().d[iso]||{};
+  const hb=ouraBase('hrv',iso),rb=ouraBase('rhr',iso);
+  const m={hrv:null,rhr:null,tmp:null,line:''};
+  if(h.hrv!=null){
+    const low=hb!=null&&h.hrv<hb*0.9;
+    m.hrv={v:h.hrv,base:hb!=null?Math.round(hb):null,state:low?'low':'good',col:low?'var(--e-warn)':'var(--e-good)'};
+  }
+  if(h.rhr!=null){
+    const high=rb!=null&&h.rhr>=rb+4;
+    m.rhr={v:h.rhr,base:rb!=null?Math.round(rb):null,state:high?'high':'good',col:high?'var(--e-warn)':'var(--e-good)'};
+  }
+  if(h.tmp!=null){
+    const off=Math.abs(h.tmp)>=0.3;
+    m.tmp={v:h.tmp,state:off?'raised':'normal',col:off?'var(--e-warn)':'var(--e-good)'};
+  }
+  const worries=[];
+  if(m.hrv&&m.hrv.state==='low')worries.push('HRV is under your usual');
+  if(m.rhr&&m.rhr.state==='high')worries.push('resting HR is up');
+  if(m.tmp&&m.tmp.state==='raised')worries.push('body temp is raised');
+  if(!m.hrv&&!m.rhr&&!m.tmp)m.line='';
+  else if(!worries.length)m.line='Recovery looks square. <b>Nothing in the night argues with a normal day.</b>';
+  else if(worries.length===1)m.line='Recovery is a touch behind: '+worries[0]+'. <b>Take today easy and it should be back by tomorrow.</b>';
+  else m.line='The night flagged more than one thing: '+worries.join(', ')+'. <b>Make today genuinely easy.</b>';
+  return m;
+}
+function engineStripSVG(S2){
+  const {all,today}=S2;if(all.length<8)return '';
+  const N=all.length,W=360,H=170,L=8,Rm=10,T=12,B=24,ih=H-T-B;
+  const A=all.map(p=>p.atl),C=all.map(p=>p.ctl),F=all.map(p=>p.tsb);
+  const hi=Math.max(...A,...C)+6,lo=Math.min(...F,0)-5;
+  const X=i=>L+(W-L-Rm)*i/(N-1),Y=v=>T+ih*(1-(v-lo)/(hi-lo));
+  let g='';
+  let lastM='';
+  for(let i=0;i<N;i+=1){ // month gridlines at first-of-month
+    const iso=isoAt(Math.min(i,RACE_IDX+14)),mth=iso.slice(5,7);
+    if(mth!==lastM){lastM=mth;if(i>0){const x=X(i);
+      g+='<line x1="'+x+'" y1="'+T+'" x2="'+x+'" y2="'+(T+ih)+'" stroke="var(--e-rule)" stroke-width="1"/>'
+        +'<text x="'+(x+4)+'" y="'+(H-8)+'" font-family="Azeret Mono" font-size="8.5" letter-spacing="1" fill="var(--e-faint)">'+MONL[Number(mth)-1].slice(0,3).toUpperCase()+'</text>';}}
+  }
+  g+='<line x1="'+L+'" y1="'+Y(0)+'" x2="'+(W-Rm)+'" y2="'+Y(0)+'" stroke="var(--e-rule)" stroke-width="1" stroke-dasharray="2 3"/>'
+    +'<text x="'+(W-Rm)+'" y="'+(Y(0)-4)+'" text-anchor="end" font-family="Azeret Mono" font-size="8" fill="var(--e-faint)">0</text>';
+  const path=(arr,i0,i1)=>arr.slice(i0,i1+1).map((v,j)=>(j?'L':'M')+X(i0+j).toFixed(1)+' '+Y(v).toFixed(1)).join('');
+  g+='<path d="'+path(A,0,today)+'" fill="none" stroke="var(--e-alert)" stroke-width="1.4" opacity=".8" stroke-linejoin="round"/>'
+    +'<path d="'+path(F,0,today)+'" fill="none" stroke="var(--e-cobalt)" stroke-width="1.8" stroke-linejoin="round"/>'
+    +'<path d="'+path(C,0,today)+'" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>'
+    +'<path d="'+path(A,today,N-1)+'" fill="none" stroke="var(--e-alert)" stroke-width="1.1" opacity=".5" stroke-dasharray="1.5 4"/>'
+    +'<path d="'+path(F,today,N-1)+'" fill="none" stroke="var(--e-cobalt)" stroke-width="1.3" stroke-dasharray="1.5 4" opacity=".65"/>'
+    +'<path d="'+path(C,today,N-1)+'" fill="none" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="1.5 4" opacity=".6"/>'
+    +'<line x1="'+X(today)+'" y1="'+(T-2)+'" x2="'+X(today)+'" y2="'+(T+ih)+'" stroke="var(--ink)" stroke-width="1" opacity=".35"/>'
+    +'<circle cx="'+X(today)+'" cy="'+Y(C[today])+'" r="3.6" fill="var(--e-cobalt)"/>'
+    +'<text x="'+(X(today)-6)+'" y="'+(T+2)+'" text-anchor="end" font-family="Azeret Mono" font-weight="600" font-size="8.5" letter-spacing="1.5" fill="var(--e-faint)">TODAY</text>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Fitness, fatigue and form over the block">'+g+'</svg>';
+}
+function engineSparkSVG(arr,today,col){
+  const pts=[];for(let i=0;i<=today;i+=7)pts.push(arr[i]);pts.push(arr[today]);
+  if(pts.length<2)return '';
+  const W=84,H=26,hi=Math.max(...pts)+2,lo=Math.min(...pts)-2;
+  const X=i=>2+(W-8)*i/(pts.length-1),Y=v=>4+(H-8)*(1-(v-lo)/(hi-lo));
+  let s='<path d="'+pts.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('')+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linejoin="round"/>';
+  s+='<circle cx="'+X(pts.length-1)+'" cy="'+Y(pts[pts.length-1])+'" r="2.8" fill="'+col+'"/>';
+  return '<svg viewBox="0 0 84 26" aria-hidden="true">'+s+'</svg>';
+}
+function engineCostSVG(cs){
+  const W=360,H=58,L=30,Rm=36,T=10,B=12;
+  const v=cs.map(p=>p.v);
+  const hi=Math.max(...v)+3,lo=Math.min(...v)-3;
+  const X=i=>L+(W-L-Rm)*i/(v.length-1),Y=x=>T+(H-T-B)*(1-(x-lo)/(hi-lo));
+  let g='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-Rm)+'" y2="'+(H-B)+'" stroke="var(--e-rule)" stroke-width="1"/>';
+  g+='<path d="'+v.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x).toFixed(1)).join('')+'" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>';
+  v.forEach((x,i)=>{g+='<circle cx="'+X(i)+'" cy="'+Y(x)+'" r="'+(i===v.length-1?3.4:2)+'" fill="'+(i===v.length-1?'var(--e-cobalt)':'var(--ink)')+'"/>';});
+  g+='<text x="'+X(0)+'" y="'+(Y(v[0])-7)+'" font-family="Azeret Mono" font-size="8.5" fill="var(--e-faint)">W'+(cs[0].w+1)+' · '+Math.round(v[0])+'</text>'
+    +'<text x="'+(X(v.length-1)+8)+'" y="'+(Y(v[v.length-1])+3)+'" font-family="Azeret Mono" font-size="8.5" fill="var(--e-faint)">NOW</text>';
+  return '<svg viewBox="0 0 '+W+' '+H+'">'+g+'</svg>';
+}
+function vEngine(){
+  const t=clamp(rawT,0,RACE_IDX);
+  const S2=engineSeries();
+  const gear='<button class="aAvatar" data-action="opensettings" aria-haspopup="dialog" aria-label="Settings and integrations" style="color:var(--e-sub)"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82V15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>';
+  const src=[];
+  if(stravaConnected())src.push('<i>Strava</i>');
+  if(ouraConnected())src.push('<i>Oura</i>');
+  let head='<div class="e-mast"><div><span class="e-eyebrow">Engine · fitness ledger</span>'
+    +'<h1>'+longDate(t)+'</h1>'
+    +'<p class="e-synced">'+(src.length?src.join(' + ')+' connected'
+      :(S2.hist.length&&S2.hist.some(p=>p.trimp)?'Reading this device’s logs — reconnect sources behind the gear'
+      :'No sources connected yet — open the gear to link Strava and Oura'))+'</p>'
+    +'</div>'+gear+'</div>';
+  // ---- no runs at all: teach the first step, show nothing fake
+  if(!S2.hist.length||S2.hist.every(p=>!p.trimp)){
+    return '<div class="e-page">'+head
+      +'<div class="e-sec"><span class="t">Form · today</span></div>'
+      +'<div class="e-empty"><b>The Engine reads your runs from Strava.</b> Connect it behind the gear and the form gauge, fitness and fatigue lines, and the cost of a kilometre appear here as the data lands. Nothing here is typed in by hand.</div>'
+      +'</div>';
+  }
+  const now=S2.hist[S2.hist.length-1];
+  const Fv=Math.round(now.ctl),Av=Math.round(now.atl),form=Fv-Av;
+  const zone=engineZone(now.tsb);
+  const raceF=S2.all[S2.all.length-1];
+  // scale geometry
+  const V0=-30,V1=20,pct=v=>clamp((v-V0)/(V1-V0)*100,0,100);
+  let ticks='';[-30,-20,-10,0,10,20].forEach(v=>{ticks+='<span class="num" style="left:'+pct(v).toFixed(1)+'%">'+(v>0?'+'+v:v)+'</span>';});
+  const m=engineMorning(); // reads S.health directly — works even when the token needs a reconnect
+  const cs=engineCostSeries();
+  const rows=engineLedger();
+  const owing=rows.filter(r=>r.ab&&r.ab.label==='still owing').length;
+  let h='<div class="e-page">'+head;
+  // ---- form
+  h+='<div class="e-sec"><span class="t">Form · today</span><span class="m">SCALE −30 TO +20</span></div>'
+    +'<div class="e-hero"><div class="n num">'+(form>0?'+':'')+form+'</div><div class="side">'
+    +'<div class="state" style="color:'+zone.col+'">'+zone.word+'</div>'
+    +'<p class="expl">'+zone.expl+'</p></div></div>'
+    +'<div class="e-scale" aria-label="Form '+form+' on a scale of minus 30 to plus 20, '+zone.word+' zone">'
+    +'<div class="ticks num">'+ticks+'</div>'
+    +'<div class="bandwrap"><div class="band">'
+    +'<i style="flex:24;background:var(--e-alert-soft)"></i><i style="flex:32;background:var(--e-cobalt-soft)"></i>'
+    +'<i style="flex:16;background:var(--e-neutral-soft)"></i><i style="flex:28;background:var(--e-good-soft)"></i>'
+    +'</div><span class="marker" style="left:'+pct(now.tsb).toFixed(1)+'%"></span></div>'
+    +'<div class="zones"><span style="flex:24;color:var(--e-alert)">OVERREACHING</span>'
+    +'<span style="flex:32;color:var(--e-cobalt)">PRODUCTIVE</span>'
+    +'<span style="flex:16;color:var(--e-faint)">NEUTRAL</span>'
+    +'<span style="flex:28;color:var(--e-good)">FRESH</span></div></div>';
+  // ---- two forces
+  h+='<div class="e-sec"><span class="t">The two forces</span><span class="m">WEEKLY TREND</span></div>'
+    +'<div class="e-forces"><div class="e-force"><span class="lbl">FITNESS</span>'
+    +'<div class="row"><span class="v num">'+Fv+'</span>'+engineSparkSVG(S2.all.map(p=>p.ctl),S2.today,'var(--ink)')+'</div>'
+    +'<p>Your base: the daily work your body is used to. It takes about six weeks to move.</p></div>'
+    +'<div class="e-force"><span class="lbl">FATIGUE</span>'
+    +'<div class="row"><span class="v num">'+Av+'</span>'+engineSparkSVG(S2.all.map(p=>p.atl),S2.today,'var(--e-alert)')+'</div>'
+    +'<p>What the last few days left in your legs. It drains in about a week.</p></div></div>'
+    +'<div class="e-formula num"><b>FORM</b> = <b>FITNESS</b> − <b>FATIGUE</b> = '+Fv+' − '+Av+' = <span class="c">'+(form>0?'+':'')+form+'</span></div>';
+  // ---- strip
+  h+='<div class="e-sec"><span class="t">Since the logs began</span><span class="m">+2 WKS AT THIS RHYTHM</span></div>'
+    +engineStripSVG(S2)
+    +'<div class="e-keys">'
+    +'<span><i style="border-color:var(--ink)"></i><b style="font-weight:600">Fitness</b> climbs slowly and fades slowly</span>'
+    +'<span><i style="border-color:var(--e-alert)"></i><b style="font-weight:600">Fatigue</b> spikes with hard days, drains in a week</span>'
+    +'<span><i style="border-color:var(--e-cobalt)"></i><b style="font-weight:600">Form</b> is the gap between them</span>'
+    +'<span style="color:var(--e-faint)">Dotted: the next two weeks if this rhythm holds — heading for '+(Math.round(raceF.tsb)>0?'+':'')+Math.round(raceF.tsb)+'</span></div>';
+  // ---- this morning
+  h+='<div class="e-sec"><span class="t">This morning</span><span class="m">VS YOUR RECENT NIGHTS</span></div>';
+  if(!m.hrv&&!m.rhr&&!m.tmp){
+    h+=ouraConnected()
+      ?'<div class="e-empty">No night data yet for today. It usually lands when the ring syncs after you wake.</div>'
+      :'<div class="e-empty"><b>Mornings come from Oura.</b> Connect the ring behind the gear and HRV, resting HR and body temp land here each day against your own baseline.</div>';
+  }else{
+    h+='<div class="e-morning">'
+      +'<div class="e-mt"><span class="lbl">HRV</span><div class="v num">'+(m.hrv?m.hrv.v+'<small> ms</small>':'—')+'</div>'
+      +(m.hrv?'<div class="b num" style="color:'+m.hrv.col+'"><em>'+m.hrv.state+'</em>'+(m.hrv.base!=null?' · usual '+m.hrv.base:'')+'</div>':'')+'</div>'
+      +'<div class="e-mt"><span class="lbl">Resting HR</span><div class="v num">'+(m.rhr?m.rhr.v+'<small> bpm</small>':'—')+'</div>'
+      +(m.rhr?'<div class="b num" style="color:'+m.rhr.col+'"><em>'+m.rhr.state+'</em>'+(m.rhr.base!=null?' · usual '+m.rhr.base:'')+'</div>':'')+'</div>'
+      +'<div class="e-mt"><span class="lbl">Body temp</span><div class="v num">'+(m.tmp?(m.tmp.v>0?'+':'')+m.tmp.v.toFixed(1)+'<small> °C</small>':'—')+'</div>'
+      +(m.tmp?'<div class="b num" style="color:'+m.tmp.col+'"><em>'+m.tmp.state+'</em> · ±0.2</div>':'')+'</div>'
+      +'</div>'
+      +(m.line?'<p class="e-line">'+m.line+'</p>':'');
+  }
+  // ---- cost per km
+  if(cs.length>=2){
+    const first=cs[0].v,last=cs[cs.length-1].v,diff=Math.round(first-last);
+    h+='<div class="e-sec"><span class="t">Cost per kilometre</span><span class="m">EASY-PACE RUNS ONLY</span></div>'
+      +'<div class="e-eff"><div class="row"><span class="v num">'+Math.round(last)+'</span>'
+      +'<span class="u">heartbeats<br>per km</span>'
+      +(Math.abs(diff)>=3?'<span class="delta num"'+(diff<0?' style="color:var(--e-warn);background:var(--e-warn-soft)"':'')+'>'+(diff>0?'▼ '+diff:'▲ '+(-diff))+' since W'+(cs[0].w+1)+'</span>':'')
+      +'</div>'+engineCostSVG(cs)
+      +'<p>'+(diff>0
+        ?'In week '+(cs[0].w+1)+' the same easy kilometre cost <b>'+Math.round(first)+' beats</b>. The pace hasn’t changed; your heart is doing less work for it.'
+        :'Each point is a week of easy runs: average heartbeats to cover one kilometre. Watch it fall as the engine grows.')+'</p></div>';
+  }
+  // ---- ledger
+  if(rows.length){
+    let tr='';
+    rows.forEach(r=>{
+      const tag=r.state==='tonight'?'<span class="e-tag mid">TONIGHT</span>'
+        :r.state==='nodata'?'<span class="e-tag" style="color:var(--e-faint);background:var(--e-neutral-soft)">NO DATA</span>'
+        :r.ab.label==='absorbed'?'<span class="e-tag ok">ABSORBED</span>'
+        :r.ab.label==='mostly absorbed'?'<span class="e-tag ok">MOSTLY</span>'
+        :'<span class="e-tag owe">OWING</span>';
+      tr+='<tr><td class="d num">'+shortDate(r.i).toUpperCase().slice(0,6)+'</td><td class="s">'+esc(r.label.length>22?r.label.slice(0,21)+'…':r.label)+'</td>'
+        +'<td class="load num">'+r.load+' pts</td><td class="st">'+tag+'</td></tr>';
+    });
+    h+='<div class="e-sec"><span class="t">Hard days, paid back</span><span class="m">RECENT</span></div>'
+      +'<div class="e-ledger"><table>'+tr+'</table></div>'
+      +'<p class="e-line" style="font-size:12.5px">A hard day counts as <b style="color:var(--e-good)">absorbed</b> once the night after shows deep sleep and HRV back at your normal.'
+      +(owing?' <em style="font-style:normal;color:var(--e-warn);font-weight:500">'+(owing===1?'One is still owing.':owing+' are still owing.')+'</em> An early night clears it.':'')+'</p>';
+  }
+  // ---- how it's counted
+  h+='<div class="e-foot"><div class="t">How it’s counted</div>'
+    +'<p><b>LOAD</b> · Every run earns points: minutes weighted by how hard your heart worked (from Strava’s heart-rate data). An easy 10 km is roughly 60 points; the same time at threshold counts double.</p>'
+    +'<p><b>FITNESS</b> · Your average daily load over the last 42 days. <b>FATIGUE</b> · The same average over the last 7. A hard week spikes fatigue in days; building fitness takes weeks of them.</p>'
+    +'<p><b>BASELINES</b> · HRV and resting heart rate use your own recent nights from Oura as normal, not population numbers.</p></div>';
+  return h+'</div>';
+}
+function vAtlas(){
+  return '<div class="e-page"><div class="e-soon"><span class="e-eyebrow">Atlas</span>'
+    +'<div class="big">Every road, one scale</div>'
+    +'<p>Your runs as places: loops named, routes drawn together, the same roads getting faster. Being built next.</p></div></div>';
+}
+function vNightDay(){
+  return '<div class="e-page"><div class="e-soon"><span class="e-eyebrow">Night &amp; Day</span>'
+    +'<div class="big">Sleep in, pace out</div>'
+    +'<p>What your nights actually do to your runs, measured from your own data. In the queue after Atlas.</p></div></div>';
+}
+function vYearbook(){
+  return '<div class="e-page"><div class="e-soon"><span class="e-eyebrow">Yearbook</span>'
+    +'<div class="big">The story so far</div>'
+    +'<p>Weeks and months written up in plain sentences: records, streaks, chapters. Last to arrive.</p></div></div>';
+}
 
 /* ---------------- 10. Router & events ---------------- */
 const view=document.getElementById('view');
